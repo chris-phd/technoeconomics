@@ -10,6 +10,7 @@ import technoeconomics.system as system
 import technoeconomics.thermo as thermo
 import technoeconomics.utils as utils
 
+
 class UtilsTest(TestCase):
     def test_temp_conversion(self):
         self.assertEqual(utils.celsius_to_kelvin(0), 273.15)
@@ -77,7 +78,40 @@ class SpeciesThermoTest(TestCase):
         print(f'heat_energy: {heat_energy}')
         self.assertAlmostEqual(heat_energy, 0.62, places=1)
 
+    def test_mixture_merge(self):
+        steam = species.create_h2o_species()
+        steam.mass = 1
+        steam.temp_kelvin = 1000
+        oxygen = species.create_o2_species()
+        oxygen.mass = 1
+        oxygen.temp_kelvin = 1200
+        steam_mixture = species.Mixture('steam', [steam])
+        oxygen_mixture = species.Mixture('oxygen', [oxygen])
+        steam_mixture.merge(oxygen_mixture)
+        self.assertAlmostEqual(steam_mixture.mass, 2)
+        self.assertAlmostEqual(steam_mixture.temp_kelvin, 1066.3, places=1)
 
+    def test_enthalpy_of_reaction(self):
+        # Halloran, John. (2015). A Very Solid Fuel: Ferrous Iron Oxide as a Geochemical 
+        # Energy Source. Natural Resources. 06. 115-122. 10.4236/nr.2015.62010. 
+        delta_h_per_mol = species.delta_h_c_o2_co2()
+        self.assertAlmostEqual(delta_h_per_mol, -393510, places=0)
+        
+        # Wang, R. R., et al. "Hydrogen direct reduction (H-DR) in steel industry—An 
+        # overview of challenges and opportunities." Journal of Cleaner Production 329 
+        # (2021): 129797.
+
+        # TODO! Understand why these are different. Perhaps the tempeatures are different?
+        # read the initial paper
+        temp_kelvin = utils.celsius_to_kelvin(25) # 800)
+        delta_h_per_mol = species.delta_h_3fe2o3_h2_2fe3o4_h2o(temp_kelvin)
+        self.assertAlmostEqual(delta_h_per_mol, -16e3, places=0)
+
+        delta_h_per_mol = species.delta_h_fe3o4_h2_3feo_h2o(temp_kelvin)
+        self.assertAlmostEqual(delta_h_per_mol, 72e3, places=0)
+
+        delta_h_per_mol = species.delta_h_feo_h2_fe_h2o(temp_kelvin)
+        self.assertAlmostEqual(delta_h_per_mol, 23e3, places=0)
 
 if __name__ == '__main__':
     main()
