@@ -3,13 +3,18 @@
 import sys
 import os
 
-# Necessary to import the package from the examples directory if
-# the package is not installed via pip
-examples_dir = os.path.dirname(os.path.abspath(__file__))
-package_dir = os.path.dirname(examples_dir)
-sys.path.insert(0, package_dir)
+try:
+    from technoeconomics.system import System, Device, Flow
+    from technoeconomics.utils import *
+except ImportError:
+    # If the technoeconomics package is not installed via pip,
+    # add the package directory to the system path.
+    examples_dir = os.path.dirname(os.path.abspath(__file__))
+    package_dir = os.path.dirname(examples_dir)
+    sys.path.insert(0, package_dir)
 
-from technoeconomics.utils import *
+    from technoeconomics.system import System, Device, Flow
+    from technoeconomics.utils import *
 
 def main():
     print("technoeconomics.low_emission_steel")
