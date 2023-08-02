@@ -7,4 +7,4 @@ __author__ = "Chris Cooper"
 __email__ = "chris@cooper.info"
 __version__ = "0.1.0"
 
-__all__ = ["utils"]
+__all__ = ["utils", "thermo", "system"]
