@@ -11,11 +11,8 @@ class ShomateEquation:
     Units follow the convention of the NIST database.
     """
     def __init__(self, min_kelvin: float, max_kelvin: float, coeffs: tuple):
-        """
-        coeffs: (a, b, c, d, e, f, g, h)
-        """
         assert min_kelvin < max_kelvin
-        assert len(coeffs) == 8
+        assert len(coeffs) == 8 # coeffs: (a, b, c, d, e, f, g, h)
         self.min_kelvin = min_kelvin
         self.max_kelvin = max_kelvin
         self.coeffs = coeffs
@@ -160,4 +157,4 @@ class ThermoData:
             delta_h *= -1
         return delta_h
 
-#TODO: Understand if there are special requirements for plasmas 
+#TODO: Understand if there are special requirements for plasmas

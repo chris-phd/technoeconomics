@@ -2,9 +2,9 @@
 
 import copy
 import math
-from typing import List, Type
+from typing import List
 
-from thermo import ShomateEquation, SimpleHeatCapacity, ThermoData, LatentHeat
+from technoeconomics.thermo import ShomateEquation, SimpleHeatCapacity, ThermoData, LatentHeat
 
 class Species:
     def __init__(self, name: str, molecular_mass_kg_mol: float, thermo_data: ThermoData, delta_h_formation: float = None):
@@ -35,6 +35,23 @@ class Species:
         if not self._temp_kelvin:
             raise Exception("Species::heat_energy: initial temperature is not set")
         return self._thermo_data.delta_h(self._mols, self._temp_kelvin, t_final_kelvin)
+
+    def cp(self, return_molar_cp: bool = True) -> float:
+        """
+        Return the molar heat capacity at the current temperature.
+        return_molar_cp: If true, return the molar heat capacity. [J / mol K] 
+            If false, return the specific (mass) heat capacity. [J / g K]
+        """
+        if not self._temp_kelvin:
+            raise Exception("Species::cp: temperature is not set")
+        
+        self_copy = copy.deepcopy(self)
+        if return_molar_cp:
+            self_copy.mols = 1.0
+        else:
+            self_copy.mass = 0.001
+
+        return self_copy.heat_energy(self.temp_kelvin + 1)
 
     @property
     def name(self) -> str:
