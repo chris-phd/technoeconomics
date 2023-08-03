@@ -10,9 +10,30 @@ class Flow:
     A mass or energy flow between two devices, or an input/output
     to/from the system.
     """
-    def __init__(self, name: str, flow_obj):
+    def __init__(self, name: str, mass = None, energy = None):
         self._name = name
-        self._flow_obj = flow_obj
+        self._mass = mass
+        self._energy = energy
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def mass(self):
+        return self._mass
+    
+    @mass.setter
+    def mass(self, value):
+        self._mass = value
+
+    @property
+    def energy(self):
+        return self._energy
+    
+    @energy.setter
+    def energy(self, value):
+        self._energy = value
 
 
 class Device:
@@ -21,12 +42,32 @@ class Device:
     outputs, representing mass or energy flow. A device may also 
     have a set of state variables.
     """
+
     def __init__(self, name: str):
         self._name = name
+        self._inputs = {}
+        self._outputs = {}
+
+    def __repr__(self):
+        return f"Device({self._name})"
 
     @property
     def name(self):
         return self._name
+    
+    @property
+    def inputs(self):
+        return self._inputs
+    
+    @property
+    def outputs(self):
+        return self._outputs
+
+    def add_input(self, flow: Type[Flow]):
+        self._inputs[flow.name] = flow
+    
+    def add_output(self, flow: Type[Flow]):
+        self._outputs[flow.name] = flow
 
 
 class System:
@@ -34,22 +75,27 @@ class System:
     A system is a collection of devices. It comprises everything 
     within the system boundary of the technoeconomic analysis.
     """
+    _input_node_suffix = " __dummyinput__"
+    _output_node_suffix = " __dummyoutput__"
+
     def __init__(self, name: str):
         self._name = name
         self._graph_dot = graphviz.Digraph()
         self._devices = {}
-
-        self._input_node_suffix = " __dummy_input__"
-        self._output_node_suffix = " __dummy_output__"
+        self._flows = {}
 
     @property
     def name(self):
         return self._name
 
+    @property
+    def devices(self):
+        return self._devices
+
     def add_device(self, device: Type[Device]):
         if device.name in self._devices:
             raise ValueError(f"Device with name {device.name} already exists")
-        self._devices[device.name] = copy.deepcopy(device)
+        self._devices[device.name] = device
 
         if self._input_node_suffix in device.name or self._output_node_suffix in device.name:
             self._graph_dot.node(device.name, "", shape="none", height="0.0", width="0.0")
@@ -77,14 +123,45 @@ class System:
             if to_device_name not in self._devices:
                 self.add_device(Device(to_device_name))
 
-        # Add to the graph viz object
-        self._graph_dot.edge(from_device_name, to_device_name)
+        if from_device_name not in self._devices:
+            raise ValueError(f"Cannot add flow to {from_device_name}. Device does not exist.")
+        if to_device_name not in self._devices:
+            raise ValueError(f"Cannot add flow to {to_device_name}. Device does not exist.")
+
+        if (from_device_name, to_device_name) in self._flows:
+            # Maybe add support to add to the existing flows. Difficult to do at the moment
+            # since it's not clear the flow types will support the __add__ operator.
+            raise Exception(f"Flow between devices {from_device_name} and {to_device_name} already exists.")
+        else:
+            # Add to the graph viz object
+            self._graph_dot.edge(from_device_name, to_device_name)
+
+            # Add to the internal data structure. The system holds the master copy.
+            # The flow here should be passed by reference, so changes to one copy will
+            # be reflected in the other.
+            self._flows[(from_device_name, to_device_name)] = flow
+            self._devices[to_device_name].add_input(flow)
+            self._devices[from_device_name].add_output(flow)
         
-    def add_system_input(self, device: Type[Device], flow: Type[Flow]):
+    def add_input(self, device: Type[Device], flow: Type[Flow]):
         self.add_flow(None, device, flow)
 
-    def add_system_output(self, device: Type[Flow], flow: Type[Flow]):
+    def add_output(self, device: Type[Flow], flow: Type[Flow]):
         self.add_flow(device, None, flow)
+
+    def get_flow(self, from_device_name: Optional[str], to_device_name: Optional[str]):
+        flow_key = (from_device_name, to_device_name)
+        if flow_key not in self._flows:
+            raise ValueError(f"Flow between devices {from_device_name} and {to_device_name} does not exist")
+        return self._flows[flow_key]
+
+    def get_input(self, to_device_name: Optional[str]):
+        from_device_name = to_device_name + self._input_node_suffix
+        return self.get_flow(from_device_name, to_device_name)
+    
+    def get_output(self, from_device_name: Optional[str]):
+        to_device_name = from_device_name + self._output_node_suffix
+        return self.get_flow(from_device_name, to_device_name)
 
     def render(self, view=True, output_directory: Optional[str]=None):
         self._graph_dot.render(directory=output_directory, view=view)

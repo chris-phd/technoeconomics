@@ -35,14 +35,14 @@ class SystemTest(TestCase):
         my_system.add_device(device_b)
         my_system.add_device(device_c)
 
-        flow_ab = system.Flow("mass_flow_1", 1.0)
-        flow_ac = system.Flow("mass_flow_2", 2.0)
-        flow_bc = system.Flow("mass_flow_3", 3.0)
-        energy_a = system.Flow("energy_flow_1", 4.0)
+        flow_ab = system.Flow("mass flow ab", mass=1.0)
+        flow_ac = system.Flow("mass flow ac", mass=2.0)
+        flow_bc = system.Flow("mass flow bc", mass=3.0)
+        energy_a = system.Flow("energy flow a", energy=4.0)
         my_system.add_flow(device_a.name, device_b.name, flow_ab)
         my_system.add_flow(device_a.name, device_c.name, flow_ac)
         my_system.add_flow(device_b.name, device_c.name, flow_bc)
-        my_system.add_system_input(device_a.name, energy_a)
+        my_system.add_input(device_a.name, energy_a)
 
         intial_num_files_in_temp_dir = len(os.listdir(str(self.temp_dir_path)))
         my_system.render(False, str(self.temp_dir_path))
@@ -50,8 +50,24 @@ class SystemTest(TestCase):
         graph_render_successful = final_num_files_in_temp_dir == intial_num_files_in_temp_dir + 2
         self.assertTrue(graph_render_successful)
 
+    def test_modify_shared_flow(self):
+        # The system and the devices all share and modify the same flow object.
+        my_system = system.System("Test System")
+        device_a = system.Device("Device A")
+        device_b = system.Device("Device B")
+        my_system.add_device(device_a)
+        my_system.add_device(device_b)
+        flow_ab = system.Flow("mass flow ab", mass=1.0)
+        my_system.add_flow(device_a.name, device_b.name, flow_ab)
+        self.assertTrue(my_system.get_flow(device_a.name, device_b.name).mass == 1.0)
+        my_system.devices["Device A"].outputs["mass flow ab"].mass = 2.0
+        self.assertTrue(my_system.get_flow(device_a.name, device_b.name).mass == 2.0)
+
 
 class SpeciesThermoTest(TestCase):
+    def test_shomate_equation(self):
+        raise NotImplementedError
+
     def test_h2o_heat_capacity(self):
         h2o = species.create_h2o_species()
         h2o.temp_kelvin = utils.celsius_to_kelvin(25)
