@@ -29,6 +29,7 @@ def main():
     # dri_eaf_system.render(view=True)
     hybrid33_system.render(view=True)
     hybrid95_system.render(view=True)
+    print(f"hybrid33 system name: {hybrid33_system.name}")
 
 
 def create_plasma_system(system_name='plasma steelmaking') -> System:

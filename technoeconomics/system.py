@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-import copy
-from enum import Enum
 import graphviz
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Optional, Type
 
 
@@ -190,8 +190,8 @@ class System:
         return self.get_flow(from_device_name, to_device_name, flow_name)
 
     def render(self, view=True, output_directory: Optional[str]=None):
-        if output_directory:
+        if output_directory is None:
+            self._graph_dot.render(view=view)
+        else:
             filename = self._name.replace(" ", "_")
             self._graph_dot.render(directory=output_directory, view=view, filename=filename)
-        else:
-            self._graph_dot.render(view=view)
