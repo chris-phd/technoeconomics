@@ -67,6 +67,7 @@ class SystemTest(TestCase):
 class SpeciesThermoTest(TestCase):
     def test_thermo_data(self):
         # Thermo data for SiO2. Data from the NIST webbook.
+        # delta_h calculation verfied using FactSage. Accuracy is not great.
         heat_capacities = [thermo.SimpleHeatCapacity(273.15, 298.0, 44.57),
                     thermo.ShomateEquation(298.0, 847.0,
                                     (-6.076591, 251.6755, -324.7964,
@@ -80,7 +81,11 @@ class SpeciesThermoTest(TestCase):
         ]
         latent_heats = [thermo.LatentHeat(1983.15, 9600)]
         thermo_data = thermo.ThermoData(heat_capacities, latent_heats)
-        delta_h = thermo_data.delta_h(utils.celsius_to_kelvin(25), utils.celsius_to_kelvin(2000))
+        mols = 1.0
+        delta_h = thermo_data.delta_h(mols, utils.celsius_to_kelvin(25), utils.celsius_to_kelvin(2000))
+        factsage_delta_h = 153464.0
+        self.assertEqual(round(delta_h / 10000), 
+                         round(factsage_delta_h / 10000))
 
     def test_h2o_heat_capacity(self):
         h2o = species.create_h2o_species()
