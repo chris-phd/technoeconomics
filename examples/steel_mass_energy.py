@@ -8,8 +8,8 @@ from steel_plants import create_plasma_system, create_dri_eaf_system, create_hyb
 
 try:
     import technoeconomics.species as species 
-    from technoeconomics.system import System, Device, Flow
-    from technoeconomics.utils import celsius_to_kelvin, kelvin_to_celsius
+    from technoeconomics.system import System, EnergyFlow
+    from technoeconomics.utils import celsius_to_kelvin
 except ImportError:
     # If the technoeconomics package is not installed via pip,
     # add the package directory to the system path.
@@ -18,8 +18,8 @@ except ImportError:
     sys.path.insert(0, package_dir)
 
     import technoeconomics.species as species 
-    from technoeconomics.system import System, Device, Flow
-    from technoeconomics.utils import celsius_to_kelvin, kelvin_to_celsius
+    from technoeconomics.system import System, EnergyFlow
+    from technoeconomics.utils import celsius_to_kelvin
 
 
 def main():
@@ -90,7 +90,7 @@ def add_steel_out(system: System):
     steel.temp_kelvin = system.system_vars['steel exit temp K']
 
     steelmaking_device_name = system.system_vars['steelmaking device name']
-    system.get_output(steelmaking_device_name, 'steel').mass = steel
+    system.get_output(steelmaking_device_name, 'steel').set(steel)
 
 
 def hematite_normalise(ore_comp: Dict[str, float]):
@@ -170,7 +170,7 @@ def add_slag_and_flux_mass(system: System):
     mgo_flux = species.create_mgo_species()
 
     steelmaking_device = system.devices[steelmaking_device_name]
-    fe = steelmaking_device.outputs['steel'].mass.species('Fe')
+    fe = steelmaking_device.outputs['steel'].species('Fe')
     
     ore_composition_simple = system.system_vars['ore composition simple']
 
@@ -196,7 +196,7 @@ def add_slag_and_flux_mass(system: System):
 
     flux = species.Mixture('flux', [cao_flux, mgo_flux])
     flux.temp_kelvin = system.system_vars['steel exit temp K']
-    steelmaking_device.inputs['flux'].mass = (flux)
+    steelmaking_device.inputs['flux'].set(flux)
 
     sio2_slag = copy.deepcopy(sio2_gangue)
     al2o3_slag = copy.deepcopy(al2o3_gangue)
@@ -206,7 +206,7 @@ def add_slag_and_flux_mass(system: System):
     mgo_slag.mass += mgo_flux.mass
     slag = species.Mixture('slag', [feo_slag, sio2_slag, al2o3_slag, cao_slag, mgo_slag])
     slag.temp_kelvin = system.system_vars['steel exit temp K']
-    steelmaking_device.outputs['slag'] = slag
+    steelmaking_device.outputs['slag'].set(slag)
 
 
 def add_eaf_flows_initial(system: System):
@@ -220,7 +220,7 @@ def add_eaf_flows_initial(system: System):
     electrode_consumption = species.create_c_species()
     electrode_consumption.mass = 5.5 # kg / tonne steel, from sujay kumar dutta, pg 409
     electrode_consumption.temp_kelvin = celsius_to_kelvin(1750)
-    system.devices[steelmaking_device_name].inputs['electrode'] = electrode_consumption
+    system.devices[steelmaking_device_name].inputs['electrode'].set(electrode_consumption)
 
 
 def add_plasma_flows_initial(system: System):

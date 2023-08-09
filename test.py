@@ -36,10 +36,14 @@ class SystemTest(TestCase):
         my_system.add_device(device_b)
         my_system.add_device(device_c)
 
-        flow_ab = system.Flow("mass flow ab", mass=1.0)
-        flow_ac = system.Flow("mass flow ac", mass=2.0)
-        flow_bc = system.Flow("mass flow bc", mass=3.0)
-        energy_a = system.Flow("energy flow a", energy=4.0)
+        dummy_species = species.create_dummy_species("some species")
+        flow_ab = copy.copy(dummy_species)
+        flow_ab.mass = 1.0
+        flow_ac = copy.copy(dummy_species)
+        flow_ac.mass = 2.0
+        flow_bc = copy.copy(dummy_species)
+        flow_bc.mass = 3.0
+        energy_a = system.EnergyFlow("some energy", 100.0)
         my_system.add_flow(device_a.name, device_b.name, flow_ab)
         my_system.add_flow(device_a.name, device_c.name, flow_ac)
         my_system.add_flow(device_b.name, device_c.name, flow_bc)
@@ -58,11 +62,12 @@ class SystemTest(TestCase):
         device_b = system.Device("Device B")
         my_system.add_device(device_a)
         my_system.add_device(device_b)
-        flow_ab = system.Flow("mass flow ab", mass=1.0)
+        flow_ab = species.create_dummy_species("flow ab")
+        flow_ab.mass = 1.0
         my_system.add_flow(device_a.name, device_b.name, flow_ab)
-        self.assertTrue(my_system.get_flow(device_a.name, device_b.name).mass == 1.0)
-        my_system.devices["Device A"].outputs["mass flow ab"].mass = 2.0
-        self.assertTrue(my_system.get_flow(device_a.name, device_b.name).mass == 2.0)
+        self.assertTrue(my_system.get_flow(device_a.name, device_b.name, flow_ab.name).mass == 1.0)
+        my_system.devices["Device A"].outputs["flow ab"].mass = 2.0
+        self.assertTrue(my_system.get_flow(device_a.name, device_b.name, flow_ab.name).mass == 2.0)
 
     def test_mass_energy_balance(self):
         my_system = system.System("Test System")
@@ -71,10 +76,14 @@ class SystemTest(TestCase):
         my_system.add_device(device_a)
         my_system.add_device(device_b)
 
-        input_a = system.Flow("input a", mass=1.0)
-        output_a = system.Flow("output a", mass=0.5)
-        flow_ab = system.Flow("flow ab", mass=0.5)
-        output_b = system.Flow("output b", mass=0.5)
+        input_a = species.create_dummy_species("input a")
+        input_a.mass = 1.0
+        output_a = species.create_dummy_species("output a")
+        output_a.mass = 0.5
+        flow_ab = species.create_dummy_species("flow ab")
+        flow_ab.mass = 0.5
+        output_b = species.create_dummy_species("output b")
+        output_b.mass = 0.5
         my_system.add_flow(device_a.name, device_b.name, flow_ab)
         my_system.add_input(device_a.name, input_a)
         my_system.add_output(device_a.name, output_a)
@@ -85,22 +94,20 @@ class SystemTest(TestCase):
         water_in = species.create_h2o_species()
         water_in.mass = 100
         water_in.temp_kelvin = utils.celsius_to_kelvin(25)
-        water_flow_in = system.Flow("water in b", mass=water_in)
-        my_system.add_input(device_b.name, water_flow_in)
+        my_system.add_input(device_b.name, water_in)
 
         water_out = copy.deepcopy(water_in)
         water_out.temp_kelvin = utils.celsius_to_kelvin(75)
-        water_flow_out = system.Flow("water out b", mass=water_out)
-        my_system.add_output(device_b.name, water_flow_out)
+        my_system.add_output(device_b.name, water_out)
         self.assertTrue(device_b.energy_balance() > 0.0)
 
         eff = 0.95
         electricity_req = device_b.thermal_energy_balance() / eff
-        electricity_flow = system.Flow("electricity", energy=electricity_req)
+        electricity_flow = system.EnergyFlow("electricity", electricity_req)
         my_system.add_input(device_b.name, electricity_flow)
 
         losses = (1 - eff) * electricity_req
-        losses_flow = system.Flow("losses", energy=losses)
+        losses_flow = system.EnergyFlow("losses", energy=losses)
         my_system.add_output(device_b.name, losses_flow)
         self.assertTrue(device_b.thermal_energy_balance() > 0.0)
         self.assertAlmostEqual(device_b.energy_balance(), 0.0, places=4)
@@ -196,6 +203,7 @@ class SpeciesThermoTest(TestCase):
         factsage_delta_h = 15584.0
         self.assertEqual(round(delta_h / 1000), \
                         round(factsage_delta_h / 1000))
+
 
 if __name__ == '__main__':
     main()

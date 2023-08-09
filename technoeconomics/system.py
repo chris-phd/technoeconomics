@@ -1,49 +1,38 @@
 #!/usr/bin/env python3
 
 import graphviz
-from typing import Optional, Type
+from typing import Optional, Type, Union
 
-from technoeconomics.species import Species, Mixture, mass_from_species_or_mixture
+from technoeconomics.species import Species, Mixture
 from technoeconomics.utils import celsius_to_kelvin
 
-class Flow:
+class EnergyFlow:
     """
-    A mass or energy flow between two devices, or an input/output
-    to/from the system.
+    A flow of energy, typically electricity.
+    energy is stored in joules
     """
-    def __init__(self, name: str, mass = None, energy = None):
+    def __init__(self, name: str, energy: float = 0.0):
         self._name = name
-        self._mass = mass
         self._energy = energy
 
     def __repr__(self):
-        s = f"Flow({self._name}"
-        if self._mass is not None:
-            s += f", mass={self._mass}"
-        if self._energy is not None:
-            s += f", energy={self._energy}"
-        s += ")"
-        return s
+        return f"EnergyFlow({self._name}, {self._energy} J)"
 
     @property
     def name(self):
         return self._name
 
     @property
-    def mass(self):
-        return self._mass
-    
-    @mass.setter
-    def mass(self, value):
-        self._mass = value
-
-    @property
     def energy(self):
         return self._energy
-    
+
     @energy.setter
     def energy(self, value):
         self._energy = value
+
+    def set(self, other_energy_flow):
+        self._name = other_energy_flow._name
+        self._energy = other_energy_flow._energy
 
 
 class Device:
@@ -69,11 +58,11 @@ class Device:
         s = f"Device {self._name}:\n"
         s += "  Inputs: "
         for flow in self._inputs.values():
-            s += f"{flow.name}, "
+            s += f"{flow}, "
         s += "\n"
         s += "  Outputs: "
         for flow in self._outputs.values():
-            s += f"{flow.name}, "
+            s += f"{flow}, "
         return s
 
     @property
@@ -88,10 +77,10 @@ class Device:
     def outputs(self):
         return self._outputs
 
-    def add_input(self, flow: Type[Flow]):
+    def add_input(self, flow: Union[Species, Mixture, EnergyFlow]):
         self._inputs[flow.name] = flow
     
-    def add_output(self, flow: Type[Flow]):
+    def add_output(self, flow: Union[Species, Mixture, EnergyFlow]):
         self._outputs[flow.name] = flow
 
     def thermal_energy_balance(self):
@@ -99,53 +88,53 @@ class Device:
 
         final_thermal_energy = 0.0
         for flow in self.outputs.values():
-            if not (isinstance(flow.mass, Species) or isinstance(flow.mass, Mixture)):
+            if not (isinstance(flow, Species) or isinstance(flow, Mixture)):
                 continue
             # negative becuase heat_energy will calc energy required to cool
             # to the ref temp
-            final_thermal_energy -= flow.mass.heat_energy(ref_temp)
+            final_thermal_energy -= flow.heat_energy(ref_temp)
 
         initial_thermal_energy = 0.0
         for flow in self.inputs.values():
-            if not (isinstance(flow.mass, Species) or isinstance(flow.mass, Mixture)):
+            if not (isinstance(flow, Species) or isinstance(flow, Mixture)):
                 continue
-            initial_thermal_energy -= flow.mass.heat_energy(ref_temp)
+            initial_thermal_energy -= flow.heat_energy(ref_temp)
         
         return final_thermal_energy - initial_thermal_energy
 
     def energy_balance(self):
         energy_out = 0.0
         for flow in self._outputs.values():
-            if flow.energy is None:
-                continue # mass flow, ignore
+            if not isinstance(flow, EnergyFlow):
+                continue
             energy_out += flow.energy
 
         energy_in = 0.0
         for flow in self._inputs.values():
-            if flow.energy is None:
-                continue # mass flow, ignore
+            if not isinstance(flow, EnergyFlow):
+                continue
             energy_in += flow.energy
         return self.thermal_energy_balance() + energy_out - energy_in
 
     def mass_balance(self):
         mass_out = 0.0
         for flow in self._outputs.values():
-            if flow.mass is None:
-                continue # energy flow, ignore
-            mass_out += mass_from_species_or_mixture(flow.mass)
+            if not (isinstance(flow, Species) or isinstance(flow, Mixture)):
+                continue
+            mass_out += flow.mass
 
         mass_in = 0.0
         for flow in self._inputs.values():
-            if flow.mass is None:
-                continue # energy flow, ignore
-            mass_in += mass_from_species_or_mixture(flow.mass)
+            if not (isinstance(flow, Species) or isinstance(flow, Mixture)):
+                continue
+            mass_in += flow.mass
         return mass_out - mass_in
     
     def electrical_energy_in(self):
         electricity_in = 0.0
         for flow in self._inputs.values():
-            if flow.energy is None:
-                continue # mass flow, ignore
+            if not isinstance(flow, EnergyFlow):
+                continue
             if 'electric' in flow.name:
                 electricity_in += flow.energy
         return electricity_in    
@@ -207,7 +196,7 @@ class System:
         self._graph_dot.remove_node(device_name + self._input_node_suffix)
         self._graph_dot.remove_node(device_name + self._output_node_suffix)
 
-    def add_flow(self, from_device_name: Optional[str], to_device_name: Optional[str], flow: Type[Flow]):
+    def add_flow(self, from_device_name: Optional[str], to_device_name: Optional[str], flow: Union[Species, Mixture, EnergyFlow]):
         if from_device_name is None and to_device_name is None:
             raise ValueError("Cannot add flow without a source or destination")
 
@@ -245,10 +234,10 @@ class System:
             self._devices[to_device_name].add_input(flow)
             self._devices[from_device_name].add_output(flow)
         
-    def add_input(self, device: Type[Device], flow: Type[Flow]):
+    def add_input(self, device: Type[Device], flow: Union[Species, Mixture, EnergyFlow]):
         self.add_flow(None, device, flow)
 
-    def add_output(self, device: Type[Flow], flow: Type[Flow]):
+    def add_output(self, device: Type[Device], flow: Union[Species, Mixture, EnergyFlow]):
         self.add_flow(device, None, flow)
 
     def get_flow(self, from_device_name: str, to_device_name: str, flow_name: str):

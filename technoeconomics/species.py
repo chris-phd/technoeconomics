@@ -114,6 +114,14 @@ class Species:
 
         return equivalent
 
+    def set(self, other_species):
+        self._name = other_species._name
+        self._mols = other_species._mols
+        self._temp_kelvin = other_species._temp_kelvin
+        self._mm = other_species._mm
+        self._thermo_data = copy.deepcopy(other_species._thermo_data)
+        self._delta_h_formation = other_species._delta_h_formation
+
 
 class Mixture:
     """
@@ -259,25 +267,25 @@ class Mixture:
 
         return equivalent
 
-
-def mass_from_species_or_mixture(maybe_species_or_mixture) -> float:
-    """
-    Returns:
-        float: The mass in kg of the species or mixture. Floats or ints assumed to be in kg.
-    Raises:
-        ValueError: If the input is None or not a recognised type with mass.
-    """
-    if isinstance(maybe_species_or_mixture, Species) or isinstance(maybe_species_or_mixture, Mixture):
-        return maybe_species_or_mixture.mass
-    elif isinstance(maybe_species_or_mixture, int) or isinstance(maybe_species_or_mixture, float):
-        return maybe_species_or_mixture 
-    if maybe_species_or_mixture is not None:
-        raise ValueError(f"{type(maybe_species_or_mixture)} is not a supported type.")
+    def set(self, other_mixture):
+        self._name = other_mixture._name
+        self._species = copy.deepcopy(other_mixture._species)
 
 # Species - Master copies
 # Shomate Equation data from the NIST Chemistry Webbook
 # Latent Heat Data is from the CRC Handbook of Chemistry and Physics, Enthalpy of Fusion, 6-146
 # Enthalpy of Formation data is from the CRC Handbook of Chemistry and Physics, Enthalpy of Formation, 5-1
+def create_dummy_species(name):
+    heat_capacities = [SimpleHeatCapacity(273.15, 6000.0, 1.0)]
+    thermo_data = ThermoData(heat_capacities)
+    s = Species(name, 1.0, thermo_data)
+    s.mols = 0.0
+    s.temp_kelvin = 298.15
+    return s
+
+def create_dummy_mixture(name):
+    return Mixture(name, [create_dummy_species('a species')])
+
 def create_h2_species():
     heat_capacities = [ShomateEquation(273.15, 1000.0, # modify the start temp slightly
                               (33.066178, -11.363417, 11.432816, 
