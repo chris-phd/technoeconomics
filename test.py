@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import copy
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase, main
@@ -62,6 +63,47 @@ class SystemTest(TestCase):
         self.assertTrue(my_system.get_flow(device_a.name, device_b.name).mass == 1.0)
         my_system.devices["Device A"].outputs["mass flow ab"].mass = 2.0
         self.assertTrue(my_system.get_flow(device_a.name, device_b.name).mass == 2.0)
+
+    def test_mass_energy_balance(self):
+        my_system = system.System("Test System")
+        device_a = system.Device("Device A")
+        device_b = system.Device("Device B")
+        my_system.add_device(device_a)
+        my_system.add_device(device_b)
+
+        input_a = system.Flow("input a", mass=1.0)
+        output_a = system.Flow("output a", mass=0.5)
+        flow_ab = system.Flow("flow ab", mass=0.5)
+        output_b = system.Flow("output b", mass=0.5)
+        my_system.add_flow(device_a.name, device_b.name, flow_ab)
+        my_system.add_input(device_a.name, input_a)
+        my_system.add_output(device_a.name, output_a)
+        my_system.add_output(device_b.name, output_b)
+
+        self.assertAlmostEqual(device_a.mass_balance(), 0.0, places=4)
+
+        water_in = species.create_h2o_species()
+        water_in.mass = 100
+        water_in.temp_kelvin = utils.celsius_to_kelvin(25)
+        water_flow_in = system.Flow("water in b", mass=water_in)
+        my_system.add_input(device_b.name, water_flow_in)
+
+        water_out = copy.deepcopy(water_in)
+        water_out.temp_kelvin = utils.celsius_to_kelvin(75)
+        water_flow_out = system.Flow("water out b", mass=water_out)
+        my_system.add_output(device_b.name, water_flow_out)
+        self.assertTrue(device_b.energy_balance() > 0.0)
+
+        eff = 0.95
+        electricity_req = device_b.thermal_energy_balance() / eff
+        electricity_flow = system.Flow("electricity", energy=electricity_req)
+        my_system.add_input(device_b.name, electricity_flow)
+
+        losses = (1 - eff) * electricity_req
+        losses_flow = system.Flow("losses", energy=losses)
+        my_system.add_output(device_b.name, losses_flow)
+        self.assertTrue(device_b.thermal_energy_balance() > 0.0)
+        self.assertAlmostEqual(device_b.energy_balance(), 0.0, places=4)
 
 
 class SpeciesThermoTest(TestCase):

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 import graphviz
-from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import Optional, Type
 
+from technoeconomics.species import Species, Mixture, mass_from_species_or_mixture
+from technoeconomics.utils import celsius_to_kelvin
 
 class Flow:
     """
@@ -59,6 +59,10 @@ class Device:
         self._outputs = {}
 
     def __repr__(self):
+        s = f"Device({self.name}\n"
+        s += f"    thermal_energy_balance (excl. losses) = {self.thermal_energy_balance():.2e}\n"
+        s += f"    total_energy_balance (out - in) = {self.energy_balance():.2e}\n"
+        s += f"    mass_balance (out - in) = {self.mass_balance():.2f})"
         return f"Device({self._name})"
 
     def report_flow(self):
@@ -90,6 +94,62 @@ class Device:
     def add_output(self, flow: Type[Flow]):
         self._outputs[flow.name] = flow
 
+    def thermal_energy_balance(self):
+        ref_temp = celsius_to_kelvin(25)
+
+        final_thermal_energy = 0.0
+        for flow in self.outputs.values():
+            if not (isinstance(flow.mass, Species) or isinstance(flow.mass, Mixture)):
+                continue
+            # negative becuase heat_energy will calc energy required to cool
+            # to the ref temp
+            final_thermal_energy -= flow.mass.heat_energy(ref_temp)
+
+        initial_thermal_energy = 0.0
+        for flow in self.inputs.values():
+            if not (isinstance(flow.mass, Species) or isinstance(flow.mass, Mixture)):
+                continue
+            initial_thermal_energy -= flow.mass.heat_energy(ref_temp)
+        
+        return final_thermal_energy - initial_thermal_energy
+
+    def energy_balance(self):
+        energy_out = 0.0
+        for flow in self._outputs.values():
+            if flow.energy is None:
+                continue # mass flow, ignore
+            energy_out += flow.energy
+
+        energy_in = 0.0
+        for flow in self._inputs.values():
+            if flow.energy is None:
+                continue # mass flow, ignore
+            energy_in += flow.energy
+        return self.thermal_energy_balance() + energy_out - energy_in
+
+    def mass_balance(self):
+        mass_out = 0.0
+        for flow in self._outputs.values():
+            if flow.mass is None:
+                continue # energy flow, ignore
+            mass_out += mass_from_species_or_mixture(flow.mass)
+
+        mass_in = 0.0
+        for flow in self._inputs.values():
+            if flow.mass is None:
+                continue # energy flow, ignore
+            mass_in += mass_from_species_or_mixture(flow.mass)
+        return mass_out - mass_in
+    
+    def electrical_energy_in(self):
+        electricity_in = 0.0
+        for flow in self._inputs.values():
+            if flow.energy is None:
+                continue # mass flow, ignore
+            if 'electric' in flow.name:
+                electricity_in += flow.energy
+        return electricity_in    
+
 
 class System:
     """
@@ -105,6 +165,13 @@ class System:
         self._devices = {}
         self._flows = {}
         self._system_vars = {}
+
+    def __repr__(self):
+        s = f"System({self.name}\n"
+        for device in self._devices.values():
+            s += f"  {device}\n"
+        s += "  )"
+        return s
 
     @property
     def name(self):

@@ -260,6 +260,20 @@ class Mixture:
         return equivalent
 
 
+def mass_from_species_or_mixture(maybe_species_or_mixture) -> float:
+    """
+    Returns:
+        float: The mass in kg of the species or mixture. Floats or ints assumed to be in kg.
+    Raises:
+        ValueError: If the input is None or not a recognised type with mass.
+    """
+    if isinstance(maybe_species_or_mixture, Species) or isinstance(maybe_species_or_mixture, Mixture):
+        return maybe_species_or_mixture.mass
+    elif isinstance(maybe_species_or_mixture, int) or isinstance(maybe_species_or_mixture, float):
+        return maybe_species_or_mixture 
+    if maybe_species_or_mixture is not None:
+        raise ValueError(f"{type(maybe_species_or_mixture)} is not a supported type.")
+
 # Species - Master copies
 # Shomate Equation data from the NIST Chemistry Webbook
 # Latent Heat Data is from the CRC Handbook of Chemistry and Physics, Enthalpy of Fusion, 6-146
