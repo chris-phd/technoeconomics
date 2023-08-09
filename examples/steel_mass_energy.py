@@ -29,45 +29,53 @@ def main():
     hybrid33_system = create_hybrid_system("hybrid33 steelmaking", 33.33)
     hybrid95_system = create_hybrid_system("hybrid95 steelmaking", 95.0)
 
+    # Overwrite system vars to modify behaviour
 
+    # Add mass and energy flow
     add_plasma_mass_and_energy(plasma_system)
     add_dri_eaf_mass_and_energy(dri_eaf_system)
     add_hybrid_mass_and_energy(hybrid33_system)
     add_hybrid_mass_and_energy(hybrid95_system)
 
+    print(plasma_system)
+
+
 # Mass and Energy Flows - System Level
 def add_plasma_mass_and_energy(system: System):
-    add_ore_composition(system)
-    add_steel_out(system, 'plasma smelter')
 
-    feo_perc_in_slag = 36.0
-    add_plasma_flows_initial(system, 'plasma smelter', feo_perc_in_slag)
+    verify_system_vars(system)
+
+    add_ore_composition(system)
+    add_steel_out(system)
+    add_plasma_flows_initial(system)
 
 
 def add_dri_eaf_mass_and_energy(system: System):
     add_ore_composition(system)
-    add_steel_out(system, 'eaf')
-
-    feo_perc_in_slag = 27.0
-    add_eaf_flows_initial(system, 'eaf', feo_perc_in_slag)
+    add_steel_out(system)
+    add_eaf_flows_initial(system)
 
 
 def add_hybrid_mass_and_energy(system: System):
+    verify_system_vars(system)
     add_ore_composition(system)
-    add_steel_out(system, 'plasma smelter')
-    
-    # TODO, this should depend on the DRI reduction perc. 
-    # Also, if there is no injected O2, this should be a maximum, 
-    # rather than a target.
-    feo_perc_in_slag = 36.0 
-    add_plasma_flows_initial(system, 'plasma smelter', feo_perc_in_slag)
+    add_steel_out(system)
+    add_plasma_flows_initial(system)
+
+
+def verify_system_vars(system: System):
+    # TODO.
+    # Raise exception if the system variables necessary
+    # for calculating the mass and energy flow are not set
+    # correctly.
+    pass
 
 
 # Mass and Energy Flows - Device Level
-def add_steel_out(system: System, steelmaking_device_name: str):
+def add_steel_out(system: System):
     # settings
     steel_target_mass = 1000.0 # kg
-    steel_carbon_mass_perc = 1.5 # %
+    steel_carbon_mass_perc = 1.0 # %
     scrap_perc = 0.0 # %
 
     # create the species
@@ -79,8 +87,9 @@ def add_steel_out(system: System, steelmaking_device_name: str):
     scrap.mass = steel_target_mass * scrap_perc * 0.01 # kg
 
     steel = species.Mixture('steel', [fe, c, scrap])
-    steel.temp_kelvin = celsius_to_kelvin(1650)
+    steel.temp_kelvin = system.system_vars['steel exit temp K']
 
+    steelmaking_device_name = system.system_vars['steelmaking device name']
     system.get_output(steelmaking_device_name, 'steel').mass = steel
 
 
@@ -101,6 +110,12 @@ def hematite_normalise(ore_comp: Dict[str, float]):
 
 
 def add_ore_composition(system: System):
+    """
+    Add 'ore composition' and 'ore composition simple' to the system variables.
+    Ore composition simple is the hematite ore with only SiO2, Al2O3, CaO and MgO
+    impurities.
+    """
+
     # Mass percent of dry ore.
     # Remaining mass percent is oxygen in the iron oxide.
     # Values are in mass / weight percent.
@@ -137,18 +152,14 @@ def add_ore_composition(system: System):
     system.system_vars['ore composition simple'] = ore_composition_simple
 
 
-def add_eaf_flows_initial(system: System, steelmaking_device_name: str, slag_feo_mass_perc: float):
-    """
-    Adds EAF mass flow to the system.
-    Primarily responsible for determining the slag / flux requirements.
-    steelmaking_device_name: The device responsible for steelmaking. Should be 'eaf' for this function.
-    slag_feo_mass_perc: The mass percent of FeO in the slag.
-    """
+def add_slag_and_flux_mass(system: System):
+    steelmaking_device_name = system.system_vars['steelmaking device name']
+    b2_basicity = system.system_vars['b2 basicity']
+    b4_basicity = system.system_vars['b4 basicity']
 
-    # TODO. Check if this balance of CaO and MgO achieves saturated MgO 
-    # required to avoid refractory wear. kirschen2021
-    b2_basicity = 2.0
-    b4_basicity = 1.8 # refine this so that I saturate MgO
+    #TODO! This should be a maximum rather than a target. It should depend 
+    # on the oxygen in the FeO if no O2 is injected.
+    slag_feo_mass_perc = system.system_vars['feo percent in slag']
 
     feo_slag = species.create_feo_species()
     sio2_gangue = species.create_sio2_species()
@@ -158,8 +169,8 @@ def add_eaf_flows_initial(system: System, steelmaking_device_name: str, slag_feo
     cao_flux = species.create_cao_species()
     mgo_flux = species.create_mgo_species()
 
-    eaf_device = system.devices[steelmaking_device_name]
-    fe = eaf_device.outputs['steel'].mass.species('Fe')
+    steelmaking_device = system.devices[steelmaking_device_name]
+    fe = steelmaking_device.outputs['steel'].mass.species('Fe')
     
     ore_composition_simple = system.system_vars['ore composition simple']
 
@@ -184,8 +195,8 @@ def add_eaf_flows_initial(system: System, steelmaking_device_name: str, slag_feo
                     + feo_slag.mass
 
     flux = species.Mixture('flux', [cao_flux, mgo_flux])
-    flux.temp_kelvin = celsius_to_kelvin(1650)
-    eaf_device.inputs['flux'].mass = (flux)
+    flux.temp_kelvin = system.system_vars['steel exit temp K']
+    steelmaking_device.inputs['flux'].mass = (flux)
 
     sio2_slag = copy.deepcopy(sio2_gangue)
     al2o3_slag = copy.deepcopy(al2o3_gangue)
@@ -194,77 +205,32 @@ def add_eaf_flows_initial(system: System, steelmaking_device_name: str, slag_feo
     cao_slag.mass += cao_flux.mass
     mgo_slag.mass += mgo_flux.mass
     slag = species.Mixture('slag', [feo_slag, sio2_slag, al2o3_slag, cao_slag, mgo_slag])
-    slag.temp_kelvin = celsius_to_kelvin(1650)
-    eaf_device.outputs['slag'] = slag
+    slag.temp_kelvin = system.system_vars['steel exit temp K']
+    steelmaking_device.outputs['slag'] = slag
 
+
+def add_eaf_flows_initial(system: System):
+    """
+    Begin adding EAF mass and energy flow to the system.
+    Primarily responsible for determining the slag / flux requirements.
+    """
+    add_slag_and_flux_mass(system)
+
+    steelmaking_device_name = system.system_vars['steelmaking device name']
     electrode_consumption = species.create_c_species()
     electrode_consumption.mass = 5.5 # kg / tonne steel, from sujay kumar dutta, pg 409
     electrode_consumption.temp_kelvin = celsius_to_kelvin(1750)
-    eaf_device.inputs['electrode'] = electrode_consumption
+    system.devices[steelmaking_device_name].inputs['electrode'] = electrode_consumption
 
-    # Off gases, oxygen and injected Carbon are added in add_eaf_mass_flow_final
 
-def add_plasma_flows_initial(system: System, steelmaking_device_name: str, slag_feo_mass_perc: float):
+def add_plasma_flows_initial(system: System):
     """
-    Adds Plasma Smelter mass flow to the system.
+    Begin adding Plasma Smelter mass and energy flow to the system.
     Primarily responsible for determining the slag / flux requirements.
-    steelmaking_device_name: The device responsible for steelmaking. Should be 'plasma smelter' for this function.
-    slag_feo_mass_perc: The mass percent of FeO in the slag.
     """
-    print('FIX ME! Currently identical to EAF mass flow, until we work out more of the slag / flux requirements')
-    # Need to target a higher basicity because it is more difficult to saturate the MgO (solubility issues)
-    b2_basicity = 2.0
-    b4_basicity = 2.1 # refine this so that I saturate MgO
+    add_slag_and_flux_mass(system)
+    # TODO: If using a DC arc plasma, add electrode consumption here
 
-    feo_slag = species.create_feo_species()
-    sio2_gangue = species.create_sio2_species()
-    al2o3_gangue = species.create_al2o3_species()
-    cao_gangue = species.create_cao_species()
-    mgo_gangue = species.create_mgo_species()
-    cao_flux = species.create_cao_species()
-    mgo_flux = species.create_mgo_species()
-
-    ore_composition_simple = system.system_vars['ore composition simple']
-
-    plasma_device = system.devices[steelmaking_device_name]
-    fe = plasma_device.outputs['steel'].mass.species('Fe')
-    
-    # iterative solve for the slag mass
-    slag_mass = 0.4 * fe.mass
-    for _ in range(10):
-        feo_slag.mass = slag_mass * slag_feo_mass_perc * 0.01
-
-        fe_total_mass = fe.mass + feo_slag.mass * fe.mm / feo_slag.mm
-        ore_mass = fe_total_mass / (ore_composition_simple['Fe'] * 0.01)
-
-        sio2_gangue.mass = ore_mass * ore_composition_simple['SiO2'] * 0.01
-        al2o3_gangue.mass = ore_mass * ore_composition_simple['Al2O3'] * 0.01
-        cao_gangue.mass = ore_mass * ore_composition_simple['CaO'] * 0.01
-        mgo_gangue.mass = ore_mass * ore_composition_simple['MgO'] * 0.01
-
-        cao_flux.mass = b2_basicity * sio2_gangue.mass - cao_gangue.mass
-        mgo_flux.mass = b4_basicity * (al2o3_gangue.mass + sio2_gangue.mass) - cao_flux.mass- mgo_gangue.mass
-
-        slag_mass = sio2_gangue.mass + al2o3_gangue.mass \
-                    + cao_gangue.mass + cao_flux.mass + mgo_gangue.mass + mgo_flux.mass \
-                    + feo_slag.mass
-
-    flux = species.Mixture('flux', [cao_flux, mgo_flux])
-    flux.temp_kelvin = celsius_to_kelvin(1650)
-    plasma_device.inputs['flux'].mass = flux
-
-    sio2_slag = copy.deepcopy(sio2_gangue)
-    al2o3_slag = copy.deepcopy(al2o3_gangue)
-    cao_slag = copy.deepcopy(cao_gangue)
-    mgo_slag = copy.deepcopy(mgo_gangue)
-    cao_slag.mass += cao_flux.mass
-    mgo_slag.mass += mgo_flux.mass
-    slag = species.Mixture('slag', [feo_slag, sio2_slag, al2o3_slag, cao_slag, mgo_slag])
-    slag.temp_kelvin = celsius_to_kelvin(1650)
-    plasma_device.outputs['slag'].mass = slag
-
-    # Should I consider the electrode consumption here? 
-    # Depends if we are looking at DC or transferred arc plasma smelting.
 
 if __name__ == '__main__':
     main()

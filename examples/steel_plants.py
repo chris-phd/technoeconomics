@@ -5,6 +5,7 @@ import os
 
 try:
     from technoeconomics.system import System, Device, Flow
+    from technoeconomics.utils import celsius_to_kelvin
 except ImportError:
     # If the technoeconomics package is not installed via pip,
     # add the package directory to the system path.
@@ -13,6 +14,7 @@ except ImportError:
     sys.path.insert(0, package_dir)
 
     from technoeconomics.system import System, Device, Flow
+    from technoeconomics.utils import celsius_to_kelvin
 
 
 def main():
@@ -46,6 +48,13 @@ def create_plasma_system(system_name='plasma steelmaking') -> System:
     plasma_system.add_device(plasma_smelter)
     join_1 = Device('join 1')
     plasma_system.add_device(join_1)
+
+    # System variables defaults. Can be overwritten by user before mass and energy flows.
+    plasma_system.system_vars['steelmaking device name'] = plasma_smelter.name
+    plasma_system.system_vars['feo percent in slag'] = 27.0
+    plasma_system.system_vars['steel exit temp K'] = celsius_to_kelvin(1650)
+    plasma_system.system_vars['b2 basicity'] = 2.0
+    plasma_system.system_vars['b4 basicity'] = 2.1
 
     # electrolysis flows
     electrolyser_water = Flow('h2o')
@@ -140,6 +149,13 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking') -> System:
     eaf = Device('eaf')
     dri_eaf_system.add_device(eaf)
 
+    # System variables defaults. Can be overwritten by user before mass and energy flows.
+    dri_eaf_system.system_vars['steelmaking device name'] = eaf.name
+    dri_eaf_system.system_vars['feo percent in slag'] = 27.0
+    dri_eaf_system.system_vars['steel exit temp K'] = celsius_to_kelvin(1650)
+    dri_eaf_system.system_vars['b2 basicity'] = 2.0
+    dri_eaf_system.system_vars['b4 basicity'] = 1.8
+
     # electrolysis flows
     electrolyser_water = Flow('h2o')
     dri_eaf_system.add_input(water_electrolysis.name, electrolyser_water)
@@ -231,6 +247,8 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking') -> System:
     dri_eaf_system.add_input(eaf.name, eaf_smelter_electricity)
     eaf_smelter_losses = Flow('losses')
     dri_eaf_system.add_output(eaf.name, eaf_smelter_losses)
+    eaf_electrode = Flow('electrode')
+    dri_eaf_system.add_input(eaf.name, eaf_electrode)
     eaf_carbon = Flow('carbon')
     dri_eaf_system.add_input(eaf.name, eaf_carbon)
     eaf_flux = Flow('flux')
@@ -245,9 +263,8 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking') -> System:
     return dri_eaf_system
 
 
-def create_hybrid_system(system_name='hybrid steelmaking', prereduction_perc=33.333333) -> System:
+def create_hybrid_system(system_name='hybrid steelmaking', prereduction_perc=33.33) -> System:
     hybrid_system = System(system_name)
-    hybrid_system.system_vars['prereduction_perc'] = prereduction_perc
 
     water_electrolysis = Device('water electrolysis')
     hybrid_system.add_device(water_electrolysis)
@@ -273,13 +290,22 @@ def create_hybrid_system(system_name='hybrid steelmaking', prereduction_perc=33.
     hybrid_system.add_device(join_2)
     join_3 = Device('join 3')
     hybrid_system.add_device(join_3)
-    if prereduction_perc > 33.33333333:
+    if prereduction_perc > 33.3333334:
         # More reduction takes place in the fluidized beds, so need 
-        # additional devices. 
+        # additional devices. This is why the prereduction percent variable 
+        # must be set here.
         h2_heater_2 = Device('h2 heater 2')
         hybrid_system.add_device(h2_heater_2)
         fluidized_bed_3 = Device('fluidized bed 3')
         hybrid_system.add_device(fluidized_bed_3)
+
+    # System variables defaults. Can be overwritten by user before mass and energy flows.
+    hybrid_system.system_vars['prereduction percent'] = prereduction_perc
+    hybrid_system.system_vars['steelmaking device name'] = plasma_smelter.name
+    hybrid_system.system_vars['feo percent in slag'] = 27.0
+    hybrid_system.system_vars['steel exit temp K'] = celsius_to_kelvin(1650)
+    hybrid_system.system_vars['b2 basicity'] = 2.0
+    hybrid_system.system_vars['b4 basicity'] = 2.1
 
     # electrolysis flows
     electrolyser_water = Flow('h2o')
