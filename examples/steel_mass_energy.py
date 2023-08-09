@@ -42,18 +42,19 @@ def main():
 
 # Mass and Energy Flows - System Level
 def add_plasma_mass_and_energy(system: System):
-
     verify_system_vars(system)
-
     add_ore_composition(system)
     add_steel_out(system)
     add_plasma_flows_initial(system)
+    add_ore(system)
 
 
 def add_dri_eaf_mass_and_energy(system: System):
+    verify_system_vars(system)
     add_ore_composition(system)
     add_steel_out(system)
     add_eaf_flows_initial(system)
+    add_ore(system)
 
 
 def add_hybrid_mass_and_energy(system: System):
@@ -61,6 +62,7 @@ def add_hybrid_mass_and_energy(system: System):
     add_ore_composition(system)
     add_steel_out(system)
     add_plasma_flows_initial(system)
+    add_ore(system)
 
 
 def verify_system_vars(system: System):
@@ -68,6 +70,7 @@ def verify_system_vars(system: System):
     # Raise exception if the system variables necessary
     # for calculating the mass and energy flow are not set
     # correctly.
+    print("steel_mass_energy.verify_system_vars: Implement me after the req system vars are known!")
     pass
 
 
@@ -230,6 +233,62 @@ def add_plasma_flows_initial(system: System):
     """
     add_slag_and_flux_mass(system)
     # TODO: If using a DC arc plasma, add electrode consumption here
+
+def add_ore(system: System):
+    """
+    Add the ore to the mass flow. Determine based on the yeild
+    of the output slag / steel and the ore composition.
+    """
+    ore_initial_temp = celsius_to_kelvin(25)
+    ore_preheating_temp = system.system_vars['ore heater temp K']
+    steelmaking_device_name = system.system_vars['steelmaking device name']
+    ore_composition_simple = system.system_vars['ore composition simple']
+    ore_heater_device_name = system.system_vars['ore heater device name']
+    first_ironmaking_device_name = system.system_vars['first ironmaking device name']
+
+    # Calculate the mass of the ore required.
+    # Note that this is the input ore at the very start of the process.     
+    steelmaking_device = system.devices[steelmaking_device_name]
+    slag_mixture = steelmaking_device.outputs['slag']
+    flux_mixtures = steelmaking_device.inputs['flux']
+
+    cao_gangue = species.create_cao_species()
+    cao_gangue.mass = slag_mixture.species('CaO').mass - flux_mixtures.species('CaO').mass
+    mgo_gangue = species.create_mgo_species()
+    mgo_gangue.mass = slag_mixture.species('MgO').mass - flux_mixtures.species('MgO').mass
+    sio2_gangue = copy.deepcopy(slag_mixture.species('SiO2'))
+    al2o3_gangue = copy.deepcopy(slag_mixture.species('Al2O3'))
+
+    gangue_mass = sio2_gangue.mass + al2o3_gangue.mass + cao_gangue.mass + mgo_gangue.mass
+    ore_mass = gangue_mass / (ore_composition_simple['gangue'] * 0.01)
+
+    fe2o3_ore = species.create_fe2o3_species()
+    fe2o3_ore.mass = ore_mass * ore_composition_simple['hematite'] * 0.01
+    fe3o4 = species.create_fe3o4_species()
+    feo = species.create_feo_species()
+    fe = species.create_fe_species()
+
+    ore = species.Mixture('ore', [fe2o3_ore, fe3o4, feo, fe,
+                          cao_gangue, mgo_gangue, sio2_gangue, al2o3_gangue])
+    ore.temp_kelvin = ore_initial_temp
+
+    if ore_heater_device_name is not None:
+        ore_preheating_device = system.devices[ore_heater_device_name]
+        ore_preheating_device.inputs['ore'].set(ore)
+        ore.temp_kelvin = ore_preheating_temp
+        ore_preheating_device.outputs['ore'].set(ore)
+
+
+        # Add electrical energy to heat the ore
+        # Assume no thermal losses for now.
+        electrical_heat_eff = 0.98
+        electrical_energy = EnergyFlow('electricity', ore_preheating_device.energy_balance() / electrical_heat_eff)
+        ore_preheating_device.inputs['electricity'].set(electrical_energy)
+        electrical_losses = EnergyFlow('losses', electrical_energy.energy * (1 - electrical_heat_eff))
+        ore_preheating_device.outputs['losses'].set(electrical_losses)
+    
+    iron_making_device = system.devices[first_ironmaking_device_name]
+    iron_making_device.inputs['ore'].set(ore)
 
 
 if __name__ == '__main__':

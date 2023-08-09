@@ -51,8 +51,8 @@ class Device:
         s = f"Device({self.name}\n"
         s += f"    thermal_energy_balance (excl. losses) = {self.thermal_energy_balance():.2e}\n"
         s += f"    total_energy_balance (out - in) = {self.energy_balance():.2e}\n"
-        s += f"    mass_balance (out - in) = {self.mass_balance():.2f})"
-        return f"Device({self._name})"
+        s += f"    mass_balance (out - in) = {self.mass_balance():.2f} )"
+        return s
 
     def report_flow(self):
         s = f"Device {self._name}:\n"
@@ -156,10 +156,12 @@ class System:
         self._system_vars = {}
 
     def __repr__(self):
-        s = f"System({self.name}\n"
+        s = f"System({self.name}"
         for device in self._devices.values():
-            s += f"  {device}\n"
-        s += "  )"
+            if device.name.endswith(self._input_node_suffix) or \
+                device.name.endswith(self._output_node_suffix):
+                continue
+            s += f"\n  {device} )"
         return s
 
     @property

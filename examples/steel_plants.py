@@ -57,6 +57,10 @@ def create_plasma_system(system_name='plasma steelmaking') -> System:
     plasma_system.system_vars['steel exit temp K'] = celsius_to_kelvin(1650)
     plasma_system.system_vars['b2 basicity'] = 2.0
     plasma_system.system_vars['b4 basicity'] = 2.1
+    plasma_system.system_vars['ore heater device name'] = ore_heater.name
+    plasma_system.system_vars['ore heater temp K'] = celsius_to_kelvin(1450)
+    plasma_system.system_vars['first ironmaking device name'] = plasma_smelter.name
+    plasma_system.system_vars['last ironmaking device name'] = plasma_smelter.name
 
     # electrolysis flows
     electrolyser_water = create_dummy_species('h2o')
@@ -157,6 +161,10 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking') -> System:
     dri_eaf_system.system_vars['steel exit temp K'] = celsius_to_kelvin(1650)
     dri_eaf_system.system_vars['b2 basicity'] = 2.0
     dri_eaf_system.system_vars['b4 basicity'] = 1.8
+    dri_eaf_system.system_vars['ore heater device name'] = ore_heater.name
+    dri_eaf_system.system_vars['ore heater temp K'] = celsius_to_kelvin(800)
+    dri_eaf_system.system_vars['first ironmaking device name'] = fluidized_bed_1.name
+    dri_eaf_system.system_vars['last ironmaking device name'] = fluidized_bed_3.name
 
     # electrolysis flows
     electrolyser_water = create_dummy_species('h2o')
@@ -300,6 +308,9 @@ def create_hybrid_system(system_name='hybrid steelmaking', prereduction_perc=33.
         hybrid_system.add_device(h2_heater_2)
         fluidized_bed_3 = Device('fluidized bed 3')
         hybrid_system.add_device(fluidized_bed_3)
+        hybrid_system.system_vars['last ironmaking device name'] = fluidized_bed_3.name
+    else:
+        hybrid_system.system_vars['last ironmaking device name'] = fluidized_bed_2.name
 
     # System variables defaults. Can be overwritten by user before mass and energy flows.
     hybrid_system.system_vars['prereduction percent'] = prereduction_perc
@@ -308,6 +319,9 @@ def create_hybrid_system(system_name='hybrid steelmaking', prereduction_perc=33.
     hybrid_system.system_vars['steel exit temp K'] = celsius_to_kelvin(1650)
     hybrid_system.system_vars['b2 basicity'] = 2.0
     hybrid_system.system_vars['b4 basicity'] = 2.1
+    hybrid_system.system_vars['ore heater device name'] = ore_heater.name
+    hybrid_system.system_vars['ore heater temp K'] = celsius_to_kelvin(800)
+    hybrid_system.system_vars['first ironmaking device name'] = fluidized_bed_1.name
 
     # electrolysis flows
     electrolyser_water = create_dummy_species('h2o')
