@@ -561,11 +561,11 @@ def create_ch4_species():
                         -74.6e3)
     return species
 
-def create_scrap_mixture():
+def create_scrap_species():
     # TODO. should get data for steel scrap
-    fe = create_fe_species()
-    mixture = Mixture('Scrap', [fe])
-    return mixture
+    species = create_fe_species()
+    species.name = 'Scrap'
+    return species
 
 def create_air_mixture(mass_kg):
     n2 = create_n2_species()
@@ -680,7 +680,6 @@ def delta_h_3fe2o3_h2_2fe3o4_h2o(temp_kelvin = 298.15): # TODO! Check with anoth
     h2o.mols = 1
     products = [fe3o4, h2o]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
-print(f'delta_h_3fe2o3_h2_2fe3o4_h2o: {delta_h_3fe2o3_h2_2fe3o4_h2o():.2e} J ')
 
 def delta_h_fe3o4_h2_3feo_h2o(temp_kelvin = 298.15): # TODO! Check with another source. Seems wrong
     """
@@ -697,7 +696,6 @@ def delta_h_fe3o4_h2_3feo_h2o(temp_kelvin = 298.15): # TODO! Check with another 
     h2o.mols = 1
     products = [feo, h2o]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
-print(f'delta_h_fe3o4_h2_3feo_h2o: {delta_h_fe3o4_h2_3feo_h2o():.2e} J ')
 
 def delta_h_feo_h2_fe_h2o(temp_kelvin = 298.15): # TODO! Check with another source. Seems wrong
     """
@@ -714,7 +712,6 @@ def delta_h_feo_h2_fe_h2o(temp_kelvin = 298.15): # TODO! Check with another sour
     h2o.mols = 1
     products = [fe, h2o]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
-print(f'delta_h_feo_h2_fe_h2o: {delta_h_feo_h2_fe_h2o():.2e} J ')
 
 def delta_h_2h2o_2h2_o2(temp_kelvin: float = 298.15):
     """

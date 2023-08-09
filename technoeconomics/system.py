@@ -16,6 +16,15 @@ class Flow:
         self._mass = mass
         self._energy = energy
 
+    def __repr__(self):
+        s = f"Flow({self._name}"
+        if self._mass is not None:
+            s += f", mass={self._mass}"
+        if self._energy is not None:
+            s += f", energy={self._energy}"
+        s += ")"
+        return s
+
     @property
     def name(self):
         return self._name
@@ -191,6 +200,8 @@ class System:
 
     def render(self, view=True, output_directory: Optional[str]=None):
         if output_directory is None:
+            # File still created? TODO: Fix this, don't want anything on disk 
+            # after exit.
             self._graph_dot.render(view=view)
         else:
             filename = self._name.replace(" ", "_")
