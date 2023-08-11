@@ -3,6 +3,8 @@
 import copy
 import sys
 import os
+import numpy as np
+import math
 from typing import Type, List, Union, Dict
 from steel_plants import create_plasma_system, create_dri_eaf_system, create_hybrid_system
 
@@ -37,10 +39,10 @@ def main():
     add_hybrid_mass_and_energy(hybrid33_system)
     add_hybrid_mass_and_energy(hybrid95_system)
 
-    print(plasma_system)
+    # print(plasma_system)
     print(dri_eaf_system)
-    print(hybrid33_system)
-    print(hybrid95_system)
+    # print(hybrid33_system)
+    # print(hybrid95_system)
 
 
 # Mass and Energy Flows - System Level
@@ -50,6 +52,7 @@ def add_plasma_mass_and_energy(system: System):
     add_steel_out(system)
     add_plasma_flows_initial(system)
     add_ore(system)
+    # add_plasma_flows_final(system)
 
 
 def add_dri_eaf_mass_and_energy(system: System):
@@ -60,6 +63,7 @@ def add_dri_eaf_mass_and_energy(system: System):
     add_ore(system)
     add_fluidized_bed_flows(system)
     add_briquetting_flows(system)
+    add_eaf_flows_final(system)
 
 
 def add_hybrid_mass_and_energy(system: System):
@@ -70,6 +74,7 @@ def add_hybrid_mass_and_energy(system: System):
     add_ore(system)
     add_fluidized_bed_flows(system)
     add_briquetting_flows(system)
+    # add_plasma_flows_final(system)
 
 
 def verify_system_vars(system: System):
@@ -241,6 +246,7 @@ def add_plasma_flows_initial(system: System):
     add_slag_and_flux_mass(system)
     # TODO: If using a DC arc plasma, add electrode consumption here
 
+
 def add_ore(system: System):
     """
     Add the ore to the mass flow. Determine based on the yeild
@@ -297,6 +303,7 @@ def add_ore(system: System):
     iron_making_device = system.devices[first_ironmaking_device_name]
     iron_making_device.inputs['ore'].set(ore)
 
+
 def iron_species_from_reduction_degree(reduction_degree: float, initial_ore_mass: float, hematite_composition: Dict[str, float]):
     """
     Returns the iron species at a given reduction degree.
@@ -331,6 +338,7 @@ def iron_species_from_reduction_degree(reduction_degree: float, initial_ore_mass
         fe3o4.mols = (3*n_hem_i * (1 - reduction_degree) - 3 * fe2o3.mols) / 4
     
     return fe, feo, fe3o4, fe2o3
+
 
 def add_fluidized_bed_flows(system: System):
     # TODO: FIXING THIS TO PROPERLY USTILISE ALL THE IRONMAKING DEVICES
@@ -410,8 +418,6 @@ def add_fluidized_bed_flows(system: System):
     i = 0
     while True:
         if abs(ironmaking_device.energy_balance() + thermal_losses) < 1e-6:
-            print(f"Converged on the out gas temp after {i} iterations")
-            print(f"Out gas temp: {ironmaking_device.outputs['h2 h2o'].temp_kelvin}")
             break
         if i > max_iter:
             raise Exception("Failed to converge on the out gas temp. Reached max interation")
@@ -447,6 +453,7 @@ def add_fluidized_bed_flows(system: System):
         second_iron_making_device.outputs['losses'].energy = 0.0
         second_iron_making_device.inputs['chemical'].energy = 0.0
 
+
 def add_briquetting_flows(system: System):
     """
     Basically a dummy stage. Since for the moment we don't assune any
@@ -458,6 +465,317 @@ def add_briquetting_flows(system: System):
     hbi = copy.deepcopy(system.devices[final_ironmaking_device_name].outputs['dri'])
     hbi.name = 'hbi'
     system.devices['briquetting'].outputs['hbi'].set(hbi)
+
+
+def steelsurface_radiation_losses(A, Ts, Tr, capacity_tonnes=180, tap_to_tap_secs=3600):
+    """
+    Returns the radiation losses per tonne of liquid steel.
+    A = Surface area of the steel surface [m2]
+    Ts = Temperature of the steel surface [K]
+    Tr = Temperature of the surrounding refractory [K] (Sujay et al. recommend 25C, but this seems too low?) 
+    source: From Sujay Kumar Dutta, pg 425
+    """
+    emissivity = 0.28 # emissivity of liquid steel
+    boltzmann_constant = 5.67e-8 # W / m^2 K^4
+    q_watts = emissivity * boltzmann_constant * A * (Ts**4 - Tr**4)
+
+    return q_watts * tap_to_tap_secs / capacity_tonnes
+
+
+def hydrogen_plasma_radiation_losses():
+    print("hydrogen_plasma_radiation_losses: Implement me!")
+    return 0.0
+
+
+def add_eaf_flows_final(system: System):
+    # TODO: May be underestimating he energy requirement for the EAF. 
+    # According to Sujay Kumar Dutta, it should be around 825 kWh / tonne steel. 
+    # and Vogl2018 recommends 667 kWh / tonne steel. 704 kWh / tonne recommended by hornby2021. 
+    # We are only getting 455 kWh / tonne steel. Seems to be due to us keeping the hbi hot
+    steelmaking_device_name = system.system_vars['steelmaking device name']
+    steelmaking_device = system.devices[steelmaking_device_name]
+    reaction_temp = system.system_vars['eaf reaction temp K']
+
+    if steelmaking_device.inputs['hbi'].species('Fe3O4').mols > 0 or \
+        steelmaking_device.inputs['hbi'].species('Fe2O3').mols > 0:
+        # could potentially just add the unreduced hematite and magnetite to the slag?
+        raise Exception("add_eaf_mass_flow_final: HBI contains Fe3O4 or Fe2O3, which EAF cannot reduce.")
+
+    # Add the carbon required for the alloy
+    c_alloy = copy.deepcopy(steelmaking_device.outputs['steel'].species('C'))
+
+    # Add carbon / oxygen needed for reduction / oxidation of FeO / Fe
+    feo_slag = steelmaking_device.outputs['slag'].species('FeO')
+    feo_dri = steelmaking_device.inputs['hbi'].species('FeO')
+
+    o2_oxidation = species.create_o2_species()
+    c_reduction = species.create_c_species()
+
+    steelmaking_device.inputs['chemical'].energy = 0.0
+    if feo_slag.mols > feo_dri.mols:
+        # metallic fe is oxidised by injected O2
+        o2_oxidation.mols = 0.5 * (feo_slag.mols - feo_dri.mols)
+        num_feo_formation_reactions = o2_oxidation.mols
+        steelmaking_device.inputs['chemical'].energy += -num_feo_formation_reactions * species.delta_h_2fe_o2_2feo(reaction_temp)
+
+    else:
+        # feo is reduced by the injected carbon.
+        # we assume all reduction is by pure carbon, non is by CO gas. 
+        c_reduction.mols = (feo_dri.mols - feo_slag.mols)
+        num_feo_c_reduction_reactions = c_reduction.mols
+        steelmaking_device.inputs['chemical'].energy +=  -num_feo_c_reduction_reactions * species.delta_h_feo_c_fe_co(reaction_temp)
+
+    # Add the target amount of O2 and calculate the required
+    # Carbon for combustion. The target O2 consumption
+    # is based on literature data, from kirschen2021 and sujay kumar dutta, pg 434
+    # we know this is what is roughly used. 
+    # We also assume all the injected o2 is used in combustion / oxidation. No O2 
+    # gas escapes. 
+    target_o2_consumption_kg = system.system_vars['o2 injection kg']
+    assert target_o2_consumption_kg > o2_oxidation.mass
+
+    # Assume a mix of CO and CO2 is produced. We know from hornby2021, that
+    # approx 10% of energy comes from CO formation and 24% of energy comes from
+    # CO2 formation, so use this as a guide. Main simplification is that we
+    # don't include the CO formed from the reduction of FeO by C.
+    o2_combustion = species.create_o2_species()
+    o2_combustion.mass = target_o2_consumption_kg - o2_oxidation.mass # some o2 may already be used in fe oxidation
+    n_reactions = o2_combustion.mols
+    num_co_reactions = n_reactions / 2.348
+    num_co2_reactions = n_reactions - num_co_reactions
+
+    steelmaking_device.inputs['chemical'].energy += -num_co_reactions * species.delta_h_2c_o2_2co(reaction_temp) \
+                                                    -num_co2_reactions * species.delta_h_c_o2_co2(reaction_temp)
+
+    c_combustion = species.create_c_species()
+    c_combustion.mols = 2*num_co_reactions + num_co2_reactions
+
+    c_injected = species.create_c_species()
+    c_injected.mols = c_combustion.mols + c_reduction.mols + c_alloy.mols - steelmaking_device.inputs['electrode'].mols
+    c_injected.temp_kelvin = celsius_to_kelvin(25) # assume room temp
+    steelmaking_device.inputs['carbon'].set(c_injected)
+
+    o2_injected = species.create_o2_species()
+    o2_injected.mols = o2_combustion.mols + o2_oxidation.mols
+    o2_injected.temp_kelvin = celsius_to_kelvin(25) # assume room temp
+    steelmaking_device.inputs['o2'].set(o2_injected)
+
+    co = species.create_co_species()
+    co.mols = 2 * num_co_reactions + c_reduction.mols
+    co2 = species.create_co2_species()
+    co2.mols = num_co2_reactions
+    off_gas = species.Mixture('carbon gas', [co, co2])
+    off_gas.temp_kelvin = reaction_temp
+    steelmaking_device.outputs['carbon gas'].set(off_gas)
+
+    # losses due to infiltrated air
+    infiltrated_air_mass = 200.0 # from pfeifer 2022 (TODO read the original paper)
+    infiltrated_air = species.create_air_mixture(infiltrated_air_mass)
+    infiltrated_air.name = 'infiltrated air'
+    infiltrated_air
+    infiltrated_air.temp_kelvin = celsius_to_kelvin(25)
+    steelmaking_device.inputs['infiltrated air'].set(infiltrated_air)
+
+    infiltrated_air.temp_kelvin = reaction_temp - 200.0 # guess
+    steelmaking_device.outputs['infiltrated air'].set(infiltrated_air)
+
+    # TODO: reduce repetition with the plasma steelmaking
+    electric_arc_eff = 0.8 # Makarov2022
+    electrical_energy = steelmaking_device.energy_balance() / electric_arc_eff
+    steelmaking_device.inputs['electricity'].energy = electrical_energy
+    steelmaking_device.outputs['losses'].energy = electrical_energy * (1 - electric_arc_eff)
+
+    # Add the radiation and conduction losses 
+    # Conduction losses are 4% of input heat. From sujay kumar dutta pg 425 
+    conduction_losses = 0.04 * steelmaking_device.thermal_energy_balance()
+    eaf_surface_radius = 3.8
+    capacity_tonnes = 180
+    tap_to_tap_secs = 60*60
+    radiation_losses = steelsurface_radiation_losses(np.pi*(eaf_surface_radius)**2, reaction_temp, celsius_to_kelvin(25),
+                                                     capacity_tonnes, tap_to_tap_secs)
+    steelmaking_device.outputs['losses'].energy += radiation_losses + conduction_losses
+
+    # Increase the electrical energy to balance the thermal losses 
+    steelmaking_device.inputs['electricity'].energy += radiation_losses + conduction_losses
+
+    # print(f"Total energy = {steelmaking_device.inputs['electricity'].energy*2.77778e-7:.2e} kWh")
+
+
+def add_plasma_flows_final(system: System, reduction_degree: float, steelmaking_device_name: str,
+                               iron_making_device_name: str, excess_h2_ratio: float,
+                               hot_metal_heat_recovery: bool = False):
+    """
+    For the Hybrid system, we can only determine the Plasma off gas once we know the compositin of the DRI.
+    So call the final function after the initial function.
+    For the pure plasma pathway these functions could be merged, but easier to separate and reuse between
+    Hybrid and Plasma.
+    reduction_degree: The degree of reduction achieved by the hydrogen plasma. Based on the mass of oxygen 
+       remaining in iron oxide, compared to the mass of oxygen in the iron oxide at the very start of the process.
+    steelmaking_device_name: The device responsible for steelmaking. Should be 'eaf' for this function.
+    excess_h2_ratio: (h2_total / h2_consumed) Unclear what the required ratio here should be
+    """
+    print("FIX ME! Still needs a lot of work, because it is unclear what the O2 and carbon requirements are here")
+    reaction_temp = 2500 # K
+
+    steelmaking_device = system.devices[steelmaking_device_name]
+
+    # the plasma smelter can use hbi or ore fines.
+    ironbearing_material = steelmaking_device.mass_in.get('hbi')
+    if ironbearing_material is None:
+        ironbearing_material = steelmaking_device.mass_in.get('ore')
+
+    if ironbearing_material is None:
+        raise ValueError('No iron bearing material found in the input mass of the plasma smelter')
+
+    iron_making_device = system.devices[iron_making_device_name]
+    ore_mass = iron_making_device.mass_in['ore'].mass
+    fe_target, feo_target, fe3o4_target, fe2o3_target = iron_species_from_reduction_degree(reduction_degree, ore_mass)
+
+    if not math.isclose(fe3o4_target.mols, 0) or not math.isclose(fe2o3_target.mols, 0):
+        raise Exception("Error: Expect plasma hydrogen reduction to completly reduce magnetite and hematite")
+
+    # TODO! Reduce repetition with the same logic dri function
+    delta_fe = fe_target.mols - ironbearing_material.species('Fe').mols
+    delta_feo = feo_target.mols - ironbearing_material.species('FeO').mols
+    delta_fe3o4 = fe3o4_target.mols - ironbearing_material.species('Fe3O4').mols
+
+    # The net reactions involved in the Hydrogen Plasma reduction stage of this device
+    num_fe_formations = delta_fe
+    num_feo_formations = (num_fe_formations + delta_feo) / 3
+    num_fe3o4_formations = (num_feo_formations + delta_fe3o4) / 2
+
+    print("FIX ME! Need to calculate the reaction enthalpy from monotomic H reduction. The fraction of H reduction will depend on temp")
+    steelmaking_device.add_chemical_energy_in(-num_fe_formations * delta_h_feo_h2_fe_h2o(reaction_temp) \
+                                              - num_feo_formations * delta_h_fe3o4_h2_3feo_h2o(reaction_temp) \
+                                              - num_fe3o4_formations * delta_h_3fe2o3_h2_2fe3o4_h2o(reaction_temp))
+
+    # determine the mass of h2o in the off gas
+    h2o = create_h2o_species()
+    h2o.mols = num_fe_formations + num_feo_formations + num_fe3o4_formations
+    h2o.temp_kelvin = celsius_to_kelvin(1750) # off gas temp might be wrong.
+
+    # the amount of h2 in the in gas
+    h2_consumed = create_h2_species()
+    h2_consumed.mols = h2o.mols
+    h2_consumed.temp_kelvin = celsius_to_kelvin(25) # in gas temp might be wrong
+
+    assert excess_h2_ratio >= 1
+    h2_excess = copy.deepcopy(h2_consumed)
+    h2_excess.mols = h2_consumed.mols * (excess_h2_ratio - 1)
+
+    h2_total = create_h2_species()
+    h2_total.mols = h2_consumed.mols + h2_excess.mols
+
+    hydrogen = Mixture('gas in', [h2_total])
+    hydrogen.temp_kelvin = celsius_to_kelvin(25)
+    steelmaking_device.add_mass_in(hydrogen)
+
+    # Add the carbon required for the alloy
+    c_alloy = copy.deepcopy(steelmaking_device.mass_out['steel'].species('C'))
+
+    # Add carbon / oxygen needed for reduction / oxidation of FeO / Fe
+    feo_slag = steelmaking_device.mass_out['slag'].species('FeO')
+
+    o2_oxidation = create_o2_species()
+    c_reduction = create_c_species()
+    if feo_slag.mols > feo_target.mols:
+        # metallic fe is oxidised by injected O2
+        o2_oxidation.mols = 0.5 * (feo_slag.mols - feo_target.mols)
+        num_feo_formation_reactions = o2_oxidation.mols
+        steelmaking_device.add_chemical_energy_in(-num_feo_formation_reactions * delta_h_2fe_o2_2feo(reaction_temp))
+    else:
+        # feo is reduced by the injected carbon
+        c_reduction.mols = (feo_target.mols - feo_slag.mols)
+        num_feo_c_reduction_reactions = c_reduction.mols
+        steelmaking_device.add_chemical_energy_in(-num_feo_c_reduction_reactions * delta_h_feo_c_fe_co(reaction_temp))
+
+    target_o2_consumption_kg = 35 # could possibly reduce the o2 consumption target? 
+    assert target_o2_consumption_kg > o2_oxidation.mass
+
+    # Assume a mix of CO and CO2 is produced. We know from hornby2021, that
+    # approx 10% of energy comes from CO formation and 24% of energy comes from
+    # CO2 formation, so use this as a guide. Main simplification is that we
+    # don't include the CO formed from the reduction of FeO by C.
+    o2_combustion = create_o2_species()
+    o2_combustion.mass = target_o2_consumption_kg - o2_oxidation.mass # some o2 may already be used in fe oxidation
+    n_reactions = o2_combustion.mols
+    num_co_reactions = n_reactions / 2.348
+    num_co2_reactions = n_reactions - num_co_reactions
+
+    # This reaction may occur at a lower temp, since it is not at the plasma steel interface?
+    steelmaking_device.add_chemical_energy_in(-num_co_reactions * delta_h_2c_o2_2co(reaction_temp) \
+                                              -num_co2_reactions * delta_h_c_o2_co2(reaction_temp))
+
+    c_combustion = create_c_species()
+    c_combustion.mols = 2*num_co_reactions + num_co2_reactions
+
+    c_injected = create_c_species()
+    c_injected.mols = c_combustion.mols + c_reduction.mols + c_alloy.mols
+    c_injected.temp_kelvin = celsius_to_kelvin(25) # assume room temp
+    steelmaking_device.add_mass_in(c_injected)
+
+    o2_injected = create_o2_species()
+    o2_injected.mols = o2_combustion.mols + o2_oxidation.mols
+    o2_injected.temp_kelvin = celsius_to_kelvin(25) # assume room temp
+    steelmaking_device.add_mass_in(o2_injected)
+
+    co = create_co_species()
+    co.mols = 2 * num_co_reactions + c_reduction.mols
+    co2 = create_co2_species()
+    co2.mols = num_co2_reactions
+    off_gas = Mixture('gas out', [co, co2, h2o, h2_excess])
+    off_gas.temp_kelvin = reaction_temp
+    steelmaking_device.add_mass_out(off_gas)
+
+    # losses due to infiltrated air
+    # IGNORE LOSSES FROM INFILTRATED AIR, BECAUSE WE NEED TO HEAT RECOVER THE OFF GAS
+    # OPTIMISTICALLY ASSUME THE PLASMA SMELTER IS PRETTY MUCH AIR TIGHT / CONTROLLED ATMOSPHERE. 
+    # infiltrated_air_mass = 200.0 * 0.6667 # from pfeifer 2022. Assume less than EAF due to superior kinetics and smaller reactor
+    # infiltrated_air = create_air_mixture(infiltrated_air_mass)
+    # infiltrated_air.name = 'infiltrated air'
+    # infiltrated_air.temp_kelvin = celsius_to_kelvin(25)
+    # steelmaking_device.add_mass_in(infiltrated_air)
+    # infiltrated_air.temp_kelvin = reaction_temp # guess
+    # steelmaking_device.add_mass_out(infiltrated_air)
+
+    if hot_metal_heat_recovery:
+        # Hot metal heat recovery. Optimisitc. Technology may not exist, but 
+        # we want to avoid some of the losses from heating steel over the exit temp.
+        # TODO! This should be a separate device, 
+        # this is just a hack to get an initial idea of how much it would help
+        # MAJOR MAJOR HACK!! especially since this reduces the losses in the conduction
+        # and convection losses in the plasma device, which it shouldn't have any impact on.
+        steelmaking_device.mass_out['steel'].temp_kelvin = celsius_to_kelvin(1650)
+
+    # TODO: Reduce repetition with the EAF?
+    # Need to add the required electrical energy to balance the 
+    # required thermal energy, accounting for the energy already. provided
+    # by the chemical reactions (oxidation, reduction, combustion etc.)
+    # Assume high efficiency RF ICP plasma gun.
+    plasma_torch_eff = 0.95
+    electrical_energy = steelmaking_device.total_energy_balance() / plasma_torch_eff
+    steelmaking_device.add_electrical_energy_in(electrical_energy)
+    steelmaking_device.add_electrical_losses(electrical_energy * (1 - plasma_torch_eff))
+
+    # Add the thermal losses 
+    # Assume same as an EAF. Convection and conduction losses are 4% of input heat. 
+    # From sujay kumar dutta pg 425 
+    convection_conduction_losses = 0.04 * steelmaking_device.thermal_energy_balance()
+    plasma_surface_radius = 3.8 * 0.6667 # assume a smaller radius than the EAF due to superior kinetics
+    capacity_tonnes = 180*0.6667 # assumption. Smaller than an EAF due to superior kinetics
+    tap_to_tap_secs = 60*60*0.6667 # assumption. Less than an EAF due to superior kinetics
+    radiation_losses = steelsurface_radiation_losses(np.pi*(plasma_surface_radius)**2, 
+                                                     reaction_temp, celsius_to_kelvin(25),
+                                                     capacity_tonnes, tap_to_tap_secs)
+    radiation_losses += hydrogen_plasma_radiation_losses()
+    total_thermal_losses = radiation_losses + convection_conduction_losses
+    steelmaking_device.add_thermal_losses(total_thermal_losses)
+    # Increase the electrical energy to balance the thermal losses 
+    steelmaking_device.add_electrical_energy_in(total_thermal_losses)
+
+
+
+    print(f"Total energy = {sum(steelmaking_device.energy_in.values())*2.77778e-7:.2e} kWh")
 
 if __name__ == '__main__':
     main()

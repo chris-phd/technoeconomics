@@ -54,7 +54,9 @@ def create_plasma_system(system_name='plasma steelmaking') -> System:
     # System variables defaults. Can be overwritten by user before mass and energy flows.
     plasma_system.system_vars['steelmaking device name'] = plasma_smelter.name
     plasma_system.system_vars['feo percent in slag'] = 27.0
+    plasma_system.system_vars['plasma reaction temp K'] = 2500 
     plasma_system.system_vars['steel exit temp K'] = celsius_to_kelvin(1650)
+    plasma_system.system_vars['steelmaking bath temp K'] = plasma_system.system_vars['steel exit temp K']
     plasma_system.system_vars['b2 basicity'] = 2.0
     plasma_system.system_vars['b4 basicity'] = 2.1
     plasma_system.system_vars['ore heater device name'] = ore_heater.name
@@ -134,6 +136,7 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking') -> System:
     dri_eaf_system.system_vars['fluidized beds reduction percent'] = 95
     dri_eaf_system.system_vars['steelmaking device name'] = eaf.name
     dri_eaf_system.system_vars['feo percent in slag'] = 27.0
+    dri_eaf_system.system_vars['eaf reaction temp K'] = celsius_to_kelvin(1650) 
     dri_eaf_system.system_vars['steel exit temp K'] = celsius_to_kelvin(1650)
     dri_eaf_system.system_vars['b2 basicity'] = 2.0
     dri_eaf_system.system_vars['b4 basicity'] = 1.8
@@ -141,7 +144,7 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking') -> System:
     dri_eaf_system.system_vars['ore heater temp K'] = celsius_to_kelvin(800)
     dri_eaf_system.system_vars['ironmaking device names'] = [fluidized_bed_1.name, fluidized_bed_2.name, fluidized_bed_3.name]
     dri_eaf_system.system_vars['fluidized beds h2 excess ratio'] = 4.0
-
+    dri_eaf_system.system_vars['o2 injection kg'] = 35.0
 
     # electrolysis flows
     dri_eaf_system.add_input(water_electrolysis.name, create_dummy_species('h2o'))
@@ -208,6 +211,9 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking') -> System:
     dri_eaf_system.add_input(eaf.name, create_dummy_species('carbon'))
     dri_eaf_system.add_input(eaf.name, create_dummy_mixture('flux'))
     dri_eaf_system.add_input(eaf.name, create_dummy_species('o2'))
+    dri_eaf_system.add_input(eaf.name, create_dummy_mixture('infiltrated air'))
+    dri_eaf_system.add_output(eaf.name, create_dummy_mixture('infiltrated air'))
+    dri_eaf_system.add_output(eaf.name, create_dummy_mixture('carbon gas'))
     dri_eaf_system.add_output(eaf.name, create_dummy_mixture('slag'))
     dri_eaf_system.add_output(eaf.name, create_dummy_mixture('steel'))
 
@@ -257,7 +263,9 @@ def create_hybrid_system(system_name='hybrid steelmaking', prereduction_perc=33.
     hybrid_system.system_vars['fluidized beds reduction percent'] = prereduction_perc
     hybrid_system.system_vars['steelmaking device name'] = plasma_smelter.name
     hybrid_system.system_vars['feo percent in slag'] = 27.0
+    hybrid_system.system_vars['plasma reaction temp K'] = 2500 
     hybrid_system.system_vars['steel exit temp K'] = celsius_to_kelvin(1650)
+    hybrid_system.system_vars['steelmaking bath temp K'] = hybrid_system.system_vars['steel exit temp K']
     hybrid_system.system_vars['b2 basicity'] = 2.0
     hybrid_system.system_vars['b4 basicity'] = 2.1
     hybrid_system.system_vars['ore heater device name'] = ore_heater.name
