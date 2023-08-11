@@ -59,8 +59,8 @@ def create_plasma_system(system_name='plasma steelmaking') -> System:
     plasma_system.system_vars['b4 basicity'] = 2.1
     plasma_system.system_vars['ore heater device name'] = ore_heater.name
     plasma_system.system_vars['ore heater temp K'] = celsius_to_kelvin(1450)
-    plasma_system.system_vars['first ironmaking device name'] = plasma_smelter.name
-    plasma_system.system_vars['last ironmaking device name'] = plasma_smelter.name
+    plasma_system.system_vars['ironmaking device names'] = [plasma_smelter.name]
+    plasma_system.system_vars['plasma h2 excess ratio'] = 1.5
 
     # electrolysis flows
     electrolyser_water = create_dummy_species('h2o')
@@ -156,6 +156,7 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking') -> System:
     dri_eaf_system.add_device(eaf)
 
     # System variables defaults. Can be overwritten by user before mass and energy flows.
+    dri_eaf_system.system_vars['fluidized beds reduction percent'] = 95
     dri_eaf_system.system_vars['steelmaking device name'] = eaf.name
     dri_eaf_system.system_vars['feo percent in slag'] = 27.0
     dri_eaf_system.system_vars['steel exit temp K'] = celsius_to_kelvin(1650)
@@ -163,8 +164,9 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking') -> System:
     dri_eaf_system.system_vars['b4 basicity'] = 1.8
     dri_eaf_system.system_vars['ore heater device name'] = ore_heater.name
     dri_eaf_system.system_vars['ore heater temp K'] = celsius_to_kelvin(800)
-    dri_eaf_system.system_vars['first ironmaking device name'] = fluidized_bed_1.name
-    dri_eaf_system.system_vars['last ironmaking device name'] = fluidized_bed_3.name
+    dri_eaf_system.system_vars['ironmaking device names'] = [fluidized_bed_1.name, fluidized_bed_2.name, fluidized_bed_3.name]
+    dri_eaf_system.system_vars['fluidized beds h2 excess ratio'] = 4.0
+
 
     # electrolysis flows
     electrolyser_water = create_dummy_species('h2o')
@@ -211,14 +213,18 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking') -> System:
     dri_eaf_system.add_flow(ore_heater.name, fluidized_bed_1.name, fluidized_bed_1_ore)
     fluidized_bed_1_h2 = create_dummy_mixture('h2 h2o')
     dri_eaf_system.add_flow(fluidized_bed_2.name, fluidized_bed_1.name, fluidized_bed_1_h2)
+    fluidized_bed_1_chemical_energy = EnergyFlow('chemical')
+    dri_eaf_system.add_input(fluidized_bed_1.name, fluidized_bed_1_chemical_energy)
     fluidized_bed_1_losses = EnergyFlow('losses')
     dri_eaf_system.add_output(fluidized_bed_1.name, fluidized_bed_1_losses)
 
     # fluidized bed 2
-    fluidized_bed_2_ore = create_dummy_mixture('ore')
+    fluidized_bed_2_ore = create_dummy_mixture('dri')
     dri_eaf_system.add_flow(fluidized_bed_1.name, fluidized_bed_2.name, fluidized_bed_2_ore)
-    fluidized_bed_2_h2 = create_dummy_mixture('h2 h2o')
+    fluidized_bed_2_h2 = create_dummy_mixture('h2')
     dri_eaf_system.add_flow(h2_heater_1.name, fluidized_bed_2.name, fluidized_bed_2_h2)
+    fluidized_bed_2_chemical_energy = EnergyFlow('chemical')
+    dri_eaf_system.add_input(fluidized_bed_2.name, fluidized_bed_2_chemical_energy)    
     fluidized_bed_2_losses = EnergyFlow('losses')
     dri_eaf_system.add_output(fluidized_bed_2.name, fluidized_bed_2_losses)
 
@@ -231,10 +237,12 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking') -> System:
     dri_eaf_system.add_output(h2_heater_1.name, h2_heater_1_losses)
 
     # fluidized bed 3
-    fluidized_bed_3_ore = create_dummy_mixture('ore')
+    fluidized_bed_3_ore = create_dummy_mixture('dri')
     dri_eaf_system.add_flow(fluidized_bed_2.name, fluidized_bed_3.name, fluidized_bed_3_ore)
-    fluidized_bed_3_h2 = create_dummy_species('h2')
+    fluidized_bed_3_h2 = create_dummy_mixture('h2')
     dri_eaf_system.add_flow(h2_heater_2.name, fluidized_bed_3.name, fluidized_bed_3_h2)
+    fluidized_bed_3_chemical_energy = EnergyFlow('chemical')
+    dri_eaf_system.add_input(fluidized_bed_3.name, fluidized_bed_3_chemical_energy)
     fluidized_bed_3_losses = EnergyFlow('losses')
     dri_eaf_system.add_output(fluidized_bed_3.name, fluidized_bed_3_losses)
 
@@ -259,6 +267,8 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking') -> System:
     dri_eaf_system.add_output(eaf.name, eaf_smelter_losses)
     eaf_electrode = create_dummy_species('electrode')
     dri_eaf_system.add_input(eaf.name, eaf_electrode)
+    eaf_chemical_energy = EnergyFlow('chemical')
+    dri_eaf_system.add_input(eaf.name, eaf_chemical_energy)
     eaf_carbon = create_dummy_species('carbon')
     dri_eaf_system.add_input(eaf.name, eaf_carbon)
     eaf_flux = create_dummy_mixture('flux')
@@ -300,6 +310,8 @@ def create_hybrid_system(system_name='hybrid steelmaking', prereduction_perc=33.
     hybrid_system.add_device(join_2)
     join_3 = Device('join 3')
     hybrid_system.add_device(join_3)
+
+    ironmaking_device_names = [fluidized_bed_1.name, fluidized_bed_2.name]
     if prereduction_perc > 33.3333334:
         # More reduction takes place in the fluidized beds, so need 
         # additional devices. This is why the prereduction percent variable 
@@ -308,12 +320,10 @@ def create_hybrid_system(system_name='hybrid steelmaking', prereduction_perc=33.
         hybrid_system.add_device(h2_heater_2)
         fluidized_bed_3 = Device('fluidized bed 3')
         hybrid_system.add_device(fluidized_bed_3)
-        hybrid_system.system_vars['last ironmaking device name'] = fluidized_bed_3.name
-    else:
-        hybrid_system.system_vars['last ironmaking device name'] = fluidized_bed_2.name
+        ironmaking_device_names += [fluidized_bed_3.name]
 
     # System variables defaults. Can be overwritten by user before mass and energy flows.
-    hybrid_system.system_vars['prereduction percent'] = prereduction_perc
+    hybrid_system.system_vars['fluidized beds reduction percent'] = prereduction_perc
     hybrid_system.system_vars['steelmaking device name'] = plasma_smelter.name
     hybrid_system.system_vars['feo percent in slag'] = 27.0
     hybrid_system.system_vars['steel exit temp K'] = celsius_to_kelvin(1650)
@@ -321,7 +331,8 @@ def create_hybrid_system(system_name='hybrid steelmaking', prereduction_perc=33.
     hybrid_system.system_vars['b4 basicity'] = 2.1
     hybrid_system.system_vars['ore heater device name'] = ore_heater.name
     hybrid_system.system_vars['ore heater temp K'] = celsius_to_kelvin(800)
-    hybrid_system.system_vars['first ironmaking device name'] = fluidized_bed_1.name
+    hybrid_system.system_vars['ironmaking device names'] = ironmaking_device_names
+    hybrid_system.system_vars['fluidized beds h2 excess ratio'] = 4.0
 
     # electrolysis flows
     electrolyser_water = create_dummy_species('h2o')
@@ -376,14 +387,18 @@ def create_hybrid_system(system_name='hybrid steelmaking', prereduction_perc=33.
     hybrid_system.add_flow(ore_heater.name, fluidized_bed_1.name, fluidized_bed_1_ore)
     fluidized_bed_1_h2 = create_dummy_mixture('h2 h2o')
     hybrid_system.add_flow(fluidized_bed_2.name, fluidized_bed_1.name, fluidized_bed_1_h2)
+    fluidized_bed_1_chemical_energy = EnergyFlow('chemical')
+    hybrid_system.add_input(fluidized_bed_1.name, fluidized_bed_1_chemical_energy)
     fluidized_bed_1_losses = EnergyFlow('losses')
     hybrid_system.add_output(fluidized_bed_1.name, fluidized_bed_1_losses)
 
     # fluidized bed 2
-    fluidized_bed_2_ore = create_dummy_mixture('ore')
+    fluidized_bed_2_ore = create_dummy_mixture('dri')
     hybrid_system.add_flow(fluidized_bed_1.name, fluidized_bed_2.name, fluidized_bed_2_ore)
-    fluidized_bed_2_h2 = create_dummy_mixture('h2 h2o')
+    fluidized_bed_2_h2 = create_dummy_mixture('h2')
     hybrid_system.add_flow(h2_heater_1.name, fluidized_bed_2.name, fluidized_bed_2_h2)
+    fluidized_bed_2_chemical_energy = EnergyFlow('chemical')
+    hybrid_system.add_input(fluidized_bed_2.name, fluidized_bed_2_chemical_energy)
     fluidized_bed_2_losses = EnergyFlow('losses')
     hybrid_system.add_output(fluidized_bed_2.name, fluidized_bed_2_losses)
 
@@ -395,10 +410,12 @@ def create_hybrid_system(system_name='hybrid steelmaking', prereduction_perc=33.
 
     if 'fluidized bed 3' in hybrid_system.devices:
         # fluidized bed 3
-        fluidized_bed_3_ore = create_dummy_mixture('ore')
+        fluidized_bed_3_ore = create_dummy_mixture('dri')
         hybrid_system.add_flow(fluidized_bed_2.name, fluidized_bed_3.name, fluidized_bed_3_ore)
-        fluidized_bed_3_h2 = create_dummy_species('h2')
+        fluidized_bed_3_h2 = create_dummy_mixture('h2')
         hybrid_system.add_flow(h2_heater_2.name, fluidized_bed_3.name, fluidized_bed_3_h2)
+        fluidized_bed_3_chemical_energy = EnergyFlow('chemical')
+        hybrid_system.add_input(fluidized_bed_3.name, fluidized_bed_3_chemical_energy)
         fluidized_bed_3_losses = EnergyFlow('losses')
         hybrid_system.add_output(fluidized_bed_3.name, fluidized_bed_3_losses)
 
@@ -437,6 +454,8 @@ def create_hybrid_system(system_name='hybrid steelmaking', prereduction_perc=33.
     hybrid_system.add_flow(join_2.name, plasma_smelter.name, plasma_h2)
     plasma_smelter_electricity = EnergyFlow('electricity')
     hybrid_system.add_input(plasma_smelter.name, plasma_smelter_electricity)
+    plasma_chemical_energy = EnergyFlow('chemical')
+    hybrid_system.add_input(plasma_smelter.name, plasma_chemical_energy)
     plasma_smelter_losses = EnergyFlow('losses')
     hybrid_system.add_output(plasma_smelter.name, plasma_smelter_losses)
     plasma_carbon = create_dummy_species('carbon')

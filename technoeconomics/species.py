@@ -271,6 +271,20 @@ class Mixture:
         self._name = other_mixture._name
         self._species = copy.deepcopy(other_mixture._species)
 
+    def cp(self, return_molar_cp: bool = True):
+        """
+        Return the molar heat capacity at the current temperature.
+        return_molar_cp: If true, return the molar heat capacity. [J / mol K] 
+            If false, return the specific (mass) heat capacity. [J / g K]
+        """
+        self_copy = copy.deepcopy(self)
+        if return_molar_cp:
+            self_copy.mols = 1.0
+        else:
+            self_copy.mass = 0.001
+
+        return self_copy.heat_energy(self.temp_kelvin + 1)
+
 # Species - Master copies
 # Shomate Equation data from the NIST Chemistry Webbook
 # Latent Heat Data is from the CRC Handbook of Chemistry and Physics, Enthalpy of Fusion, 6-146

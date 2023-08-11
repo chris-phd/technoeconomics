@@ -29,7 +29,7 @@ def main():
     hybrid33_system = create_hybrid_system("hybrid33 steelmaking", 33.33)
     hybrid95_system = create_hybrid_system("hybrid95 steelmaking", 95.0)
 
-    # Overwrite system vars to modify behaviour
+    # Overwrite system vars here to modify behaviour
 
     # Add mass and energy flow
     add_plasma_mass_and_energy(plasma_system)
@@ -38,6 +38,9 @@ def main():
     add_hybrid_mass_and_energy(hybrid95_system)
 
     print(plasma_system)
+    print(dri_eaf_system)
+    print(hybrid33_system)
+    print(hybrid95_system)
 
 
 # Mass and Energy Flows - System Level
@@ -55,6 +58,7 @@ def add_dri_eaf_mass_and_energy(system: System):
     add_steel_out(system)
     add_eaf_flows_initial(system)
     add_ore(system)
+    add_fluidized_bed_flows(system)
 
 
 def add_hybrid_mass_and_energy(system: System):
@@ -63,6 +67,7 @@ def add_hybrid_mass_and_energy(system: System):
     add_steel_out(system)
     add_plasma_flows_initial(system)
     add_ore(system)
+    add_fluidized_bed_flows(system)
 
 
 def verify_system_vars(system: System):
@@ -244,7 +249,7 @@ def add_ore(system: System):
     steelmaking_device_name = system.system_vars['steelmaking device name']
     ore_composition_simple = system.system_vars['ore composition simple']
     ore_heater_device_name = system.system_vars['ore heater device name']
-    first_ironmaking_device_name = system.system_vars['first ironmaking device name']
+    first_ironmaking_device_name = system.system_vars['ironmaking device names'][0]
 
     # Calculate the mass of the ore required.
     # Note that this is the input ore at the very start of the process.     
@@ -290,6 +295,155 @@ def add_ore(system: System):
     iron_making_device = system.devices[first_ironmaking_device_name]
     iron_making_device.inputs['ore'].set(ore)
 
+def iron_species_from_reduction_degree(reduction_degree: float, initial_ore_mass: float, hematite_composition: Dict[str, float]):
+    """
+    Returns the iron species at a given reduction degree.
+    reduction_degree: The degree of reduction of the ore. 0 is no reduction, 1 is complete reduction.
+    initial_ore_mass: The mass of the ore at the start of the process. Iron in the ore is assumed 
+        to be completely hematite. 
+    hematite_composition: The composition of the hematite ore as a percent. Must contain 'Fe' and 'hematite'.
+    """
+    # The DRI will contain a mix of Fe, FeO, Fe2O3, and Fe3O4
+    fe2o3 = species.create_fe2o3_species()
+    fe3o4 = species.create_fe3o4_species()
+    feo = species.create_feo_species()
+    fe = species.create_fe_species()
+
+    n_hem_i = initial_ore_mass * hematite_composition['hematite'] * 0.01 / fe2o3.mm
+    n_fe_t = (initial_ore_mass * hematite_composition['Fe'] * 0.01) / fe.mm
+
+    # The main assumption is that hematite completely reduces to magnetite
+    # before any wustite forms, and magnetite completely reduces to wustite
+    # before any metallic Fe forms.
+    if (1/3) <= reduction_degree <= 1:
+        # Mix of wustite and metallic Fe
+        feo.mols = 3 * n_hem_i * (1 - reduction_degree)
+        fe.mols = n_fe_t - feo.mols
+    elif (1/9) <= reduction_degree < (1/3):
+        # Mix of magnetite and wustite
+        fe3o4.mols = 3 * n_hem_i * (1 - reduction_degree) - n_fe_t
+        feo.mols = 3 * n_hem_i * (1 - reduction_degree) - 4 * fe3o4.mols
+    elif 0 <= reduction_degree < (1/9):
+        # Mix of hematite and magnetite
+        fe2o3.mols = 9 * n_hem_i * (1 - reduction_degree) - 4*n_fe_t
+        fe3o4.mols = (3*n_hem_i * (1 - reduction_degree) - 3 * fe2o3.mols) / 4
+    
+    return fe, feo, fe3o4, fe2o3
+
+def add_fluidized_bed_flows(system: System):
+    # TODO: FIXING THIS TO PROPERLY USTILISE ALL THE IRONMAKING DEVICES
+    # IS THE MAIN PRIORITY AFTER THE FIRST ITERATION OF THE MODEL IS COMPLETE
+    ironmaking_device_names = system.system_vars['ironmaking device names']
+    excess_h2_ratio = system.system_vars['fluidized beds h2 excess ratio']
+    reduction_degree = system.system_vars['fluidized beds reduction percent'] * 0.01
+
+    assert len(ironmaking_device_names) > 0, 'Must have at least one iron making device'
+    assert excess_h2_ratio >= 1.0
+
+    in_gas_temp = celsius_to_kelvin(900)
+    reaction_temp = celsius_to_kelvin(700)
+
+    ironmaking_device = system.devices[ironmaking_device_names[0]]
+    ore = ironmaking_device.inputs['ore']
+
+    hematite_composition = system.system_vars['ore composition simple']
+    fe_dri, feo_dri, fe3o4_dri, fe2o3_dri = iron_species_from_reduction_degree(reduction_degree, ore.mass, hematite_composition)
+
+    dri = species.Mixture('dri fines', [fe_dri, feo_dri, fe3o4_dri, fe2o3_dri,
+                                copy.deepcopy(ore.species('CaO')),
+                                copy.deepcopy(ore.species('MgO')),
+                                copy.deepcopy(ore.species('SiO2')),
+                                copy.deepcopy(ore.species('Al2O3'))])
+    dri.temp_kelvin = in_gas_temp - 50 # Assumption
+    ironmaking_device.outputs['dri'].set(dri)
+
+    # TODO: Reduce repeition with the same logic in the plasma smelter. 
+    delta_fe = fe_dri.mols - ore.species('Fe').mols
+    delta_feo = feo_dri.mols - ore.species('FeO').mols
+    delta_fe3o4 = fe3o4_dri.mols - ore.species('Fe3O4').mols
+
+    num_fe_formations = delta_fe
+    num_feo_formations = (num_fe_formations + delta_feo) / 3
+    num_fe3o4_formations = (num_feo_formations + delta_fe3o4) / 2
+
+    chemical_energy = EnergyFlow('chemical energy', - num_fe_formations * species.delta_h_feo_h2_fe_h2o(reaction_temp) \
+                                              - num_feo_formations * species.delta_h_fe3o4_h2_3feo_h2o(reaction_temp) \
+                                              - num_fe3o4_formations * species.delta_h_3fe2o3_h2_2fe3o4_h2o(reaction_temp))
+    ironmaking_device.inputs['chemical'].set(chemical_energy)
+
+    h2_consumed = species.create_h2_species()
+    h2_consumed.mols = 1.5 * fe_dri.mols + 0.5 * feo_dri.mols + 0.5 * fe3o4_dri.mols
+
+    h2o = species.create_h2o_species()
+    h2o.mols = h2_consumed.mols
+
+    h2_excess = copy.deepcopy(h2_consumed)
+    h2_excess.mols = (excess_h2_ratio - 1) * h2_consumed.mols
+
+    h2_total = species.create_h2_species()
+    h2_total.mols = h2_consumed.mols + h2_excess.mols
+
+    hydrogen = species.Mixture('h2', [h2_total])
+    hydrogen.temp_kelvin = in_gas_temp 
+    try:
+        ironmaking_device.inputs['h2'].set(hydrogen)
+    except KeyError:
+        ironmaking_device.inputs['h2 h2o'].set(hydrogen)
+    # Set initial guess for the out gas temp
+    # Then iteratively solve fo the temp that balances the energy balance
+
+    out_gas_temp = in_gas_temp
+
+    off_gas = species.Mixture('h2 h2o', [h2o, h2_excess])
+    off_gas.temp_kelvin = out_gas_temp
+    ironmaking_device.outputs['h2 h2o'].set(off_gas)
+    
+    # Convection and conduction losses are 4% of input heat. 
+    # TODO! Find a better justification for this 4%. Currently reusing the EAF loss recommended 
+    # by Sujay Kumar Dutta pg 425
+    thermal_losses_frac = 0.04
+    thermal_losses = -thermal_losses_frac * ironmaking_device.thermal_energy_balance()
+
+    max_iter = 100
+    i = 0
+    while True:
+        if abs(ironmaking_device.energy_balance() + thermal_losses) < 1e-6:
+            print(f"Converged on the out gas temp after {i} iterations")
+            print(f"Out gas temp: {ironmaking_device.outputs['h2 h2o'].temp_kelvin}")
+            break
+        if i > max_iter:
+            raise Exception("Failed to converge on the out gas temp. Reached max interation")
+
+        energy_balance = ironmaking_device.energy_balance() + thermal_losses
+        specific_enthalpy = ironmaking_device.outputs['h2 h2o'].cp()
+        ironmaking_device.outputs['h2 h2o'].temp_kelvin -= energy_balance / specific_enthalpy
+        thermal_losses = -thermal_losses_frac * ironmaking_device.thermal_energy_balance()
+
+        i += 1
+
+    # add the calculated thermal losses
+    ironmaking_device.outputs['losses'].set(EnergyFlow('thermal losses', thermal_losses))
+
+    for device_name in ironmaking_device_names[1:]:
+        # Currently just a dummy reactors, since the calculation 
+        # above assunmes all the reduction happens in the first reactor.
+        # Eventually we want to split this up between the different reactors
+        # TODO! Account for these properly, likely has a difference on the
+        # heat balance. 
+        second_iron_making_device = system.devices[device_name]
+        second_iron_making_device.inputs['dri'].set(dri)
+        second_iron_making_device.outputs['dri'].set(dri)
+        try:
+            second_iron_making_device.inputs['h2'].set(hydrogen)
+        except KeyError:
+            second_iron_making_device.inputs['h2 h2o'].set(hydrogen)
+        
+        try:
+            second_iron_making_device.outputs['h2'].set(hydrogen)
+        except KeyError:
+            second_iron_making_device.outputs['h2 h2o'].set(hydrogen)
+        second_iron_making_device.outputs['losses'].energy = 0.0
+        second_iron_making_device.inputs['chemical'].energy = 0.0
 
 if __name__ == '__main__':
     main()
