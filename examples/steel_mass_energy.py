@@ -59,6 +59,7 @@ def add_dri_eaf_mass_and_energy(system: System):
     add_eaf_flows_initial(system)
     add_ore(system)
     add_fluidized_bed_flows(system)
+    add_briquetting_flows(system)
 
 
 def add_hybrid_mass_and_energy(system: System):
@@ -68,6 +69,7 @@ def add_hybrid_mass_and_energy(system: System):
     add_plasma_flows_initial(system)
     add_ore(system)
     add_fluidized_bed_flows(system)
+    add_briquetting_flows(system)
 
 
 def verify_system_vars(system: System):
@@ -444,6 +446,18 @@ def add_fluidized_bed_flows(system: System):
             second_iron_making_device.outputs['h2 h2o'].set(hydrogen)
         second_iron_making_device.outputs['losses'].energy = 0.0
         second_iron_making_device.inputs['chemical'].energy = 0.0
+
+def add_briquetting_flows(system: System):
+    """
+    Basically a dummy stage. Since for the moment we don't assune any
+    heating takes place. 
+    """
+    if 'briquetting' not in system.devices:
+        return
+    final_ironmaking_device_name = system.system_vars['ironmaking device names'][-1]
+    hbi = copy.deepcopy(system.devices[final_ironmaking_device_name].outputs['dri'])
+    hbi.name = 'hbi'
+    system.devices['briquetting'].outputs['hbi'].set(hbi)
 
 if __name__ == '__main__':
     main()
