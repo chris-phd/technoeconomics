@@ -53,8 +53,13 @@ def create_plasma_system(system_name='plasma steelmaking') -> System:
 
     # System variables defaults. Can be overwritten by user before mass and energy flows.
     plasma_system.system_vars['steelmaking device name'] = plasma_smelter.name
-    plasma_system.system_vars['feo percent in slag'] = 27.0
+    plasma_system.system_vars['feo soluble in slag percent'] = 27.0
     plasma_system.system_vars['plasma reaction temp K'] = 2500 
+    plasma_system.system_vars['plasma reduction percent'] = 95.0
+    plasma_system.system_vars['final reduction percent'] = plasma_system.system_vars['plasma reduction percent']
+    plasma_system.system_vars['plasma h2 excess ratio'] = 1.5
+    plasma_system.system_vars['o2 injection kg'] = 0.0
+    plasma_system.system_vars['plasma torch eff pecent'] = 55
     plasma_system.system_vars['steel exit temp K'] = celsius_to_kelvin(1650)
     plasma_system.system_vars['steelmaking bath temp K'] = plasma_system.system_vars['steel exit temp K']
     plasma_system.system_vars['b2 basicity'] = 2.0
@@ -62,7 +67,6 @@ def create_plasma_system(system_name='plasma steelmaking') -> System:
     plasma_system.system_vars['ore heater device name'] = ore_heater.name
     plasma_system.system_vars['ore heater temp K'] = celsius_to_kelvin(1450)
     plasma_system.system_vars['ironmaking device names'] = [plasma_smelter.name]
-    plasma_system.system_vars['plasma h2 excess ratio'] = 1.5
 
     # electrolysis flows
     plasma_system.add_input(water_electrolysis.name, create_dummy_species('h2o'))
@@ -134,8 +138,9 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking') -> System:
 
     # System variables defaults. Can be overwritten by user before mass and energy flows.
     dri_eaf_system.system_vars['fluidized beds reduction percent'] = 95
+    dri_eaf_system.system_vars['final reduction percent'] = dri_eaf_system.system_vars['fluidized beds reduction percent']
     dri_eaf_system.system_vars['steelmaking device name'] = eaf.name
-    dri_eaf_system.system_vars['feo percent in slag'] = 27.0
+    dri_eaf_system.system_vars['feo soluble in slag percent'] = 27.0
     dri_eaf_system.system_vars['eaf reaction temp K'] = celsius_to_kelvin(1650) 
     dri_eaf_system.system_vars['steel exit temp K'] = celsius_to_kelvin(1650)
     dri_eaf_system.system_vars['b2 basicity'] = 2.0
@@ -262,9 +267,13 @@ def create_hybrid_system(system_name='hybrid steelmaking', prereduction_perc=33.
     # System variables defaults. Can be overwritten by user before mass and energy flows.
     hybrid_system.system_vars['fluidized beds reduction percent'] = prereduction_perc
     hybrid_system.system_vars['steelmaking device name'] = plasma_smelter.name
-    hybrid_system.system_vars['feo percent in slag'] = 27.0
+    hybrid_system.system_vars['feo soluble in slag percent'] = 27.0
     hybrid_system.system_vars['plasma reaction temp K'] = 2500 
+    hybrid_system.system_vars['plasma reduction percent'] = 95.0
+    hybrid_system.system_vars['final reduction percent'] = hybrid_system.system_vars['plasma reduction percent']
     hybrid_system.system_vars['steel exit temp K'] = celsius_to_kelvin(1650)
+    hybrid_system.system_vars['o2 injection kg'] = 0.0
+    hybrid_system.system_vars['plasma h2 excess ratio'] = 1.5
     hybrid_system.system_vars['steelmaking bath temp K'] = hybrid_system.system_vars['steel exit temp K']
     hybrid_system.system_vars['b2 basicity'] = 2.0
     hybrid_system.system_vars['b4 basicity'] = 2.1
