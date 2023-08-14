@@ -26,10 +26,10 @@ def main():
     hybrid33_system = create_hybrid_system("hybrid33 steelmaking", 33.33)
     hybrid95_system = create_hybrid_system("hybrid95 steelmaking", 95.0)
 
-    plasma_system.render()
-    dri_eaf_system.render()
-    hybrid33_system.render()
-    hybrid95_system.render()
+    plasma_system.render(output_directory="/home/chris/Desktop/")
+    dri_eaf_system.render(output_directory="/home/chris/Desktop/")
+    hybrid33_system.render(output_directory="/home/chris/Desktop/")
+    hybrid95_system.render(output_directory="/home/chris/Desktop/")
 
 
 # System Creators
@@ -59,7 +59,7 @@ def create_plasma_system(system_name='plasma steelmaking') -> System:
     plasma_system.system_vars['final reduction percent'] = plasma_system.system_vars['plasma reduction percent']
     plasma_system.system_vars['plasma h2 excess ratio'] = 1.5
     plasma_system.system_vars['o2 injection kg'] = 0.0
-    plasma_system.system_vars['plasma torch eff pecent'] = 55
+    plasma_system.system_vars['plasma torch eff pecent'] = 55.0
     plasma_system.system_vars['steel exit temp K'] = celsius_to_kelvin(1650)
     plasma_system.system_vars['steelmaking bath temp K'] = plasma_system.system_vars['steel exit temp K']
     plasma_system.system_vars['b2 basicity'] = 2.0
@@ -99,6 +99,7 @@ def create_plasma_system(system_name='plasma steelmaking') -> System:
     plasma_system.add_flow(h2_heat_exchanger.name, plasma_smelter.name, create_dummy_species('h2'))
     plasma_system.add_input(plasma_smelter.name, EnergyFlow('electricity'))
     plasma_system.add_output(plasma_smelter.name, EnergyFlow('losses'))
+    plasma_system.add_input(plasma_smelter.name, EnergyFlow('chemical'))
     plasma_system.add_input(plasma_smelter.name, create_dummy_species('carbon'))
     plasma_system.add_input(plasma_smelter.name, create_dummy_mixture('flux'))
     plasma_system.add_input(plasma_smelter.name, create_dummy_species('o2'))
@@ -271,6 +272,7 @@ def create_hybrid_system(system_name='hybrid steelmaking', prereduction_perc=33.
     hybrid_system.system_vars['plasma reaction temp K'] = 2500 
     hybrid_system.system_vars['plasma reduction percent'] = 95.0
     hybrid_system.system_vars['final reduction percent'] = hybrid_system.system_vars['plasma reduction percent']
+    hybrid_system.system_vars['plasma torch eff pecent'] = 55.0
     hybrid_system.system_vars['steel exit temp K'] = celsius_to_kelvin(1650)
     hybrid_system.system_vars['o2 injection kg'] = 0.0
     hybrid_system.system_vars['plasma h2 excess ratio'] = 1.5
@@ -300,7 +302,7 @@ def create_hybrid_system(system_name='hybrid steelmaking', prereduction_perc=33.
 
     # heat exchanger
     hybrid_system.add_flow(join_1.name, h2_heat_exchanger.name, create_dummy_species('h2'))
-    hybrid_system.add_flow(join_3.name, h2_heat_exchanger.name, create_dummy_species('h2 h2o co co2'))
+    hybrid_system.add_flow(join_3.name, h2_heat_exchanger.name, create_dummy_mixture('h2 h2o co co2'))
     hybrid_system.add_output(h2_heat_exchanger.name, EnergyFlow('losses'))
 
     # join 3
