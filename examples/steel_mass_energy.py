@@ -53,6 +53,7 @@ def add_plasma_mass_and_energy(system: System):
     add_plasma_flows_initial(system)
     add_ore(system)
     add_plasma_flows_final(system)
+    add_electrolysis_flows(system)
 
 
 def add_dri_eaf_mass_and_energy(system: System):
@@ -64,6 +65,7 @@ def add_dri_eaf_mass_and_energy(system: System):
     add_fluidized_bed_flows(system)
     add_briquetting_flows(system)
     add_eaf_flows_final(system)
+    add_electrolysis_flows(system)
 
 
 def add_hybrid_mass_and_energy(system: System):
@@ -75,6 +77,7 @@ def add_hybrid_mass_and_energy(system: System):
     add_fluidized_bed_flows(system)
     add_briquetting_flows(system)
     add_plasma_flows_final(system)
+    add_electrolysis_flows(system)
 
 
 def verify_system_vars(system: System):
@@ -398,20 +401,17 @@ def add_fluidized_bed_flows(system: System):
     h2_total = species.create_h2_species()
     h2_total.mols = h2_consumed.mols + h2_excess.mols
 
-    hydrogen = species.Mixture('h2', [h2_total])
+    hydrogen = species.Mixture('H2', [h2_total])
     hydrogen.temp_kelvin = in_gas_temp 
-    try:
-        ironmaking_device.inputs['h2'].set(hydrogen)
-    except KeyError:
-        ironmaking_device.inputs['h2 h2o'].set(hydrogen)
+    ironmaking_device.inputs['h2 rich gas'].set(hydrogen)
     # Set initial guess for the out gas temp
     # Then iteratively solve fo the temp that balances the energy balance
 
     out_gas_temp = in_gas_temp
 
-    off_gas = species.Mixture('h2 h2o', [h2o, h2_excess])
+    off_gas = species.Mixture('H2 H2O', [h2o, h2_excess])
     off_gas.temp_kelvin = out_gas_temp
-    ironmaking_device.outputs['h2 h2o'].set(off_gas)
+    ironmaking_device.outputs['h2 rich gas'].set(off_gas)
     
     # Convection and conduction losses are 4% of input heat. 
     # TODO! Find a better justification for this 4%. Currently reusing the EAF loss recommended 
@@ -428,8 +428,8 @@ def add_fluidized_bed_flows(system: System):
             raise Exception("Failed to converge on the out gas temp. Reached max interation")
 
         energy_balance = ironmaking_device.energy_balance() + thermal_losses
-        specific_enthalpy = ironmaking_device.outputs['h2 h2o'].cp()
-        ironmaking_device.outputs['h2 h2o'].temp_kelvin -= energy_balance / specific_enthalpy
+        specific_enthalpy = ironmaking_device.outputs['h2 rich gas'].cp()
+        ironmaking_device.outputs['h2 rich gas'].temp_kelvin -= energy_balance / specific_enthalpy
         thermal_losses = -thermal_losses_frac * ironmaking_device.thermal_energy_balance()
 
         i += 1
@@ -446,15 +446,9 @@ def add_fluidized_bed_flows(system: System):
         second_iron_making_device = system.devices[device_name]
         second_iron_making_device.inputs['dri'].set(dri)
         second_iron_making_device.outputs['dri'].set(dri)
-        try:
-            second_iron_making_device.inputs['h2'].set(hydrogen)
-        except KeyError:
-            second_iron_making_device.inputs['h2 h2o'].set(hydrogen)
+        second_iron_making_device.inputs['h2 rich gas'].set(hydrogen)
         
-        try:
-            second_iron_making_device.outputs['h2'].set(hydrogen)
-        except KeyError:
-            second_iron_making_device.outputs['h2 h2o'].set(hydrogen)
+        second_iron_making_device.outputs['h2 rich gas'].set(hydrogen)
         second_iron_making_device.outputs['losses'].energy = 0.0
         second_iron_making_device.inputs['chemical'].energy = 0.0
 
@@ -672,7 +666,7 @@ def add_plasma_flows_final(system: System):
     h2_total = species.create_h2_species()
     h2_total.mols = h2_consumed.mols + h2_excess.mols
     h2_total.temp_kelvin = celsius_to_kelvin(25)
-    steelmaking_device.inputs['h2'].set(h2_total)
+    steelmaking_device.inputs['h2 rich gas'].set(h2_total)
 
     # Add the carbon required for the alloy
     c_alloy = copy.deepcopy(steelmaking_device.outputs['steel'].species('C'))
@@ -733,7 +727,7 @@ def add_plasma_flows_final(system: System):
     co2.mols = num_co2_reactions
     off_gas = species.Mixture('off gas', [co, co2, h2o, h2_excess])
     off_gas.temp_kelvin = reaction_temp
-    steelmaking_device.outputs['h2 h2o co co2'].set(off_gas) # should maybe name this better. not just h2
+    steelmaking_device.outputs['h2 rich gas'].set(off_gas) # should maybe name this better. not just h2
 
     # IGNORE LOSSES FROM INFILTRATED AIR, BECAUSE WE NEED TO HEAT RECOVER THE OFF GAS
     # OPTIMISTICALLY ASSUME THE PLASMA SMELTER IS PRETTY MUCH AIR TIGHT / CONTROLLED ATMOSPHERE. 
@@ -765,6 +759,64 @@ def add_plasma_flows_final(system: System):
     # Increase the electrical energy to balance the thermal losses 
     steelmaking_device.inputs['electricity'].energy += radiation_losses + conduction_losses
     print(f"Total energy = {steelmaking_device.inputs['electricity'].energy*2.77778e-7:.2e} kWh")
+
+def add_electrolysis_flows(system: System):
+    water_input_temp = celsius_to_kelvin(25)
+    gas_output_temp = celsius_to_kelvin(70)
+    hydrogen_consuming_device_names = system.system_vars['h2 consuming device names']
+
+    electrolyser = system.devices['water electrolysis']
+
+    h2 = species.create_h2_species()
+    h2.temp_kelvin = gas_output_temp
+    for device_name in hydrogen_consuming_device_names:
+        device = system.devices[device_name]
+        if isinstance(device.inputs['h2 rich gas'], species.Species):
+            input_h2_mols = device.inputs['h2 rich gas'].mols
+        elif isinstance(device.inputs['h2 rich gas'], species.Mixture):
+            input_h2_mols = device.inputs['h2 rich gas'].species('H2').mols
+        else:
+            raise TypeError("Error: Unknown type for h2 rich gas input")
+        
+        if isinstance(device.outputs['h2 rich gas'], species.Species):
+            output_h2_mols = device.outputs['h2 rich gas'].mols
+        elif isinstance(device.outputs['h2 rich gas'], species.Mixture):
+            output_h2_mols = device.outputs['h2 rich gas'].species('H2').mols
+        else:
+            raise TypeError("Error: Unknown type for h2 rich gas input")
+        
+        h2_consumed = input_h2_mols - output_h2_mols
+        assert h2_consumed >= 0
+        h2.mols += h2_consumed
+    electrolyser.outputs['h2 rich gas'].set(h2)
+    assert 50.0 < h2.mass < 60.0 # we know roughly how much H2 to expect from stoichiometry
+    
+    o2 = species.create_o2_species()
+    o2.mols = h2.mols * 0.5
+    o2.temp_kelvin = gas_output_temp
+    electrolyser.outputs['o2'].set(o2)
+
+    h2o = species.create_h2o_species()
+    h2o.mols = h2.mols
+    h2o.temp_kelvin = water_input_temp
+    electrolyser.inputs['h2o'].set(h2o)
+
+    # determine the electrical energy required.
+    lhv_efficiency = system.system_vars['electrolysis lhv efficiency percent'] * 0.01
+    h2_lhv = 120e6 # J/kg
+    electrical_energy = h2.mass * h2_lhv / lhv_efficiency
+    electrolyser.inputs['electricity'].energy = electrical_energy
+    electrolyser.outputs['losses'].energy = electrical_energy * (1-lhv_efficiency)
+
+    # Should really calculate the chemical energy out from the delta_h function
+    # as an extra step of verification, but delta_h_2h2o_2h2_o2() gives the hhv
+    # for some reason.
+    electrolyser.outputs['chemical'].energy = h2.mass * h2_lhv
+
+    # Note that the energy above is just the energy to perform electrolysis at
+    # 25 deg. There is also the energy required to heat the species to the
+    # specified output temp. For simplicity, we assume no losses here.
+    electrolyser.inputs['electricity'].energy += (electrolyser.thermal_energy_balance())
 
 if __name__ == '__main__':
     main()
