@@ -54,6 +54,9 @@ def add_plasma_mass_and_energy(system: System):
     add_ore(system)
     add_plasma_flows_final(system)
     add_electrolysis_flows(system)
+    merge_join_flows(system, 'join 1')
+    add_heat_exchanger_flows(system)
+    # add_condenser_and_scrubber_flows(system)
 
 
 def add_dri_eaf_mass_and_energy(system: System):
@@ -66,6 +69,9 @@ def add_dri_eaf_mass_and_energy(system: System):
     add_briquetting_flows(system)
     add_eaf_flows_final(system)
     add_electrolysis_flows(system)
+    merge_join_flows(system, 'join 1')
+    add_heat_exchanger_flows(system)
+    # add_condenser_and_scrubber_flows(system)
 
 
 def add_hybrid_mass_and_energy(system: System):
@@ -78,6 +84,10 @@ def add_hybrid_mass_and_energy(system: System):
     add_briquetting_flows(system)
     add_plasma_flows_final(system)
     add_electrolysis_flows(system)
+    merge_join_flows(system, 'join 1')
+    merge_join_flows(system, 'join 3')
+    add_heat_exchanger_flows(system)
+    # add_condenser_and_scrubber_flows(system)
 
 
 def verify_system_vars(system: System):
@@ -403,7 +413,7 @@ def add_fluidized_bed_flows(system: System):
 
     hydrogen = species.Mixture('H2', [h2_total])
     hydrogen.temp_kelvin = in_gas_temp 
-    ironmaking_device.inputs['h2 rich gas'].set(hydrogen)
+    ironmaking_device.first_input_containing_name('h2 rich gas').set(hydrogen)
     # Set initial guess for the out gas temp
     # Then iteratively solve fo the temp that balances the energy balance
 
@@ -411,7 +421,7 @@ def add_fluidized_bed_flows(system: System):
 
     off_gas = species.Mixture('H2 H2O', [h2o, h2_excess])
     off_gas.temp_kelvin = out_gas_temp
-    ironmaking_device.outputs['h2 rich gas'].set(off_gas)
+    ironmaking_device.first_output_containing_name('h2 rich gas').set(off_gas)
     
     # Convection and conduction losses are 4% of input heat. 
     # TODO! Find a better justification for this 4%. Currently reusing the EAF loss recommended 
@@ -428,8 +438,8 @@ def add_fluidized_bed_flows(system: System):
             raise Exception("Failed to converge on the out gas temp. Reached max interation")
 
         energy_balance = ironmaking_device.energy_balance() + thermal_losses
-        specific_enthalpy = ironmaking_device.outputs['h2 rich gas'].cp()
-        ironmaking_device.outputs['h2 rich gas'].temp_kelvin -= energy_balance / specific_enthalpy
+        specific_enthalpy = ironmaking_device.first_output_containing_name('h2 rich gas').cp()
+        ironmaking_device.first_output_containing_name('h2 rich gas').temp_kelvin -= energy_balance / specific_enthalpy
         thermal_losses = -thermal_losses_frac * ironmaking_device.thermal_energy_balance()
 
         i += 1
@@ -446,9 +456,9 @@ def add_fluidized_bed_flows(system: System):
         second_iron_making_device = system.devices[device_name]
         second_iron_making_device.inputs['dri'].set(dri)
         second_iron_making_device.outputs['dri'].set(dri)
-        second_iron_making_device.inputs['h2 rich gas'].set(hydrogen)
+        second_iron_making_device.first_input_containing_name('h2 rich gas').set(hydrogen)
         
-        second_iron_making_device.outputs['h2 rich gas'].set(hydrogen)
+        second_iron_making_device.first_output_containing_name('h2 rich gas').set(hydrogen)
         second_iron_making_device.outputs['losses'].energy = 0.0
         second_iron_making_device.inputs['chemical'].energy = 0.0
 
@@ -666,7 +676,7 @@ def add_plasma_flows_final(system: System):
     h2_total = species.create_h2_species()
     h2_total.mols = h2_consumed.mols + h2_excess.mols
     h2_total.temp_kelvin = celsius_to_kelvin(25)
-    steelmaking_device.inputs['h2 rich gas'].set(h2_total)
+    steelmaking_device.first_input_containing_name('h2 rich gas').set(h2_total)
 
     # Add the carbon required for the alloy
     c_alloy = copy.deepcopy(steelmaking_device.outputs['steel'].species('C'))
@@ -727,7 +737,7 @@ def add_plasma_flows_final(system: System):
     co2.mols = num_co2_reactions
     off_gas = species.Mixture('off gas', [co, co2, h2o, h2_excess])
     off_gas.temp_kelvin = reaction_temp
-    steelmaking_device.outputs['h2 rich gas'].set(off_gas) # should maybe name this better. not just h2
+    steelmaking_device.first_output_containing_name('h2 rich gas').set(off_gas) # should maybe name this better. not just h2
 
     # IGNORE LOSSES FROM INFILTRATED AIR, BECAUSE WE NEED TO HEAT RECOVER THE OFF GAS
     # OPTIMISTICALLY ASSUME THE PLASMA SMELTER IS PRETTY MUCH AIR TIGHT / CONTROLLED ATMOSPHERE. 
@@ -771,17 +781,17 @@ def add_electrolysis_flows(system: System):
     h2.temp_kelvin = gas_output_temp
     for device_name in hydrogen_consuming_device_names:
         device = system.devices[device_name]
-        if isinstance(device.inputs['h2 rich gas'], species.Species):
-            input_h2_mols = device.inputs['h2 rich gas'].mols
-        elif isinstance(device.inputs['h2 rich gas'], species.Mixture):
-            input_h2_mols = device.inputs['h2 rich gas'].species('H2').mols
+        if isinstance(device.first_input_containing_name('h2 rich gas'), species.Species):
+            input_h2_mols = device.first_input_containing_name('h2 rich gas').mols
+        elif isinstance(device.first_input_containing_name('h2 rich gas'), species.Mixture):
+            input_h2_mols = device.first_input_containing_name('h2 rich gas').species('H2').mols
         else:
             raise TypeError("Error: Unknown type for h2 rich gas input")
         
-        if isinstance(device.outputs['h2 rich gas'], species.Species):
-            output_h2_mols = device.outputs['h2 rich gas'].mols
-        elif isinstance(device.outputs['h2 rich gas'], species.Mixture):
-            output_h2_mols = device.outputs['h2 rich gas'].species('H2').mols
+        if isinstance(device.first_output_containing_name('h2 rich gas'), species.Species):
+            output_h2_mols = device.first_output_containing_name('h2 rich gas').mols
+        elif isinstance(device.first_output_containing_name('h2 rich gas'), species.Mixture):
+            output_h2_mols = device.first_output_containing_name('h2 rich gas').species('H2').mols
         else:
             raise TypeError("Error: Unknown type for h2 rich gas input")
         
@@ -817,6 +827,156 @@ def add_electrolysis_flows(system: System):
     # 25 deg. There is also the energy required to heat the species to the
     # specified output temp. For simplicity, we assume no losses here.
     electrolyser.inputs['electricity'].energy += (electrolyser.thermal_energy_balance())
+
+def merge_join_flows(system: System, join_device_name: str):
+    """
+    Call once the input flows have been calculated. SO ANNOYING! THIS NEW CODE SHOULD BE BETTER!!
+    CALLBAK SYSTEM? ANYTIME AN INPUT CHANGES, RECAlC THE OUTPUTS?? PROBABLY. COULD DO THIS FOR EVERY
+    DEVICE, THEN THE CALL ORDER DOESN'T NEED TO BE SO STRICT, CAN DO A CONVERGENCE THING.
+    MIGHT BE A LITTLE COMPLICATED.
+    THIS FUNCTION IS GROSS!!!
+    """
+    device = system.devices[join_device_name]
+    assert len(device.outputs) == 1
+    output_flow_name = list(device.outputs.keys())[0]
+
+    if isinstance(device.outputs[output_flow_name], species.Species):
+
+        # pretty disgusting here. 
+        tmp_mixture = species.Mixture("temp", [])
+        device.outputs[output_flow_name].mols = 0
+        for flow in device.inputs.values():
+            assert isinstance(flow, species.Species)
+            assert flow.mm == device.outputs[output_flow_name].mm
+            tmp_mixture.merge(flow)
+        assert tmp_mixture.num_species() == 1
+        device.outputs[output_flow_name].mols = tmp_mixture._species[0]
+            
+    elif isinstance(device.outputs[0], species.Mixture):
+        device.outputs[output_flow_name]._species = [] # clear the ouput
+        for flow in device.inputs.values():
+            device.outputs[output_flow_name].merge(flow)
+    else:
+        raise Exception(f"un supported type {type(device.outputs[0])}")
+
+def add_heat_exchanger_flows(system: System):
+    """
+    TODO: Should be able to simplify this function alot.
+          start by using the .cp() built in method. 
+
+    ANNOYING CIRCULAR DEPENDENCY BETWEEN THE CONDENSER AND THE HEAT EXCHANGER
+    NEITHER OF THEM KNOW THE MASS OF THE RECYCLED GAS... GO BACK TO GETTING IT 
+    FROM THE H2 LOOPS? TODO START FROM HERE START FROM HERE START FROM HERE!!! 
+          
+
+    May need to use two heat exchangers. It is unclear if the top gas from
+    the plasma reactor in the hybrid system can be used as a reducing gas
+    for the fluidized bed section. May need two heat exchangers. 
+    The same goes for the top has of the EAF in the fluidized bed, but this
+    is not assumed to be the case. (so a bit of asymmetry here)
+    """
+    heat_exchanger_device_name = 'h2 heat exchanger'
+
+    # The maximum possible efficiency. Actual efficiency can be lower,
+    # if required cold gas exit temp is higher than the inlet hot gas temp.
+    heat_exchanger_eff = 0.9
+    
+
+    # We should be able to simplify this??
+    # Since the system has shared objects now, we can just get the gas flows from the heat exchanger
+    heat_exchanger = system.devices[heat_exchanger_device_name]
+    hot_gas_in = heat_exchanger.inputs['recycled h2 rich gas']
+    cold_gas_in = heat_exchanger.inputs['h2 rich gas']
+
+    initial_hot_gas_temp = hot_gas_in.temp_kelvin
+    initial_cold_gas_temp = celsius_to_kelvin(70) # temp from electrolysis and condenser
+    cold_gas_in.temp_kelvin = initial_cold_gas_temp
+
+    # temp before the condenser. MIGHT BE ABLE TO GO LOWER, BUT NEED TO CHANGE THE 
+    # PHASE CHANGE TEMPERATURE OF THE WATER
+    final_hot_gas_temp = celsius_to_kelvin(101.0)
+    if final_hot_gas_temp > initial_hot_gas_temp:
+        raise ValueError("Heat exchanger hot gas exit temp is higher than the inlet temp")
+    heat_exchanged = -hot_gas_in.heat_energy(final_hot_gas_temp) * heat_exchanger_eff
+    hot_gas_in.temp_kelvin = final_hot_gas_temp
+    heat_exchanger.outputs['recycled h2 rich gas'].set(hot_gas_in)
+
+    # Get the initial estimate of the exit temp of the cold gas. This initial estimate assumes
+    # that the heat capacity is constant over the temp range, which is in general not the case,
+    # so we need to do some iterative calculations.
+    mols_times_molar_heat_capacity = cold_gas_in.heat_energy(cold_gas_in.temp_kelvin + 1)
+    final_cold_gas_temp = cold_gas_in.temp_kelvin + heat_exchanged / (mols_times_molar_heat_capacity)
+    cold_gas_in.temp_kelvin = final_cold_gas_temp 
+
+    # adjust the final cold gas temp iterativly to reduce error caused by assuming the
+    # molar heat capcity is constant.
+    # TODO reduce repetition with the Mixture::merge function.
+    i = 0
+    max_iter = 100
+    while True:
+        mols_times_molar_heat_capacity = cold_gas_in.heat_energy(cold_gas_in.temp_kelvin + 1)
+
+        energy_gained_by_cold_gas = -cold_gas_in.heat_energy(initial_cold_gas_temp)
+        energy_lost_by_hot_gas = heat_exchanged
+        assert energy_gained_by_cold_gas >= 0 and energy_lost_by_hot_gas >= 0
+        
+        if abs((energy_gained_by_cold_gas - energy_lost_by_hot_gas) / energy_gained_by_cold_gas) < 1e-12:
+            break
+
+        dH = energy_lost_by_hot_gas - energy_gained_by_cold_gas
+        dT = dH / mols_times_molar_heat_capacity
+        cold_gas_in.temp_kelvin += dT
+        i += 1
+        if i > max_iter:
+            raise Exception(f'Heat exchanger cold gas exit temp calc did not converge after {max_iter} iterations')
+
+    heat_exchanger.outputs['h2 rich gas'].set(cold_gas_in)
+
+    # Cold gas cannot exceed the temp of the hot gas
+    if cold_gas_in.temp_kelvin  > initial_hot_gas_temp:
+        cold_gas_in.temp_kelvin = initial_hot_gas_temp
+
+    
+    energy_gained_by_cold_gas = -cold_gas_in.heat_energy(initial_cold_gas_temp)
+    energy_lost_by_hot_gas = hot_gas_in.heat_energy(initial_hot_gas_temp)
+    print(f"System = {system.name}")
+    print(f"  Target Efficiency = {heat_exchanger_eff * 100}")
+    print(f"  Actual Efficiency = {100 + (energy_gained_by_cold_gas - energy_lost_by_hot_gas)/energy_lost_by_hot_gas * 100}")
+    
+    heat_exchanger.add_thermal_losses(-heat_exchanger.thermal_energy_balance())
+
+def add_condenser_and_scrubber_flows(system: System):
+    condenser_device_name: str = ""
+    heat_exchanger_device_name: str = ""
+    condenser = system.devices[condenser_device_name]
+    heat_exchanger = system.devices[heat_exchanger_device_name]
+
+    condenser_in_gas = copy.deepcopy(heat_exchanger.mass_out['hot gas out'])
+    condenser_in_gas.name = 'gas in'
+    condenser.add_mass_in(condenser_in_gas)
+
+    condenser_temp = celsius_to_kelvin(70)
+
+    h2_out = copy.deepcopy(condenser_in_gas.species('H2'))
+    h2_out.temp_kelvin = condenser_temp
+    h2o_out = copy.deepcopy(condenser_in_gas.species('H2O'))
+    h2o_out.temp_kelvin = condenser_temp
+    condenser.add_mass_out(h2_out)
+    condenser.add_mass_out(h2o_out)
+
+    try:
+        co_out = copy.deepcopy(condenser_in_gas.species('CO'))
+        co2_out = copy.deepcopy(condenser_in_gas.species('CO2'))
+        carbon_mixture = species.Mixture('carbon gas', [co_out, co2_out])
+        carbon_mixture.temp_kelvin = condenser_temp
+        condenser.add_mass_out(carbon_mixture)
+    except:
+        # no carbon species in the iron making off gas
+        pass
+
+    # We imagine that we don't recover useful energy from the
+    # condenser, and everything is thermal loss
+    condenser.add_thermal_losses(-condenser.thermal_energy_balance())
 
 if __name__ == '__main__':
     main()

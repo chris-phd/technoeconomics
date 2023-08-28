@@ -180,7 +180,7 @@ class Mixture:
             mass += species.mass
         return mass
 
-    # Should make this a dict, so that the interface is consistent
+    # TODO: Should make this a dict, so that the interface is consistent
     # with the mass in and mass out of the Species class.
     def species(self, species_name) -> Species:
         for species in self._species:
@@ -191,7 +191,7 @@ class Mixture:
     def num_species(self) -> int:
         return len(self._species)
 
-    def merge(self, mixture):
+    def merge(self, mixture_or_species):
         """
         Combines mixtures and calculates the new temperature based on thermodynamic mixing.
         That is, total enthalpy before and after mixing is constant.  
@@ -201,9 +201,12 @@ class Mixture:
         total_mols_times_molar_heat_capacity = 0.0
         ref_temp = 298.0 
 
+        if isinstance(mixture_or_species, Species):
+            mixture_or_species = Mixture('tmp', [mixture_or_species])
+
         self_initial = copy.deepcopy(self)
 
-        for s in self._species + mixture._species:
+        for s in self._species + mixture_or_species._species:
             if s.name in new_species:
                 new_species[s.name].mols += s.mols
             else:
@@ -229,7 +232,7 @@ class Mixture:
         while True:
             mols_times_molar_heat_capacity = self.heat_energy(self.temp_kelvin + 1)
 
-            energy_in_input_mixtures = -self_initial.heat_energy(ref_temp) - mixture.heat_energy(ref_temp)
+            energy_in_input_mixtures = -self_initial.heat_energy(ref_temp) - mixture_or_species.heat_energy(ref_temp)
             energy_in_output_mixtures = -self.heat_energy(ref_temp)
             assert energy_in_input_mixtures >= 0 and energy_in_output_mixtures >= 0
 

@@ -78,10 +78,42 @@ class Device:
         return self._outputs
 
     def add_input(self, flow: Union[Species, Mixture, EnergyFlow]):
+        if flow.name in self._inputs:
+            raise ValueError(f"Input flow with name {flow.name} already exists")
         self._inputs[flow.name] = flow
     
     def add_output(self, flow: Union[Species, Mixture, EnergyFlow]):
+        if flow.name in self._outputs:
+            raise ValueError(f"Output flow with name {flow.name} already exists")
         self._outputs[flow.name] = flow
+
+    def outputs_containing_name(self, name: str):
+        """
+        Returns a list of the output flow names the given string.
+        """
+        return [key for key in self._outputs.keys() if name in key]
+    
+    def first_output_containing_name(self, name: str):
+        flow_names = self.outputs_containing_name(name)
+        if len(flow_names) == 0:
+            raise ValueError(f"No output flows containing {name} found")
+        elif len(flow_names) > 1:
+            raise ValueError(f"Multiple output flows containing {name} found") # tmp to find where this is happening
+        return self._outputs[flow_names[0]]
+
+    def inputs_containing_name(self, name: str):
+        """
+        Returns a list of the input flow names the given string.
+        """
+        return [key for key in self._inputs.keys() if name in key]
+
+    def first_input_containing_name(self, name: str):
+        flow_names = self.inputs_containing_name(name)
+        if len(flow_names) == 0:
+            raise ValueError(f"No input flows containing {name} found")
+        elif len(flow_names) > 1:
+            raise ValueError(f"Multiple input flows containing {name} found")
+        return self._inputs[flow_names[0]]
 
     def thermal_energy_balance(self):
         ref_temp = celsius_to_kelvin(25)
