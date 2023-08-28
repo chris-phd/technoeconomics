@@ -201,6 +201,8 @@ class Mixture:
         total_mols_times_molar_heat_capacity = 0.0
         ref_temp = 298.0 
 
+        if math.isclose(mixture_or_species.mass, 0):
+            return # no need to merge
         if isinstance(mixture_or_species, Species):
             mixture_or_species = Mixture('tmp', [mixture_or_species])
 

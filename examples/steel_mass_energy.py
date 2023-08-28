@@ -55,8 +55,11 @@ def add_plasma_mass_and_energy(system: System):
     add_plasma_flows_final(system)
     add_electrolysis_flows(system)
     merge_join_flows(system, 'join 1')
-    add_heat_exchanger_flows(system)
-    # add_condenser_and_scrubber_flows(system)
+    add_heat_exchanger_flows_initial(system)
+    add_condenser_and_scrubber_flows_initial(system)
+    merge_join_flows(system, 'join 1')
+    add_heat_exchanger_flows_final(system)
+    add_condenser_and_scrubber_flows_final(system)
 
 
 def add_dri_eaf_mass_and_energy(system: System):
@@ -70,8 +73,11 @@ def add_dri_eaf_mass_and_energy(system: System):
     add_eaf_flows_final(system)
     add_electrolysis_flows(system)
     merge_join_flows(system, 'join 1')
-    add_heat_exchanger_flows(system)
-    # add_condenser_and_scrubber_flows(system)
+    add_heat_exchanger_flows_initial(system)
+    add_condenser_and_scrubber_flows_initial(system)
+    merge_join_flows(system, 'join 1')
+    add_heat_exchanger_flows_final(system)
+    add_condenser_and_scrubber_flows_final(system)
 
 
 def add_hybrid_mass_and_energy(system: System):
@@ -86,8 +92,12 @@ def add_hybrid_mass_and_energy(system: System):
     add_electrolysis_flows(system)
     merge_join_flows(system, 'join 1')
     merge_join_flows(system, 'join 3')
-    add_heat_exchanger_flows(system)
-    # add_condenser_and_scrubber_flows(system)
+    add_heat_exchanger_flows_initial(system)
+    add_condenser_and_scrubber_flows_initial(system)
+    merge_join_flows(system, 'join 1')
+    merge_join_flows(system, 'join 3')
+    add_heat_exchanger_flows_final(system)
+    add_condenser_and_scrubber_flows_final(system)
 
 
 def verify_system_vars(system: System):
@@ -619,7 +629,7 @@ def add_plasma_flows_final(system: System):
     # remaining in iron oxide, compared to the mass of oxygen in the iron oxide at the very start of the process.
     reduction_degree = system.system_vars['plasma reduction percent'] * 0.01
     reaction_temp = system.system_vars['plasma reaction temp K']
-    excess_h2_ratio = system.system_vars['plasma reduction percent']
+    excess_h2_ratio = system.system_vars['plasma h2 excess ratio']
     steelmaking_device_name = system.system_vars['steelmaking device name']
     steelmaking_device = system.devices[steelmaking_device_name]
     first_ironmaking_device_name = system.system_vars['ironmaking device names'][0]
@@ -834,7 +844,8 @@ def merge_join_flows(system: System, join_device_name: str):
     CALLBAK SYSTEM? ANYTIME AN INPUT CHANGES, RECAlC THE OUTPUTS?? PROBABLY. COULD DO THIS FOR EVERY
     DEVICE, THEN THE CALL ORDER DOESN'T NEED TO BE SO STRICT, CAN DO A CONVERGENCE THING.
     MIGHT BE A LITTLE COMPLICATED.
-    THIS FUNCTION IS GROSS!!!
+    THIS FUNCTION IS GROSS!!! 
+    Also only really handles merges, not divigers.
     """
     device = system.devices[join_device_name]
     assert len(device.outputs) == 1
@@ -847,27 +858,37 @@ def merge_join_flows(system: System, join_device_name: str):
         device.outputs[output_flow_name].mols = 0
         for flow in device.inputs.values():
             assert isinstance(flow, species.Species)
-            assert flow.mm == device.outputs[output_flow_name].mm
             tmp_mixture.merge(flow)
         assert tmp_mixture.num_species() == 1
-        device.outputs[output_flow_name].mols = tmp_mixture._species[0]
+        device.outputs[output_flow_name].set(tmp_mixture._species[0])
             
-    elif isinstance(device.outputs[0], species.Mixture):
+    elif isinstance(device.outputs[output_flow_name], species.Mixture):
         device.outputs[output_flow_name]._species = [] # clear the ouput
         for flow in device.inputs.values():
             device.outputs[output_flow_name].merge(flow)
     else:
-        raise Exception(f"un supported type {type(device.outputs[0])}")
+        raise Exception(f"unsupported type {type(device.outputs[0])}")
 
-def add_heat_exchanger_flows(system: System):
+def add_heat_exchanger_flows_initial(system: System):
+    """
+    Adds the mass flows so that the correct masses are ready for condenser and scrubber intial
+    """
+    heat_exchanger_device_name = 'h2 heat exchanger'
+    system.devices[heat_exchanger_device_name].outputs['recycled h2 rich gas'].set(system.devices[heat_exchanger_device_name].inputs['recycled h2 rich gas'])
+    system.devices[heat_exchanger_device_name].inputs['h2 rich gas'].set(system.devices[heat_exchanger_device_name].inputs['h2 rich gas'])
+
+
+def add_condenser_and_scrubber_flows_initial(system: System):
+    """
+    Add the mass flows so that the correct masses are ready for the heat exchanger energy balance
+    """
+    condenser_device_name = 'condenser and scrubber'
+    system.devices[condenser_device_name].outputs['recycled h2 rich gas'].set(system.devices[condenser_device_name].inputs['recycled h2 rich gas'].species('H2'))
+
+def add_heat_exchanger_flows_final(system: System):
     """
     TODO: Should be able to simplify this function alot.
           start by using the .cp() built in method. 
-
-    ANNOYING CIRCULAR DEPENDENCY BETWEEN THE CONDENSER AND THE HEAT EXCHANGER
-    NEITHER OF THEM KNOW THE MASS OF THE RECYCLED GAS... GO BACK TO GETTING IT 
-    FROM THE H2 LOOPS? TODO START FROM HERE START FROM HERE START FROM HERE!!! 
-          
 
     May need to use two heat exchangers. It is unclear if the top gas from
     the plasma reactor in the hybrid system can be used as a reducing gas
@@ -880,13 +901,25 @@ def add_heat_exchanger_flows(system: System):
     # The maximum possible efficiency. Actual efficiency can be lower,
     # if required cold gas exit temp is higher than the inlet hot gas temp.
     heat_exchanger_eff = 0.9
-    
 
     # We should be able to simplify this??
     # Since the system has shared objects now, we can just get the gas flows from the heat exchanger
     heat_exchanger = system.devices[heat_exchanger_device_name]
     hot_gas_in = heat_exchanger.inputs['recycled h2 rich gas']
     cold_gas_in = heat_exchanger.inputs['h2 rich gas']
+
+    # Not ideal to use the hydrogen loops, but there is an annoying circular dependency
+    # between the condenser and the heat exchanger - neither know the mass of the recucled
+    # h2 at this point in time. IS THIS RIGHT?? WE KNOW HOW MUCH H2 IS CONSUMED IN THE ELECTROLYSIS 
+    # SECTION..
+    # hydrogen_consuming_loops = system.system_vars['hydrogen loops']
+    # hot_gas_in = species.Mixture('hot recycled h2 rich gas', [])
+    # cold_gas_in = species.Mixture('cold h2 rich gas', [])
+    # for device_name in [loop[0] for loop in hydrogen_consuming_loops]:
+    #     hot_gas_in.merge(system.devices[device_name].first_output_containing_name('h2 rich gas'))
+        
+    # for device_name in [loop[-1] for loop in hydrogen_consuming_loops]:
+    #     cold_gas_in.merge(system.devices[device_name].first_input_containing_name('h2 rich gas'))
 
     initial_hot_gas_temp = hot_gas_in.temp_kelvin
     initial_cold_gas_temp = celsius_to_kelvin(70) # temp from electrolysis and condenser
@@ -930,6 +963,8 @@ def add_heat_exchanger_flows(system: System):
         if i > max_iter:
             raise Exception(f'Heat exchanger cold gas exit temp calc did not converge after {max_iter} iterations')
 
+    # assert cold_gas_in.num_species() == 1, "Just a hack, since the line below assumes all the gas is H2." + \
+    #                                        "Need to improve interoperability between Species and Mixture"
     heat_exchanger.outputs['h2 rich gas'].set(cold_gas_in)
 
     # Cold gas cannot exceed the temp of the hot gas
@@ -943,40 +978,39 @@ def add_heat_exchanger_flows(system: System):
     print(f"  Target Efficiency = {heat_exchanger_eff * 100}")
     print(f"  Actual Efficiency = {100 + (energy_gained_by_cold_gas - energy_lost_by_hot_gas)/energy_lost_by_hot_gas * 100}")
     
-    heat_exchanger.add_thermal_losses(-heat_exchanger.thermal_energy_balance())
+    thermal_losses = EnergyFlow('losses', -heat_exchanger.thermal_energy_balance())
+    heat_exchanger.outputs['losses'].set(thermal_losses)
 
-def add_condenser_and_scrubber_flows(system: System):
-    condenser_device_name: str = ""
-    heat_exchanger_device_name: str = ""
+def add_condenser_and_scrubber_flows_final(system: System):
+    condenser_device_name: str = 'condenser and scrubber'
+    heat_exchanger_device_name: str = 'h2 heat exchanger'
     condenser = system.devices[condenser_device_name]
-    heat_exchanger = system.devices[heat_exchanger_device_name]
 
-    condenser_in_gas = copy.deepcopy(heat_exchanger.mass_out['hot gas out'])
-    condenser_in_gas.name = 'gas in'
-    condenser.add_mass_in(condenser_in_gas)
+    system.devices[condenser_device_name].outputs['recycled h2 rich gas'].set(system.devices[condenser_device_name].inputs['recycled h2 rich gas'].species('H2'))
 
+
+    condenser_in_gas = system.devices[condenser_device_name].inputs['recycled h2 rich gas']
     condenser_temp = celsius_to_kelvin(70)
 
-    h2_out = copy.deepcopy(condenser_in_gas.species('H2'))
-    h2_out.temp_kelvin = condenser_temp
+    system.devices[condenser_device_name].outputs['recycled h2 rich gas'].temp_kelvin = condenser_temp
     h2o_out = copy.deepcopy(condenser_in_gas.species('H2O'))
     h2o_out.temp_kelvin = condenser_temp
-    condenser.add_mass_out(h2_out)
-    condenser.add_mass_out(h2o_out)
+    condenser.outputs['h2o'].set(h2o_out)
 
     try:
         co_out = copy.deepcopy(condenser_in_gas.species('CO'))
         co2_out = copy.deepcopy(condenser_in_gas.species('CO2'))
         carbon_mixture = species.Mixture('carbon gas', [co_out, co2_out])
         carbon_mixture.temp_kelvin = condenser_temp
-        condenser.add_mass_out(carbon_mixture)
+        condenser.outputs['co co2'].set(carbon_mixture)
     except:
         # no carbon species in the iron making off gas
         pass
 
     # We imagine that we don't recover useful energy from the
     # condenser, and everything is thermal loss
-    condenser.add_thermal_losses(-condenser.thermal_energy_balance())
+    thermal_losses = EnergyFlow('losses', -condenser.thermal_energy_balance())
+    condenser.outputs['losses'].set(thermal_losses)
 
 if __name__ == '__main__':
     main()
