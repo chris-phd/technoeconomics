@@ -62,6 +62,7 @@ def add_plasma_mass_and_energy(system: System):
     add_heat_exchanger_flows_final(system)
     add_condenser_and_scrubber_flows_final(system)
     merge_join_flows(system, 'join 1')
+    adjust_plasma_energy_flow(system)
 
 
 def add_dri_eaf_mass_and_energy(system: System):
@@ -104,6 +105,7 @@ def add_hybrid_mass_and_energy(system: System):
     add_condenser_and_scrubber_flows_final(system)
     merge_join_flows(system, 'join 1')
     merge_join_flows(system, 'join 3')
+    adjust_plasma_energy_flow(system)
 
 
 def verify_system_vars(system: System):
@@ -640,6 +642,7 @@ def add_plasma_flows_final(system: System):
     steelmaking_device = system.devices[steelmaking_device_name]
     first_ironmaking_device_name = system.system_vars['ironmaking device names'][0]
     ore_composition_simple = system.system_vars['ore composition simple']
+    steel_bath_temp = system.system_vars['steel exit temp K']
 
 
     # the plasma smelter can use hbi or ore fines.
@@ -753,7 +756,7 @@ def add_plasma_flows_final(system: System):
     co2.mols = num_co2_reactions
     off_gas = species.Mixture('off gas', [co, co2, h2o, h2_excess])
     off_gas.temp_kelvin = reaction_temp
-    steelmaking_device.first_output_containing_name('h2 rich gas').set(off_gas) # should maybe name this better. not just h2
+    steelmaking_device.first_output_containing_name('h2 rich gas').set(off_gas)
 
     # IGNORE LOSSES FROM INFILTRATED AIR, BECAUSE WE NEED TO HEAT RECOVER THE OFF GAS
     # OPTIMISTICALLY ASSUME THE PLASMA SMELTER IS PRETTY MUCH AIR TIGHT / CONTROLLED ATMOSPHERE. 
@@ -777,7 +780,7 @@ def add_plasma_flows_final(system: System):
     capacity_tonnes = 180*0.5 
     tap_to_tap_secs = 60*60*0.5
     radiation_losses = steelsurface_radiation_losses(np.pi*(plasma_surface_radius)**2, 
-                                                     reaction_temp, celsius_to_kelvin(25),
+                                                     steel_bath_temp, celsius_to_kelvin(25),
                                                      capacity_tonnes, tap_to_tap_secs)
     radiation_losses += hydrogen_plasma_radiation_losses()
     steelmaking_device.outputs['losses'].energy += radiation_losses + conduction_losses
@@ -785,6 +788,7 @@ def add_plasma_flows_final(system: System):
     # Increase the electrical energy to balance the thermal losses 
     steelmaking_device.inputs['electricity'].energy += radiation_losses + conduction_losses
     print(f"Total energy = {steelmaking_device.inputs['electricity'].energy*2.77778e-7:.2e} kWh")
+
 
 def add_electrolysis_flows(system: System):
     water_input_temp = celsius_to_kelvin(25)
@@ -844,6 +848,7 @@ def add_electrolysis_flows(system: System):
     # specified output temp. For simplicity, we assume no losses here.
     electrolyser.inputs['electricity'].energy += (electrolyser.thermal_energy_balance())
 
+
 def merge_join_flows(system: System, join_device_name: str):
     """
     Call once the input flows have been calculated. SO ANNOYING! THIS NEW CODE SHOULD BE BETTER!!
@@ -875,6 +880,7 @@ def merge_join_flows(system: System, join_device_name: str):
     else:
         raise Exception(f"unsupported type {type(device.outputs[0])}")
 
+
 def add_heat_exchanger_flows_initial(system: System):
     """
     Adds the mass flows so that the correct masses are ready for condenser and scrubber intial
@@ -890,6 +896,7 @@ def add_condenser_and_scrubber_flows_initial(system: System):
     """
     condenser_device_name = 'condenser and scrubber'
     system.devices[condenser_device_name].outputs['recycled h2 rich gas'].set(system.devices[condenser_device_name].inputs['recycled h2 rich gas'].species('H2'))
+
 
 def add_heat_exchanger_flows_final(system: System):
     """
@@ -978,6 +985,7 @@ def add_heat_exchanger_flows_final(system: System):
     thermal_losses = EnergyFlow('losses', -heat_exchanger.thermal_energy_balance())
     heat_exchanger.outputs['losses'].set(thermal_losses)
 
+
 def add_condenser_and_scrubber_flows_final(system: System):
     condenser_device_name: str = 'condenser and scrubber'
     condenser = system.devices[condenser_device_name]
@@ -1007,6 +1015,23 @@ def add_condenser_and_scrubber_flows_final(system: System):
     # condenser, and everything is thermal loss
     thermal_losses = EnergyFlow('losses', -condenser.thermal_energy_balance())
     condenser.outputs['losses'].set(thermal_losses)
+
+
+def adjust_plasma_energy_flow(system: System):
+    """
+    Can reduce the energy requirements after the heat exchanger energy has been calculated.
+    """
+    device_name = system.system_vars['steelmaking device name']
+
+    energy_balance = system.devices[device_name].energy_balance()
+    if energy_balance > 0.000001:
+        # unexpected, would expect inputs to be greater than inputs after recovering some heat from
+        # the heat exchanger
+        raise Exception('Expected negative or zero energy balance in the plasma smelter before adjustment')
+
+    system.devices[device_name].inputs['electricity'].energy += energy_balance
+    assert system.devices[device_name].inputs['electricity'], "electricity draw must be positive"
+
 
 if __name__ == '__main__':
     main()
