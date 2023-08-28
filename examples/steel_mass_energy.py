@@ -39,9 +39,10 @@ def main():
     add_hybrid_mass_and_energy(hybrid33_system)
     add_hybrid_mass_and_energy(hybrid95_system)
 
+    pass
     # print(plasma_system)
     # print(dri_eaf_system)
-    print(hybrid33_system)
+    # print(hybrid33_system)
     # print(hybrid95_system)
 
 
@@ -60,6 +61,7 @@ def add_plasma_mass_and_energy(system: System):
     merge_join_flows(system, 'join 1')
     add_heat_exchanger_flows_final(system)
     add_condenser_and_scrubber_flows_final(system)
+    merge_join_flows(system, 'join 1')
 
 
 def add_dri_eaf_mass_and_energy(system: System):
@@ -78,6 +80,8 @@ def add_dri_eaf_mass_and_energy(system: System):
     merge_join_flows(system, 'join 1')
     add_heat_exchanger_flows_final(system)
     add_condenser_and_scrubber_flows_final(system)
+    merge_join_flows(system, 'join 1')
+
 
 
 def add_hybrid_mass_and_energy(system: System):
@@ -98,6 +102,8 @@ def add_hybrid_mass_and_energy(system: System):
     merge_join_flows(system, 'join 3')
     add_heat_exchanger_flows_final(system)
     add_condenser_and_scrubber_flows_final(system)
+    merge_join_flows(system, 'join 1')
+    merge_join_flows(system, 'join 3')
 
 
 def verify_system_vars(system: System):
@@ -897,33 +903,21 @@ def add_heat_exchanger_flows_final(system: System):
     is not assumed to be the case. (so a bit of asymmetry here)
     """
     heat_exchanger_device_name = 'h2 heat exchanger'
+    heat_exchanger = system.devices[heat_exchanger_device_name]
 
     # The maximum possible efficiency. Actual efficiency can be lower,
     # if required cold gas exit temp is higher than the inlet hot gas temp.
     heat_exchanger_eff = 0.9
 
+    # temp from electrolysis and condenser
+    initial_cold_gas_temp = celsius_to_kelvin(70)
+    heat_exchanger.inputs['h2 rich gas'].temp_kelvin = initial_cold_gas_temp
+
     # We should be able to simplify this??
     # Since the system has shared objects now, we can just get the gas flows from the heat exchanger
-    heat_exchanger = system.devices[heat_exchanger_device_name]
-    hot_gas_in = heat_exchanger.inputs['recycled h2 rich gas']
-    cold_gas_in = heat_exchanger.inputs['h2 rich gas']
-
-    # Not ideal to use the hydrogen loops, but there is an annoying circular dependency
-    # between the condenser and the heat exchanger - neither know the mass of the recucled
-    # h2 at this point in time. IS THIS RIGHT?? WE KNOW HOW MUCH H2 IS CONSUMED IN THE ELECTROLYSIS 
-    # SECTION..
-    # hydrogen_consuming_loops = system.system_vars['hydrogen loops']
-    # hot_gas_in = species.Mixture('hot recycled h2 rich gas', [])
-    # cold_gas_in = species.Mixture('cold h2 rich gas', [])
-    # for device_name in [loop[0] for loop in hydrogen_consuming_loops]:
-    #     hot_gas_in.merge(system.devices[device_name].first_output_containing_name('h2 rich gas'))
-        
-    # for device_name in [loop[-1] for loop in hydrogen_consuming_loops]:
-    #     cold_gas_in.merge(system.devices[device_name].first_input_containing_name('h2 rich gas'))
-
+    hot_gas_in = copy.deepcopy(heat_exchanger.inputs['recycled h2 rich gas'])
+    cold_gas_in = copy.deepcopy(heat_exchanger.inputs['h2 rich gas'])
     initial_hot_gas_temp = hot_gas_in.temp_kelvin
-    initial_cold_gas_temp = celsius_to_kelvin(70) # temp from electrolysis and condenser
-    cold_gas_in.temp_kelvin = initial_cold_gas_temp
 
     # temp before the condenser. MIGHT BE ABLE TO GO LOWER, BUT NEED TO CHANGE THE 
     # PHASE CHANGE TEMPERATURE OF THE WATER
@@ -936,7 +930,7 @@ def add_heat_exchanger_flows_final(system: System):
 
     # Get the initial estimate of the exit temp of the cold gas. This initial estimate assumes
     # that the heat capacity is constant over the temp range, which is in general not the case,
-    # so we need to do some iterative calculations.
+    # so we need to do some iterative calculations. replace this with cp()
     mols_times_molar_heat_capacity = cold_gas_in.heat_energy(cold_gas_in.temp_kelvin + 1)
     final_cold_gas_temp = cold_gas_in.temp_kelvin + heat_exchanged / (mols_times_molar_heat_capacity)
     cold_gas_in.temp_kelvin = final_cold_gas_temp 
@@ -974,16 +968,18 @@ def add_heat_exchanger_flows_final(system: System):
     
     energy_gained_by_cold_gas = -cold_gas_in.heat_energy(initial_cold_gas_temp)
     energy_lost_by_hot_gas = hot_gas_in.heat_energy(initial_hot_gas_temp)
-    print(f"System = {system.name}")
-    print(f"  Target Efficiency = {heat_exchanger_eff * 100}")
-    print(f"  Actual Efficiency = {100 + (energy_gained_by_cold_gas - energy_lost_by_hot_gas)/energy_lost_by_hot_gas * 100}")
+    # print(f"System = {system.name}")
+    # print(f"  Target Efficiency = {heat_exchanger_eff * 100}")
+    # print(f"  Actual Efficiency = {100 + (energy_gained_by_cold_gas - energy_lost_by_hot_gas)/energy_lost_by_hot_gas * 100}")
     
+    hot_gas_in = heat_exchanger.inputs['recycled h2 rich gas']
+    cold_gas_in = heat_exchanger.inputs['h2 rich gas']
+
     thermal_losses = EnergyFlow('losses', -heat_exchanger.thermal_energy_balance())
     heat_exchanger.outputs['losses'].set(thermal_losses)
 
 def add_condenser_and_scrubber_flows_final(system: System):
     condenser_device_name: str = 'condenser and scrubber'
-    heat_exchanger_device_name: str = 'h2 heat exchanger'
     condenser = system.devices[condenser_device_name]
 
     system.devices[condenser_device_name].outputs['recycled h2 rich gas'].set(system.devices[condenser_device_name].inputs['recycled h2 rich gas'].species('H2'))
