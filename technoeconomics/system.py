@@ -296,3 +296,17 @@ class System:
         else:
             filename = self._name.replace(" ", "_")
             self._graph_dot.render(directory=output_directory, view=view, filename=filename)
+
+    def devices_containing_name(self, name: str):
+        """
+        Returns a list of the device names containing the given string.
+        """
+        device_names = []
+        for key in self._devices.keys():
+            if name not in key:
+                continue
+            if self._input_node_suffix in key or self._output_node_suffix in key:
+                continue
+            device_names.append(key)
+
+        return device_names

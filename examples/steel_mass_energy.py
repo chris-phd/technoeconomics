@@ -39,11 +39,10 @@ def main():
     add_hybrid_mass_and_energy(hybrid33_system)
     add_hybrid_mass_and_energy(hybrid95_system)
 
-    pass
-    # print(plasma_system)
-    # print(dri_eaf_system)
-    # print(hybrid33_system)
-    # print(hybrid95_system)
+    print(plasma_system)
+    print(dri_eaf_system)
+    print(hybrid33_system)
+    print(hybrid95_system)
 
 
 # Mass and Energy Flows - System Level
@@ -62,7 +61,7 @@ def add_plasma_mass_and_energy(system: System):
     add_heat_exchanger_flows_final(system)
     add_condenser_and_scrubber_flows_final(system)
     merge_join_flows(system, 'join 1')
-    adjust_plasma_energy_flow(system)
+    adjust_plasma_energy_flows(system)
 
 
 def add_dri_eaf_mass_and_energy(system: System):
@@ -82,7 +81,7 @@ def add_dri_eaf_mass_and_energy(system: System):
     add_heat_exchanger_flows_final(system)
     add_condenser_and_scrubber_flows_final(system)
     merge_join_flows(system, 'join 1')
-
+    add_h2_heater_flows(system)
 
 
 def add_hybrid_mass_and_energy(system: System):
@@ -105,7 +104,9 @@ def add_hybrid_mass_and_energy(system: System):
     add_condenser_and_scrubber_flows_final(system)
     merge_join_flows(system, 'join 1')
     merge_join_flows(system, 'join 3')
-    adjust_plasma_energy_flow(system)
+    balance_join2_flows(system)
+    adjust_plasma_energy_flows(system)
+    add_h2_heater_flows(system)
 
 
 def verify_system_vars(system: System):
@@ -881,6 +882,21 @@ def merge_join_flows(system: System, join_device_name: str):
         raise Exception(f"unsupported type {type(device.outputs[0])}")
 
 
+def balance_join2_flows(system: System):
+    """
+    Function specific to the join 2 device in the hybrid system. Not ideal
+    """
+    device = system.devices['join 2']
+
+    input_mass = device.inputs['h2 rich gas'].mass
+    plasma_mass = device.outputs['plasma h2 rich gas'].mass
+    h2_fluidized_beds = species.create_h2_species()
+    h2_fluidized_beds.mass = input_mass - plasma_mass
+    device.outputs['h2 rich gas'].set(h2_fluidized_beds)
+
+    device.outputs['plasma h2 rich gas'].temp_kelvin = device.inputs['h2 rich gas'].temp_kelvin
+    device.outputs['h2 rich gas'].temp_kelvin = device.inputs['h2 rich gas'].temp_kelvin
+
 def add_heat_exchanger_flows_initial(system: System):
     """
     Adds the mass flows so that the correct masses are ready for condenser and scrubber intial
@@ -1017,14 +1033,14 @@ def add_condenser_and_scrubber_flows_final(system: System):
     condenser.outputs['losses'].set(thermal_losses)
 
 
-def adjust_plasma_energy_flow(system: System):
+def adjust_plasma_energy_flows(system: System):
     """
     Can reduce the energy requirements after the heat exchanger energy has been calculated.
     """
     device_name = system.system_vars['steelmaking device name']
 
     energy_balance = system.devices[device_name].energy_balance()
-    if energy_balance > 0.000001:
+    if energy_balance > 1e-5:
         # unexpected, would expect inputs to be greater than inputs after recovering some heat from
         # the heat exchanger
         raise Exception('Expected negative or zero energy balance in the plasma smelter before adjustment')
@@ -1032,6 +1048,36 @@ def adjust_plasma_energy_flow(system: System):
     system.devices[device_name].inputs['electricity'].energy += energy_balance
     assert system.devices[device_name].inputs['electricity'], "electricity draw must be positive"
 
+
+# H2 heater energy requirements!!
+def add_h2_heater_flows(system: System):
+    h2_heaters = system.devices_containing_name('h2 heater')
+    if len(h2_heaters) == 0:
+        return
+    
+    for heater_name in h2_heaters:
+        if not math.isclose(system.devices[heater_name].mass_balance(), 0.0):
+            # adjust the mass balance
+            pass
+            output_gas = system.devices[heater_name].first_output_containing_name('h2 rich gas')
+            input_gas = system.devices[heater_name].first_input_containing_name('h2 rich gas')
+            if output_gas.mass > input_gas.mass:
+                system.devices[heater_name].first_input_containing_name('h2 rich gas').mass = output_gas.mass
+            else:
+                system.devices[heater_name].first_output_containing_name('h2 rich gas').mass = input_gas.mass
+
+
+        if not math.isclose(system.devices[heater_name].energy_balance(), 0.0):
+            efficiency = 0.98
+            required_thermal_energy = system.devices[heater_name].thermal_energy_balance()
+            if required_thermal_energy >= 0:
+                system.devices[heater_name].inputs['electricity'].energy += required_thermal_energy / efficiency
+                system.devices[heater_name].outputs['losses'].energy += required_thermal_energy * (1 - efficiency) / efficiency
+            else:
+                # the heat exchanger has given all the necessary heat
+                # cooling needs to take place. Add all as thermal losses
+                system.devices[heater_name].outputs['losses'].energy -= required_thermal_energy
+ 
 
 if __name__ == '__main__':
     main()
