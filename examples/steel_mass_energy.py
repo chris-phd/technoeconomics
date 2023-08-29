@@ -5,6 +5,7 @@ import sys
 import os
 import numpy as np
 import math
+import matplotlib.pyplot as plt
 from typing import Type, List, Union, Dict
 from steel_plants import create_plasma_system, create_dri_eaf_system, create_hybrid_system
 
@@ -39,10 +40,40 @@ def main():
     add_hybrid_mass_and_energy(hybrid33_system)
     add_hybrid_mass_and_energy(hybrid95_system)
 
-    print(plasma_system)
-    print(dri_eaf_system)
-    print(hybrid33_system)
-    print(hybrid95_system)
+    # print(plasma_system)
+    # print(dri_eaf_system)
+    # print(hybrid33_system)
+    # print(hybrid95_system)
+
+    # Create plots of the different pathways
+    systems = [plasma_system, dri_eaf_system, hybrid33_system, hybrid95_system]
+    system_names = [s.name for s in systems]
+
+    # Plot the energy flow
+    electricity_for_systems = [electricity_demand_per_major_device(s) for s in systems]
+    electricity_labels = []
+    for elec in electricity_for_systems:
+        electricity_labels += list(elec.keys())
+    electricity_labels = sorted(set(electricity_labels))
+    print(electricity_labels)
+
+    bottom = np.array([0.0] * len(systems))
+    _, energy_ax = plt.subplots()
+    for label in electricity_labels:
+        electricity_for_this_label = np.array([e[label] / 1e9 for e in electricity_for_systems])
+        energy_ax.bar(system_names, electricity_for_this_label, bottom=bottom, label=label)
+        bottom = bottom + electricity_for_this_label
+
+    energy_ax.set_ylabel('Energy (GJ)')
+    energy_ax.set_title('Electricity Demand / Tonne Liquid Steel')
+    energy_ax.legend(bbox_to_anchor = (1.0, 1.0), loc='upper left')
+    energy_ax.grid(axis='y', linestyle='--')
+
+    plt.show()
+
+
+
+
 
 
 # Mass and Energy Flows - System Level
@@ -1077,7 +1108,29 @@ def add_h2_heater_flows(system: System):
                 # the heat exchanger has given all the necessary heat
                 # cooling needs to take place. Add all as thermal losses
                 system.devices[heater_name].outputs['losses'].energy -= required_thermal_energy
- 
+
+
+def electricity_demand_per_major_device(system: System) -> Dict[str, float]:
+    electricity = {
+        '1. water electrolysis': system.devices['water electrolysis'].inputs.get('electricity', EnergyFlow(0.0)).energy,
+        '2. h2 heater': 0.0,
+        '3. ore heater': system.devices['ore heater'].inputs.get('electricity', EnergyFlow(0.0)).energy,
+        '4. plasma or eaf': 0.0,
+    }
+
+    h2_heaters = system.devices_containing_name('h2 heater')
+    for device_name in h2_heaters:
+        electricity['2. h2 heater'] += system.devices[device_name].inputs.get('electricity', EnergyFlow(0.0)).energy
+
+    if 'plasma smelter' in system.devices:
+        electricity['4. plasma or eaf'] += system.devices['plasma smelter'].inputs.get('electricity', EnergyFlow(0.0)).energy
+    elif 'eaf' in system.devices:
+        electricity['4. plasma or eaf'] += system.devices['eaf'].inputs.get('electricity', EnergyFlow(0.0)).energy
+    else:
+        raise Exception("Expected a device called 'plasma smelter' or 'eaf' in the steel making system")
+
+    return electricity
+
 
 if __name__ == '__main__':
     main()
