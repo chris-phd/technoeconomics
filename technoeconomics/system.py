@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import graphviz
-from typing import Optional, Type, Union
+from typing import Optional, Type, Union, Dict
 
 from technoeconomics.species import Species, Mixture
 from technoeconomics.utils import celsius_to_kelvin
@@ -310,3 +310,64 @@ class System:
             device_names.append(key)
 
         return device_names
+    
+    def system_inputs(self, ignore_flows_named=[], separate_mixtures_named=[]) -> Dict[str, float]:
+        """
+        Returns the mass of each input (kg) rather than the
+        species object.
+        """
+        inputs = {}
+        for device_name in self._devices.keys():
+            if self._input_node_suffix not in device_name:
+                continue
+            # Note; outputs of the dummy input devices are system inputs
+            for flow in self._devices[device_name].outputs.values():
+                if not (isinstance(flow, Species) or isinstance(flow, Mixture)):
+                    continue
+
+                if flow.name in ignore_flows_named:
+                    continue
+
+                if flow.name in separate_mixtures_named and isinstance(flow, Mixture):
+                    for species in flow._species:
+                        if species.name not in inputs:
+                            inputs[species.name] = 0.0
+                        inputs[species.name] += species.mass
+                    continue
+
+                if flow.name not in inputs:
+                    inputs[flow.name] = 0.0
+                inputs[flow.name] += flow.mass
+
+        return inputs
+                    
+
+    def system_outputs(self, ignore_flows_named=[], separate_mixtures_named=[]) -> Dict[str, float]:
+        """
+        Returns the mass of each output (kg) rather than the 
+        species or mixture object.
+        """
+        outputs = {}
+        for device_name in self._devices.keys():
+            if self._output_node_suffix not in device_name:
+                continue
+            # Note; inputs of the dummy output devices are system outputs
+            for flow in self._devices[device_name].inputs.values():
+                if not (isinstance(flow, Species) or isinstance(flow, Mixture)):
+                    continue
+
+                if flow.name in ignore_flows_named:
+                    continue
+
+                if flow.name in separate_mixtures_named and isinstance(flow, Mixture):
+                    for species in flow._species:
+                        if species.name not in outputs:
+                            outputs[species.name] = 0.0
+                        outputs[species.name] += species.mass
+                    continue
+
+                if flow.name not in outputs:
+                    outputs[flow.name] = 0.0
+                outputs[flow.name] += flow.mass
+
+        return outputs

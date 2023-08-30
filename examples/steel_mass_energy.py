@@ -27,10 +27,10 @@ except ImportError:
 
 def main():
     # TODO: Add transferred and non-transferred arc system.
-    plasma_system = create_plasma_system()
-    dri_eaf_system = create_dri_eaf_system()
-    hybrid33_system = create_hybrid_system("hybrid33 steelmaking", 33.33)
-    hybrid95_system = create_hybrid_system("hybrid95 steelmaking", 95.0)
+    plasma_system = create_plasma_system("Plasma")
+    dri_eaf_system = create_dri_eaf_system("DRI-EAF")
+    hybrid33_system = create_hybrid_system("Hybrid 33", 33.33)
+    hybrid95_system = create_hybrid_system("Hybrid 95", 95.0)
 
     # Overwrite system vars here to modify behaviour
 
@@ -51,23 +51,25 @@ def main():
 
     # Plot the energy flow
     electricity_for_systems = [electricity_demand_per_major_device(s) for s in systems]
-    electricity_labels = []
-    for elec in electricity_for_systems:
-        electricity_labels += list(elec.keys())
-    electricity_labels = sorted(set(electricity_labels))
-    print(electricity_labels)
-
-    bottom = np.array([0.0] * len(systems))
+    electricity_labels = histogram_labels_from_datasets(electricity_for_systems)
     _, energy_ax = plt.subplots()
-    for label in electricity_labels:
-        electricity_for_this_label = np.array([e[label] / 1e9 for e in electricity_for_systems])
-        energy_ax.bar(system_names, electricity_for_this_label, bottom=bottom, label=label)
-        bottom = bottom + electricity_for_this_label
+    add_stacked_histogram_data_to_axis(energy_ax, system_names, electricity_labels, electricity_for_systems)
+    add_titles_to_axis(energy_ax, 'Electricity Demand / Tonne Liquid Steel', 'Energy (GJ)')
 
-    energy_ax.set_ylabel('Energy (GJ)')
-    energy_ax.set_title('Electricity Demand / Tonne Liquid Steel')
-    energy_ax.legend(bbox_to_anchor = (1.0, 1.0), loc='upper left')
-    energy_ax.grid(axis='y', linestyle='--')
+    # Plot the mass flows
+    inputs_for_systems = [s.system_inputs(ignore_flows_named=['infiltrated air'], separate_mixtures_named=['flux']) for s in systems]
+    input_mass_labels = histogram_labels_from_datasets(inputs_for_systems)
+    _, input_mass_ax = plt.subplots()
+    add_stacked_histogram_data_to_axis(input_mass_ax, system_names, input_mass_labels, inputs_for_systems)
+    add_titles_to_axis(input_mass_ax, 'Input Mass Flow / Tonne Liquid Steel', 'Mass (kg)')
+
+    outputs_for_systems = [s.system_outputs(ignore_flows_named=['infiltrated air']) for s in systems]
+    output_mass_labels = histogram_labels_from_datasets(outputs_for_systems)
+    _, output_mass_ax = plt.subplots()
+    add_stacked_histogram_data_to_axis(output_mass_ax, system_names, output_mass_labels, outputs_for_systems)
+    add_titles_to_axis(output_mass_ax, 'Output Mass Flow / Tonne Liquid Steel', 'Mass (kg)')
+
+    # inputs_for_systems = [s.system_inputs(ignore_flows_named=['infiltrated air'], separate_mixtures_named=['flux']) for s in systems]
 
     plt.show()
 
@@ -1110,6 +1112,7 @@ def add_h2_heater_flows(system: System):
                 system.devices[heater_name].outputs['losses'].energy -= required_thermal_energy
 
 
+# Plot Helpers
 def electricity_demand_per_major_device(system: System) -> Dict[str, float]:
     electricity = {
         '1. water electrolysis': system.devices['water electrolysis'].inputs.get('electricity', EnergyFlow(0.0)).energy,
@@ -1131,6 +1134,28 @@ def electricity_demand_per_major_device(system: System) -> Dict[str, float]:
 
     return electricity
 
+
+def histogram_labels_from_datasets(dataset_dicts: List[Dict[str, float]]) -> List[str]:
+    labels = []
+    for dataset_dict in dataset_dicts:
+        labels += list(dataset_dict.keys())
+    return sorted(set(labels))
+
+
+def add_stacked_histogram_data_to_axis(ax: plt.Axes, histogram_column_names: List[str], stacked_data_labels: List[str], 
+                                       dataset_dicts: List[Dict[str, float]], scale_data=1.0):
+    bottom = np.array([0.0] * len(histogram_column_names))
+    for label in stacked_data_labels:
+        data_for_this_label = np.array([d[label] * scale_data for d in dataset_dicts])
+        ax.bar(histogram_column_names, data_for_this_label, bottom=bottom, label=label)
+        bottom = bottom + data_for_this_label
+
+
+def add_titles_to_axis(ax: plt.Axes, title: str, y_label: str):
+    ax.set_title(title)
+    ax.set_ylabel(y_label)
+    ax.legend(bbox_to_anchor = (1.0, 1.0), loc='upper left')
+    ax.grid(axis='y', linestyle='--')
 
 if __name__ == '__main__':
     main()
