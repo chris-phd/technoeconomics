@@ -42,10 +42,11 @@ class Device:
     have a set of state variables.
     """
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, capex=None):
         self._name = name
         self._inputs = {}
         self._outputs = {}
+        self._capex = capex
 
     def __repr__(self):
         s = f"Device({self.name}\n"
@@ -76,6 +77,10 @@ class Device:
     @property
     def outputs(self):
         return self._outputs
+    
+    @property
+    def capex(self):
+        return self._capex
 
     def add_input(self, flow: Union[Species, Mixture, EnergyFlow]):
         if flow.name in self._inputs:
@@ -180,12 +185,14 @@ class System:
     _input_node_suffix = " __dummyinput__"
     _output_node_suffix = " __dummyoutput__"
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, annual_capacity: Optional[float] = None, lifetime_years: Optional[float] = None):
         self._name = name
         self._graph_dot = graphviz.Digraph()
         self._devices = {}
         self._flows = {}
         self._system_vars = {}
+        self._annual_capacity = annual_capacity
+        self._lifetime_years = lifetime_years
 
     def __repr__(self):
         s = f"System({self.name}"
@@ -211,6 +218,14 @@ class System:
     @property
     def system_vars(self):
         return self._system_vars
+    
+    @property
+    def annual_capacity(self):
+        return self._annual_capacity
+    
+    @property
+    def lifetime_years(self):
+        return self._lifetime_years
 
     def add_device(self, device: Type[Device]):
         if device.name in self._devices:
@@ -383,3 +398,11 @@ class System:
                     outputs[flow.name] += flow.energy
 
         return outputs
+    
+    def capex(self):
+        total = 0.0
+        for device in self._devices.values():
+            if device.capex is None:
+                continue # raise an exception / warning?
+            total += device.capex
+        return total

@@ -1,6 +1,23 @@
+- Clean up the LCOP.
+- Include the methods that were used to calculate the capex.
+- Add H2 storage, and how this adjusts the electricity cost. (or H2 cost?)
+
+- The cost for MgO was taken from the cost of MgCO3
+
+- Cost for injected carbon and graphite electodes are the same, but should
+  be treated differently in the operating cost section..
+
 - Fix the fluidized bed mass and energy flows to utilise all the
   devices.
 
 - Fix the enthalpy of reaction calculations. (Tests failing)
 
 - update the requirements.txt
+
+- Add method to the Device / System class, to throw an error if the mass or 
+  energy evaluation does not balance.
+- raise Exception if a dummy species is used in the mass / energy eval.
+
+- wortler2013, the source currently used for the capex of the fluidized beds,
+  is actually originally for a shaft furnace. Can i find a source for the fluidized
+  beds?
