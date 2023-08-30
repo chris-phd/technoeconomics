@@ -34,7 +34,7 @@ def main():
 
     # Overwrite system vars here to modify behaviour
 
-    # Add mass and energy flow
+    ## Calculate The Mass and Energy Flow
     add_plasma_mass_and_energy(plasma_system)
     add_dri_eaf_mass_and_energy(dri_eaf_system)
     add_hybrid_mass_and_energy(hybrid33_system)
@@ -45,7 +45,7 @@ def main():
     # print(hybrid33_system)
     # print(hybrid95_system)
 
-    # Create plots of the different pathways
+    ## Energy and Mass Flow Plots
     systems = [plasma_system, dri_eaf_system, hybrid33_system, hybrid95_system]
     system_names = [s.name for s in systems]
 
@@ -57,26 +57,99 @@ def main():
     add_titles_to_axis(energy_ax, 'Electricity Demand / Tonne Liquid Steel', 'Energy (GJ)')
 
     # Plot the mass flows
-    inputs_for_systems = [s.system_inputs(ignore_flows_named=['infiltrated air'], separate_mixtures_named=['flux']) for s in systems]
+    inputs_for_systems = [s.system_inputs(ignore_flows_named=['infiltrated air'], mass_flow_only=True) for s in systems]
     input_mass_labels = histogram_labels_from_datasets(inputs_for_systems)
     _, input_mass_ax = plt.subplots()
     add_stacked_histogram_data_to_axis(input_mass_ax, system_names, input_mass_labels, inputs_for_systems)
     add_titles_to_axis(input_mass_ax, 'Input Mass Flow / Tonne Liquid Steel', 'Mass (kg)')
 
-    outputs_for_systems = [s.system_outputs(ignore_flows_named=['infiltrated air']) for s in systems]
+    outputs_for_systems = [s.system_outputs(ignore_flows_named=['infiltrated air'], mass_flow_only=True) for s in systems]
     output_mass_labels = histogram_labels_from_datasets(outputs_for_systems)
     _, output_mass_ax = plt.subplots()
     add_stacked_histogram_data_to_axis(output_mass_ax, system_names, output_mass_labels, outputs_for_systems)
     add_titles_to_axis(output_mass_ax, 'Output Mass Flow / Tonne Liquid Steel', 'Mass (kg)')
 
-    # inputs_for_systems = [s.system_inputs(ignore_flows_named=['infiltrated air'], separate_mixtures_named=['flux']) for s in systems]
-
     plt.show()
 
+    ## Calculate the levelised cost of production
+    inputs_for_systems = [s.system_inputs(ignore_flows_named=['infiltrated air'], separate_mixtures_named=['flux'], mass_flow_only=True) for s in systems]
 
+    plant_lifetime_years = 20
+    annual_steel_production_tonnes = 1.5e6 # tonnes / year
 
+    # CAPEX. The cost for a 1.5e6 tonne / year plant
+    dri_eaf_cost = 1.33e+09
+    plasma_cost  = 1.30e+09
+    hybrid_cost  = 1.62e+09
 
+    # energy, mass and labour inputs / tonne of liquid steel
+    # All input masses are in kg.
+    # Why are all the mass flows so similar??? Shouldn't be. FIXME! 
+    # Seems like a serious flaw in the modelling. The mass values are way too similar
+    dri_eaf_inputs = {
+        'Electricity' : 1.3817e+10, 
+        'MgO' : 61.26,  # WARNING! In John and Ali's slides, this is MgCO3!
+        'CaO' : 126.38,
+        'Carbon' : 30.487, # WARNING! Includes graphite electrodes and injected carbon!
+        'Oxygen' : 35.0,
+        'Ore': 1642.239,
+        'Labour': 1.5, # guess. But comes out at $60.0
+    }
 
+    plasma_inputs = {
+        'Electricity' : 1.7381e+10, 
+        'MgO' : 98.93, # FIXME. As above
+        'CaO' : 134.38,
+        'Carbon' : 23.26, # FIXME. As above
+        'Oxygen' : 35.0,
+        'Ore': 1746.13,
+        'Labour': 1.5,
+    }
+
+    hybrid_inputs = {
+        'Electricity' : 1.5827e+10, 
+        'MgO' : 98.93, # FIXME. As above
+        'CaO' : 134.38,
+        'Carbon' : 23.267, # FIXME. As above
+        'Oxygen' : 35.0,
+        'Ore': 1746.135,
+        'Labour': 1.5,
+    }
+
+    hybrid_hpr_inputs = {
+        'Electricity' : 1.3225e+10 , 
+        'MgO' : 93.46, # FIXME. As above
+        'CaO' : 126.95,
+        'Carbon' : 32.198, # FIXME. As above, WHY IS THIS HIGHER?? MORE FOR COMBUSTION?
+        'Oxygen' : 35.0,
+        'Ore': 1649.5741905311572,
+        'Labour': 1.5,
+    }
+
+    dri_eaf_capex = capex_direct_and_indirect(dri_eaf_cost)
+    plasma_capex = capex_direct_and_indirect(plasma_cost)
+    hybrid_capex = capex_direct_and_indirect(hybrid_cost)
+    hybrid_hpr_capex = capex_direct_and_indirect(hybrid_cost)
+
+    dri_eaf_operating_cpt = operating_cost_per_tonne(dri_eaf_inputs, annual_steel_production_tonnes)
+    plasma_operating_cpt  = operating_cost_per_tonne(plasma_inputs, annual_steel_production_tonnes)
+    hybrid_operating_cpt  = operating_cost_per_tonne(hybrid_inputs, annual_steel_production_tonnes)
+    hybrid_hpr_operating_cpt  = operating_cost_per_tonne(hybrid_hpr_inputs, annual_steel_production_tonnes)
+
+    dri_eaf_annual_operating_cost = sum(dri_eaf_operating_cpt.values()) * annual_steel_production_tonnes
+    plasma_annual_operating_cost  = sum(plasma_operating_cpt.values()) * annual_steel_production_tonnes
+    hybrid_annual_operating_cost  = sum(hybrid_operating_cpt.values()) * annual_steel_production_tonnes
+    hybrid_hpr_annual_operating_cost  = sum(hybrid_hpr_operating_cpt.values()) * annual_steel_production_tonnes
+
+    dri_eaf_lcop = lcop(dri_eaf_capex, dri_eaf_annual_operating_cost, annual_steel_production_tonnes, plant_lifetime_years)
+    plasma_lcop  = lcop(plasma_capex, plasma_annual_operating_cost, annual_steel_production_tonnes, plant_lifetime_years)
+    hybrid_lcop  = lcop(hybrid_capex, hybrid_annual_operating_cost, annual_steel_production_tonnes, plant_lifetime_years)
+    hybrid_hpr_lcop  = lcop(hybrid_hpr_capex, hybrid_hpr_annual_operating_cost, annual_steel_production_tonnes, plant_lifetime_years)
+
+    print(f"dri eaf lcop     = {dri_eaf_lcop:.2f}")
+    print(f"plasma lcop      = {plasma_lcop:.2f}")
+    print(f"hybrid lcop      = {hybrid_lcop:.2f}")
+    print(f"hybrid hpr lcop  = {hybrid_hpr_lcop:.2f}")
 
 # Mass and Energy Flows - System Level
 def add_plasma_mass_and_energy(system: System):
@@ -1156,6 +1229,60 @@ def add_titles_to_axis(ax: plt.Axes, title: str, y_label: str):
     ax.set_ylabel(y_label)
     ax.legend(bbox_to_anchor = (1.0, 1.0), loc='upper left')
     ax.grid(axis='y', linestyle='--')
+
+
+# Levelised Cost of Production Helpers
+def operating_cost_per_tonne(inputs: Dict[str, float], annual_production_tonnes: float) -> Dict[str, float]:
+    # Electricity cost USD / MWh
+    # TODO! This will vary a lot based on hydrogen storage and plant capacity factor.
+    electricity_cpmwh = 93.1
+    
+    # Cost per tonne all in USD
+    ore_cpt = 100.0 # big difference between my price and the slides
+    cao_cpt = 0.08 * 1000
+    mgo_cpt = 0.49 * 1000 # FIXME! this is MgCO3 in John and Ali's slides
+    o2_cpt = 0.0 # could make this free, since it's a byproduct of electrolysis?
+    carbon_cpt = 130.0
+    
+    # usd per hour. Kind of a guess so that it comes out 
+    # at 60 USD / tonne of steel. 
+    labour_cph = 40.0
+
+    cost = {
+        'Electricity' : inputs['Electricity'] * electricity_cpmwh / 3.6e+9,
+        'Ore' : inputs['Ore'] * ore_cpt / 1000,
+        'CaO' : inputs['CaO'] * cao_cpt / 1000,
+        'MgO' : inputs['MgO'] * mgo_cpt / 1000,
+        'Carbon' : inputs['Carbon'] * carbon_cpt / 1000,
+        'Oxygen' : inputs['Oxygen'] * o2_cpt / 1000,
+        'Labour' : inputs['Labour'] * labour_cph,
+    }
+
+    return cost 
+
+
+def capex_direct_and_indirect(direct_capex: float) -> float:
+    r_contg = 0.1 # contingency cost coefficient
+    r_cons = 0.09 # construction cost coefficient
+    c_direct = (1 + r_contg) * direct_capex
+    c_indirect = r_cons * c_direct
+    return c_direct + c_indirect
+
+
+def annuity_factor(years: float) -> float:
+    r_nom = 0.07 # the constant nominal discount rate
+    r_i = 0.025 # inflation rate
+    r_real = (1+r_nom)/(1+r_i)-1 # the constant real discount rate
+    n = years 
+
+    # TODO: verify this formula.
+    f = (r_real*(1+r_real**n))/((1+r_real)**n - 1) 
+    return f
+
+
+def lcop(capex, operating_cost, annual_production, plant_lifetime_years):
+    return (annuity_factor(plant_lifetime_years)*capex + operating_cost) / annual_production
+
 
 if __name__ == '__main__':
     main()

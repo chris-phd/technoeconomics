@@ -311,10 +311,10 @@ class System:
 
         return device_names
     
-    def system_inputs(self, ignore_flows_named=[], separate_mixtures_named=[]) -> Dict[str, float]:
+    def system_inputs(self, ignore_flows_named=[], separate_mixtures_named=[], mass_flow_only=False) -> Dict[str, float]:
         """
-        Returns the mass of each input (kg) rather than the
-        species object.
+        Returns the mass of each input (kg) or energy (J) rather than the 
+        species or mixture or energyflow object.
         """
         inputs = {}
         for device_name in self._devices.keys():
@@ -322,30 +322,36 @@ class System:
                 continue
             # Note; outputs of the dummy input devices are system inputs
             for flow in self._devices[device_name].outputs.values():
-                if not (isinstance(flow, Species) or isinstance(flow, Mixture)):
-                    continue
+                if isinstance(flow, Species) or isinstance(flow, Mixture):
+                    if flow.name in ignore_flows_named:
+                        continue
 
-                if flow.name in ignore_flows_named:
-                    continue
+                    if flow.name in separate_mixtures_named and isinstance(flow, Mixture):
+                        for species in flow._species:
+                            if species.name not in inputs:
+                                inputs[species.name] = 0.0
+                            inputs[species.name] += species.mass
+                        continue
 
-                if flow.name in separate_mixtures_named and isinstance(flow, Mixture):
-                    for species in flow._species:
-                        if species.name not in inputs:
-                            inputs[species.name] = 0.0
-                        inputs[species.name] += species.mass
-                    continue
+                    if flow.name not in inputs:
+                        inputs[flow.name] = 0.0
+                    inputs[flow.name] += flow.mass
+                
+                if not mass_flow_only and isinstance(flow, EnergyFlow):
+                    if flow.name in ignore_flows_named:
+                        continue
 
-                if flow.name not in inputs:
-                    inputs[flow.name] = 0.0
-                inputs[flow.name] += flow.mass
+                    if flow.name not in inputs:
+                        inputs[flow.name] = 0.0
+                    inputs[flow.name] += flow.energy
 
         return inputs
                     
 
-    def system_outputs(self, ignore_flows_named=[], separate_mixtures_named=[]) -> Dict[str, float]:
+    def system_outputs(self, ignore_flows_named=[], separate_mixtures_named=[], mass_flow_only=False) -> Dict[str, float]:
         """
-        Returns the mass of each output (kg) rather than the 
-        species or mixture object.
+        Returns the mass of each output (kg) or energy (J) rather than the 
+        species or mixture or energyflow object.
         """
         outputs = {}
         for device_name in self._devices.keys():
@@ -353,21 +359,27 @@ class System:
                 continue
             # Note; inputs of the dummy output devices are system outputs
             for flow in self._devices[device_name].inputs.values():
-                if not (isinstance(flow, Species) or isinstance(flow, Mixture)):
-                    continue
+                if isinstance(flow, Species) or isinstance(flow, Mixture):
+                    if flow.name in ignore_flows_named:
+                        continue
 
-                if flow.name in ignore_flows_named:
-                    continue
+                    if flow.name in separate_mixtures_named and isinstance(flow, Mixture):
+                        for species in flow._species:
+                            if species.name not in outputs:
+                                outputs[species.name] = 0.0
+                            outputs[species.name] += species.mass
+                        continue
 
-                if flow.name in separate_mixtures_named and isinstance(flow, Mixture):
-                    for species in flow._species:
-                        if species.name not in outputs:
-                            outputs[species.name] = 0.0
-                        outputs[species.name] += species.mass
-                    continue
+                    if flow.name not in outputs:
+                        outputs[flow.name] = 0.0
+                    outputs[flow.name] += flow.mass
 
-                if flow.name not in outputs:
-                    outputs[flow.name] = 0.0
-                outputs[flow.name] += flow.mass
+                if not mass_flow_only and isinstance(flow, EnergyFlow):
+                    if flow.name in ignore_flows_named:
+                        continue
+
+                    if flow.name not in outputs:
+                        outputs[flow.name] = 0.0
+                    outputs[flow.name] += flow.energy
 
         return outputs

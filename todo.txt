@@ -2,3 +2,5 @@
   devices.
 
 - Fix the enthalpy of reaction calculations. (Tests failing)
+
+- update the requirements.txt
