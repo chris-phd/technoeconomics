@@ -36,12 +36,11 @@ class SystemTest(TestCase):
         my_system.add_device(device_b)
         my_system.add_device(device_c)
 
-        dummy_species = species.create_dummy_species("some species")
-        flow_ab = copy.copy(dummy_species)
+        flow_ab = species.create_dummy_species("some species 1")
         flow_ab.mass = 1.0
-        flow_ac = copy.copy(dummy_species)
+        flow_ac = species.create_dummy_species("some species 2")
         flow_ac.mass = 2.0
-        flow_bc = copy.copy(dummy_species)
+        flow_bc = species.create_dummy_species("some species 3")
         flow_bc.mass = 3.0
         energy_a = system.EnergyFlow("some energy", 100.0)
         my_system.add_flow(device_a.name, device_b.name, flow_ab)
@@ -188,15 +187,15 @@ class SpeciesThermoTest(TestCase):
         delta_h = species.delta_h_3fe2o3_h2_2fe3o4_h2o(temp_kelvin)
         factsage_delta_h = -3341.1
         # Failing
-        # self.assertAlmostEqual(delta_h, 
-        #                        factsage_delta_h)
+        self.assertAlmostEqual(delta_h, 
+                               factsage_delta_h)
 
         temp_kelvin = 800.0
         delta_h = species.delta_h_fe3o4_h2_3feo_h2o(temp_kelvin)
         factsage_delta_h = 61069.4
         # Failing.
-        # self.assertEqual(delta_h_per_mol / 1000, \
-        #                 factsage_delta_h_per_mol / 1000)
+        self.assertEqual(delta_h / 1000, \
+                        factsage_delta_h / 1000)
 
         temp_kelvin = 1000.0
         delta_h = species.delta_h_feo_h2_fe_h2o(temp_kelvin)

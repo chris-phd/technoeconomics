@@ -1,2 +1,4 @@
 - Fix the fluidized bed mass and energy flows to utilise all the
   devices.
+
+- Fix the enthalpy of reaction calculations. (Tests failing)
