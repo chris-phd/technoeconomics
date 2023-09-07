@@ -557,9 +557,19 @@ def steelsurface_radiation_losses(A, Ts, Tr, capacity_tonnes=180, tap_to_tap_sec
     return q_watts * tap_to_tap_secs / capacity_tonnes
 
 
-def hydrogen_plasma_radiation_losses():
-    print("hydrogen_plasma_radiation_losses: Implement me!")
-    return 0.0
+def hydrogen_plasma_radiation_losses(total_input_energy_less_radiation_losses):
+    # Radiation from the plasma contributes to losses. 
+    # Different mechanisms will dominate, depending on the state of the plasma (density, 
+    # temperature, geometry, external magnetic fields, etc.)
+    # Blackbody radiation, bremsstrahlung, cyclotron radiation, etc.
+    # for now, use an empirical value for the energy loss due to radiation, as measured by dudnik2020
+    # Y. D. Dudnik, V. Kovshechnikov, A. Safronov, V. Kuznetsov, V. Shiryaev, and O. Vasilieva, 
+    # “Radiation energy losses in a single chamber three phase plasma torch with rod electrodes,” 
+    #  in Journal of Physics: Conference Series, IOP Publishing, 2020, p. 012086.
+
+    # Energy loss from radiation to plasma walls is ~10% of input power at atmospheric pressure
+    energy_loss_frac_total_energy = 0.1
+    return energy_loss_frac_total_energy * total_input_energy_less_radiation_losses / (1 - energy_loss_frac_total_energy)
 
 
 def add_eaf_flows_final(system: System):
@@ -830,7 +840,7 @@ def add_plasma_flows_final(system: System):
     radiation_losses = steelsurface_radiation_losses(np.pi*(plasma_surface_radius)**2, 
                                                      steel_bath_temp, celsius_to_kelvin(25),
                                                      capacity_tonnes, tap_to_tap_secs)
-    radiation_losses += hydrogen_plasma_radiation_losses()
+    radiation_losses += hydrogen_plasma_radiation_losses(steelmaking_device.inputs['electricity'].energy + conduction_losses)
     steelmaking_device.outputs['losses'].energy += radiation_losses + conduction_losses
 
     # Increase the electrical energy to balance the thermal losses 

@@ -1,23 +1,34 @@
-- Clean up the LCOP.
-- Include the methods that were used to calculate the capex.
-- Add H2 storage, and how this adjusts the electricity cost. (or H2 cost?)
-
-- The cost for MgO was taken from the cost of MgCO3
-
-- Cost for injected carbon and graphite electodes are the same, but should
-  be treated differently in the operating cost section..
-
+#TODO
+## Major
+- Fix the enthalpy of reaction calculations. (Tests failing)
 - Fix the fluidized bed mass and energy flows to utilise all the
   devices.
+- Add H2 storage, and how this adjusts the electricity cost. (or H2 cost?)
+  - ASK JOHN OR ALI
+- sensitivity analysis and error bars in plots.
+- Add non-thermal plasma ironmaking
+- Understand the heat transfer efficiecy from the plasma to the ore.
+  - how much gas do we need per kg of ore / dri?
+  - break total plasma efficiency up into two numbers
+  - total efficiency to the ore will be electrical-thermal efficiency + heat transfer efficiency.
 
-- Fix the enthalpy of reaction calculations. (Tests failing)
-
-- update the requirements.txt
-
-- Add method to the Device / System class, to throw an error if the mass or 
-  energy evaluation does not balance.
-- raise Exception if a dummy species is used in the mass / energy eval.
-
+## Moderate
 - wortler2013, the source currently used for the capex of the fluidized beds,
   is actually originally for a shaft furnace. Can i find a source for the fluidized
   beds?
+- Add method to the Device / System class, to throw an error if the mass or 
+  energy evaluation does not balance.
+- raise Exception if a dummy species is used in the mass / energy eval.
+- Energy lost from radiation from the plasma torch. 
+- Validate the energy required to create the thermal plasma using factsage.
+- Compare the thermal plasma energy requirements to blast furnace energy requirements
+  - Just use published data for the initial comparison, don't need to add BF energy flow.
+
+## Minor
+- update the requirements.txt
+- Cost for injected carbon and graphite electodes are the same, but should
+  be treated differently in the operating cost section..
+- The cost for MgO was taken from the cost of MgCO3
+- Add the chemical composition of the iron ore samples that we have for the experimental work.
+  - ASK JOHN OR ALI
+- report costs of the inputs in absolute terms.
