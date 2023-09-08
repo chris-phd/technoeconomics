@@ -794,7 +794,7 @@ def add_plasma_flows_final(system: System):
     ore_mass = iron_making_device.inputs['ore'].mass
     fe_target, feo_target, fe3o4_target, fe2o3_target = iron_species_from_reduction_degree(reduction_degree, ore_mass, ore_composition_simple)
 
-    if not math.isclose(fe3o4_target.mols, 0) or not math.isclose(fe2o3_target.mols, 0):
+    if not math.isclose(fe3o4_target.mols, 0, abs_tol=1e-12) or not math.isclose(fe2o3_target.mols, 0, abs_tol=1e-12):
         raise Exception("Error: Expect plasma hydrogen reduction to completly reduce magnetite and hematite")
 
     # TODO! Reduce repetition with the same logic dri function
@@ -1202,7 +1202,7 @@ def add_h2_heater_flows(system: System):
         return
     
     for heater_name in h2_heaters:
-        if not math.isclose(system.devices[heater_name].mass_balance(), 0.0):
+        if not math.isclose(system.devices[heater_name].mass_balance(), 0.0, abs_tol=1e-9):
             # adjust the mass balance
             output_gas = system.devices[heater_name].first_output_containing_name('h2 rich gas')
             input_gas = system.devices[heater_name].first_input_containing_name('h2 rich gas')
@@ -1216,7 +1216,7 @@ def add_h2_heater_flows(system: System):
                 else: # probs an instance of the Species class
                     system.devices[heater_name].first_output_containing_name('h2 rich gas').mass = input_gas.mass
 
-        if not math.isclose(system.devices[heater_name].energy_balance(), 0.0):
+        if not math.isclose(system.devices[heater_name].energy_balance(), 0.0, abs_tol=1e-9):
             efficiency = 0.98
             required_thermal_energy = system.devices[heater_name].thermal_energy_balance()
             if required_thermal_energy >= 0:
