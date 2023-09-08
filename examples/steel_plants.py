@@ -82,7 +82,7 @@ def create_plasma_system(system_name='plasma steelmaking', annual_capacity_tls=1
     # condenser
     plasma_system.add_output(condenser.name, create_dummy_species('h2o'))
     plasma_system.add_output(condenser.name, EnergyFlow('losses'))
-    plasma_system.add_output(condenser.name, create_dummy_mixture('co co2'))
+    plasma_system.add_output(condenser.name, create_dummy_mixture('carbon gas'))
     plasma_system.add_flow(h2_heat_exchanger.name, condenser.name, create_dummy_mixture('recycled h2 rich gas'))
 
     # join
@@ -311,7 +311,7 @@ def create_hybrid_system(system_name='hybrid steelmaking', prereduction_perc=33.
     # condenser
     hybrid_system.add_output(condenser.name, create_dummy_species('h2o'))
     hybrid_system.add_output(condenser.name, EnergyFlow('losses'))
-    hybrid_system.add_output(condenser.name, create_dummy_mixture('co co2'))
+    hybrid_system.add_output(condenser.name, create_dummy_mixture('carbon gas'))
     hybrid_system.add_flow(h2_heat_exchanger.name, condenser.name, create_dummy_mixture('recycled h2 rich gas'))
 
     # join 1

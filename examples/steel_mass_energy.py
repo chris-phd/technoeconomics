@@ -1168,7 +1168,7 @@ def add_condenser_and_scrubber_flows_final(system: System):
         co2_out = copy.deepcopy(condenser_in_gas.species('CO2'))
         carbon_mixture = species.Mixture('carbon gas', [co_out, co2_out])
         carbon_mixture.temp_kelvin = condenser_temp
-        condenser.outputs['co co2'].set(carbon_mixture)
+        condenser.outputs['carbon gas'].set(carbon_mixture)
     except:
         # no carbon species in the iron making off gas
         pass
