@@ -35,6 +35,10 @@ def main():
     hybrid95_system = create_hybrid_system("Hybrid 95", 95.0, annual_steel_production_tonnes, plant_lifetime_years)
 
     # Overwrite system vars here to modify behaviour
+    plasma_system.system_vars['ore name'] = 'IOA'
+    dri_eaf_system.system_vars['ore name'] = 'IOA'
+    hybrid33_system.system_vars['ore name'] = 'IOA'
+    hybrid95_system.system_vars['ore name'] = 'IOA'
 
     ## Calculate The Mass and Energy Flow
     add_plasma_mass_and_energy(plasma_system)
@@ -42,10 +46,6 @@ def main():
     add_hybrid_mass_and_energy(hybrid33_system)
     add_hybrid_mass_and_energy(hybrid95_system)
 
-    # print(plasma_system)
-    # print(dri_eaf_system)
-    # print(hybrid33_system)
-    # print(hybrid95_system)
 
     ## Energy and Mass Flow Plots
     systems = [plasma_system, dri_eaf_system, hybrid33_system, hybrid95_system]
@@ -209,33 +209,66 @@ def add_ore_composition(system: System):
     impurities.
     """
 
+    ore_name = system.system_vars.get('ore name', 'default')
+    
+
+
     # Mass percent of dry ore.
     # Remaining mass percent is oxygen in the iron oxide.
     # Values are in mass / weight percent.
-    ore_composition_complex = {'Fe': 65.263,
-                                'SiO2': 3.814,
-                                'Al2O3': 2.437,
-                                'TiO2': 0.095,
-                                'Mn': 0.148,
-                                'CaO': 0.032,
-                                'MgO': 0.085,
-                                'Na2O': 0.012,
-                                'K2O': 0.011,
-                                'P': 0.109,
-                                'S': 0.024}
+    if ore_name.upper() == 'IOA':
+        ore_composition_complex = {'Fe': 66.31,
+                                 'TiO2': 0.15,
+                                 'Al2O3': 2.5,
+                                 'SiO2': 2.5,
+                                 'CaO': 0.0,
+                                 'MgO': 0.0,
+                                 'S': 0.01,
+                                 'P2O5': 0.03}
+    elif ore_name.upper() == 'IOB':
+        ore_composition_complex = {'Fe': 65.47,
+                                 'NiO': 0.04,
+                                 'TiO2': 1.07,
+                                 'V2O5': 0.68,
+                                 'Al2O3': 0.3,
+                                 'SiO2': 1.94,
+                                 'MgO': 2.17,
+                                 'CaO': 0.12,
+                                 'S': 0.06,
+                                 'P2O5': 0.02}
+    else:
+        ore_composition_complex = {'Fe': 65.263,
+                                    'SiO2': 3.814,
+                                    'Al2O3': 2.437,
+                                    'TiO2': 0.095,
+                                    'Mn': 0.148,
+                                    'CaO': 0.032,
+                                    'MgO': 0.085,
+                                    'Na2O': 0.012,
+                                    'K2O': 0.011,
+                                    'P': 0.109,
+                                    'S': 0.024}
 
     ore_composition_complex['gangue'] = sum(ore_composition_complex.values()) - ore_composition_complex['Fe']
     ore_composition_complex['hematite'] = 100 - ore_composition_complex['gangue']
     ore_composition_complex = hematite_normalise(ore_composition_complex)
 
-    # Neglecting the trace gangue elements. Adding the mass of the trace elements
-    # to the remaining impurities equally. Simplification for the mass flow calculations.
-    # Values are in mass / weight percent.
+    # Neglecting the gangue elements other than SiO2, Al2O3, CaO and MgO. Adding the mass of 
+    # ignored elements to the remaining impurities equally. Simplification for the mass flow
+    # calculations. Values are in mass / weight percent.
+    mass_of_neglected_species = sum(ore_composition_complex.values()) \
+                               - ore_composition_complex['gangue'] \
+                               - ore_composition_complex['hematite'] \
+                                 - ore_composition_complex['Fe'] \
+                                - ore_composition_complex['SiO2'] \
+                                - ore_composition_complex['Al2O3'] \
+                                - ore_composition_complex['CaO'] \
+                                - ore_composition_complex['MgO']
     ore_composition_simple = {'Fe': 65.263,
-                                'SiO2': 3.91375,
-                                'Al2O3': 2.53675,
-                                'CaO': 0.13175,
-                                'MgO': 0.18475}
+                                'SiO2': ore_composition_complex['SiO2'] + mass_of_neglected_species * 0.25,
+                                'Al2O3': ore_composition_complex['Al2O3'] + mass_of_neglected_species * 0.25,
+                                'CaO': ore_composition_complex['CaO'] + mass_of_neglected_species * 0.25,
+                                'MgO': ore_composition_complex['MgO'] + mass_of_neglected_species * 0.25}
 
     ore_composition_simple['gangue'] = sum(ore_composition_simple.values()) - ore_composition_simple['Fe']
     ore_composition_simple['hematite'] = 100 - ore_composition_simple['gangue']
@@ -1115,14 +1148,17 @@ def add_h2_heater_flows(system: System):
     for heater_name in h2_heaters:
         if not math.isclose(system.devices[heater_name].mass_balance(), 0.0):
             # adjust the mass balance
-            pass
             output_gas = system.devices[heater_name].first_output_containing_name('h2 rich gas')
             input_gas = system.devices[heater_name].first_input_containing_name('h2 rich gas')
-            if output_gas.mass > input_gas.mass:
+            if math.isclose(output_gas.mass, input_gas.mass):
+                continue
+            elif output_gas.mass > input_gas.mass:
                 system.devices[heater_name].first_input_containing_name('h2 rich gas').mass = output_gas.mass
             else:
-                system.devices[heater_name].first_output_containing_name('h2 rich gas').mass = input_gas.mass
-
+                if isinstance(system.devices[heater_name].first_output_containing_name('h2 rich gas'), species.Mixture):
+                    system.devices[heater_name].first_output_containing_name('h2 rich gas').species('H2').mass = input_gas.mass
+                else: # probs an instance of the Species class
+                    system.devices[heater_name].first_output_containing_name('h2 rich gas').mass = input_gas.mass
 
         if not math.isclose(system.devices[heater_name].energy_balance(), 0.0):
             efficiency = 0.98
