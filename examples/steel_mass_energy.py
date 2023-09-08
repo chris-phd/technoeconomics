@@ -35,10 +35,10 @@ def main():
     hybrid95_system = create_hybrid_system("Hybrid 95", 95.0, annual_steel_production_tonnes, plant_lifetime_years)
 
     # Overwrite system vars here to modify behaviour
-    plasma_system.system_vars['ore name'] = 'IOC'
+    plasma_system.system_vars['ore name'] = 'IOB'
     dri_eaf_system.system_vars['ore name'] = 'IOC'
-    hybrid33_system.system_vars['ore name'] = 'IOA'
-    hybrid95_system.system_vars['ore name'] = 'IOA'
+    hybrid33_system.system_vars['ore name'] = 'IOD'
+    hybrid95_system.system_vars['ore name'] = 'IOE'
 
     ## Calculate The Mass and Energy Flow
     add_plasma_mass_and_energy(plasma_system)
@@ -248,9 +248,25 @@ def add_ore_composition(system: System):
                                     'Mn': 0.51,
                                     'LOI': 7.2}
     elif ore_name.upper() == 'IOD':
-        pass
+        ore_composition_complex = {'Fe': 56.71,
+                                    'Al2O3': 3.28,
+                                    'SiO2': 6.56,
+                                    'MgO': 0.0,
+                                    'CaO': 0.0,
+                                    'S': 0.03,
+                                    'P2O5': 0.14,
+                                    'Mn': 0.72,
+                                    'LOI': 8.2}
     elif ore_name.upper() == 'IOE':
-        pass
+        ore_composition_complex = {'Fe': 56.41,
+                                    'Al2O3': 3.01,
+                                    'SiO2': 6.71,
+                                    'MgO': 0.0,
+                                    'CaO': 0.04,
+                                    'S': 0.04,
+                                    'P2O5': 0.06,
+                                    'Mn': 0.40,
+                                    'LOI': 8.8}
     else:
         ore_composition_complex = {'Fe': 65.263,
                                     'SiO2': 3.814,
@@ -328,8 +344,10 @@ def add_slag_and_flux_mass(system: System):
         cao_gangue.mass = ore_mass * ore_composition_simple['CaO'] * 0.01
         mgo_gangue.mass = ore_mass * ore_composition_simple['MgO'] * 0.01
 
-        cao_flux.mass = b2_basicity * sio2_gangue.mass - cao_gangue.mass
-        mgo_flux.mass = b4_basicity * (al2o3_gangue.mass + sio2_gangue.mass) - cao_gangue.mass - cao_flux.mass - mgo_gangue.mass
+        cao_flux_mass = b2_basicity * sio2_gangue.mass - cao_gangue.mass
+        cao_flux.mass = max(cao_flux_mass, 0.0)
+        mgo_flux_mass = b4_basicity * (al2o3_gangue.mass + sio2_gangue.mass) - cao_gangue.mass - cao_flux.mass - mgo_gangue.mass
+        mgo_flux.mass = max(mgo_flux_mass, 0.0)
 
         for _ in range(10):
             slag_mass = sio2_gangue.mass + al2o3_gangue.mass \

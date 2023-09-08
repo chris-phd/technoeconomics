@@ -25,6 +25,7 @@
   - Just use published data for the initial comparison, don't need to add BF energy flow.
 - When setting the mass of a Mixture, distribute the mass equally based on the existing ratio 
   the species? Does it make sense to do this, or create nefarious bugs?
+- Add the ore type and other important system_vars to the sim report...
 
 ## Minor
 - update the requirements.txt
@@ -34,3 +35,8 @@
 - Add the chemical composition of the iron ore samples that we have for the experimental work.
   - ASK JOHN OR ALI
 - report costs of the inputs in absolute terms.
+
+
+
+# BUGS
+- Mass balance in H2 heater 1 for the hybrid33 system!!!
