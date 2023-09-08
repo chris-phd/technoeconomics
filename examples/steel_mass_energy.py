@@ -35,8 +35,8 @@ def main():
     hybrid95_system = create_hybrid_system("Hybrid 95", 95.0, annual_steel_production_tonnes, plant_lifetime_years)
 
     # Overwrite system vars here to modify behaviour
-    plasma_system.system_vars['ore name'] = 'IOA'
-    dri_eaf_system.system_vars['ore name'] = 'IOA'
+    plasma_system.system_vars['ore name'] = 'IOC'
+    dri_eaf_system.system_vars['ore name'] = 'IOC'
     hybrid33_system.system_vars['ore name'] = 'IOA'
     hybrid95_system.system_vars['ore name'] = 'IOA'
 
@@ -45,7 +45,6 @@ def main():
     add_dri_eaf_mass_and_energy(dri_eaf_system)
     add_hybrid_mass_and_energy(hybrid33_system)
     add_hybrid_mass_and_energy(hybrid95_system)
-
 
     ## Energy and Mass Flow Plots
     systems = [plasma_system, dri_eaf_system, hybrid33_system, hybrid95_system]
@@ -195,8 +194,10 @@ def hematite_normalise(ore_comp: Dict[str, float]):
     fe2o3 = species.create_fe2o3_species()
     iron_to_hematite_ratio = fe.mm / (0.5 * fe2o3.mm)
 
-    hematite_perc = 100.0 - ore_comp['gangue']
+    hematite_perc = 100.0 - ore_comp['gangue'] - ore_comp.get('LOI', 0.0)
     iron_perc = hematite_perc * iron_to_hematite_ratio
+    if abs(ore_comp['Fe'] - iron_perc) > 1.0:
+        raise Exception('Ore composition may not be pure hematite! Cannot safetly normalise')
     ore_comp['Fe'] = iron_perc
 
     return ore_comp
@@ -236,6 +237,20 @@ def add_ore_composition(system: System):
                                  'CaO': 0.12,
                                  'S': 0.06,
                                  'P2O5': 0.02}
+    elif ore_name.upper() == 'IOC':
+        ore_composition_complex = {'Fe': 58.42,
+                                    'Al2O3': 2.57,
+                                    'SiO2': 5.97,
+                                    'MgO': 0.0,
+                                    'CaO': 0.0,
+                                    'S': 0.03,
+                                    'P2O5': 0.19,
+                                    'Mn': 0.51,
+                                    'LOI': 7.2}
+    elif ore_name.upper() == 'IOD':
+        pass
+    elif ore_name.upper() == 'IOE':
+        pass
     else:
         ore_composition_complex = {'Fe': 65.263,
                                     'SiO2': 3.814,
@@ -249,8 +264,9 @@ def add_ore_composition(system: System):
                                     'P': 0.109,
                                     'S': 0.024}
 
-    ore_composition_complex['gangue'] = sum(ore_composition_complex.values()) - ore_composition_complex['Fe']
-    ore_composition_complex['hematite'] = 100 - ore_composition_complex['gangue']
+
+    ore_composition_complex['gangue'] = sum(ore_composition_complex.values()) - ore_composition_complex['Fe'] - ore_composition_complex.get('LOI', 0.0)
+    ore_composition_complex['hematite'] = 100 - ore_composition_complex['gangue'] -  - ore_composition_complex.get('LOI', 0.0)
     ore_composition_complex = hematite_normalise(ore_composition_complex)
 
     # Neglecting the gangue elements other than SiO2, Al2O3, CaO and MgO. Adding the mass of 
@@ -263,15 +279,18 @@ def add_ore_composition(system: System):
                                 - ore_composition_complex['SiO2'] \
                                 - ore_composition_complex['Al2O3'] \
                                 - ore_composition_complex['CaO'] \
-                                - ore_composition_complex['MgO']
-    ore_composition_simple = {'Fe': 65.263,
+                                - ore_composition_complex['MgO'] \
+                                - ore_composition_complex.get('LOI', 0.0)
+    ore_composition_simple = {'Fe': ore_composition_complex['Fe'],
                                 'SiO2': ore_composition_complex['SiO2'] + mass_of_neglected_species * 0.25,
                                 'Al2O3': ore_composition_complex['Al2O3'] + mass_of_neglected_species * 0.25,
                                 'CaO': ore_composition_complex['CaO'] + mass_of_neglected_species * 0.25,
                                 'MgO': ore_composition_complex['MgO'] + mass_of_neglected_species * 0.25}
+    if 'LOI' in ore_composition_complex:
+        ore_composition_simple['LOI'] = ore_composition_complex['LOI']
 
-    ore_composition_simple['gangue'] = sum(ore_composition_simple.values()) - ore_composition_simple['Fe']
-    ore_composition_simple['hematite'] = 100 - ore_composition_simple['gangue']
+    ore_composition_simple['gangue'] = sum(ore_composition_simple.values()) - ore_composition_simple['Fe'] - ore_composition_complex.get('LOI', 0.0)
+    ore_composition_simple['hematite'] = 100 - ore_composition_simple['gangue'] - ore_composition_complex.get('LOI', 0.0)
     ore_composition_simple = hematite_normalise(ore_composition_simple)
 
     system.system_vars['ore composition'] = ore_composition_complex
@@ -398,8 +417,12 @@ def add_ore(system: System):
     feo = species.create_feo_species()
     fe = species.create_fe_species()
 
+    water_loi = species.create_h2o_species()
+    water_loi.mass = ore_mass * ore_composition_simple.get('LOI', 0.0) * 0.01
+
     ore = species.Mixture('ore', [fe2o3_ore, fe3o4, feo, fe,
-                          cao_gangue, mgo_gangue, sio2_gangue, al2o3_gangue])
+                          cao_gangue, mgo_gangue, sio2_gangue, al2o3_gangue,
+                          water_loi])
     ore.temp_kelvin = ore_initial_temp
 
     if ore_heater_device_name is not None:
@@ -503,6 +526,11 @@ def add_fluidized_bed_flows(system: System):
 
     h2o = species.create_h2o_species()
     h2o.mols = h2_consumed.mols
+
+    try: 
+        h2o.mols += ore.species('H2O').mols # the LOI (loss on ignition) species in the ore
+    except:
+        pass # no LOI species in the ore
 
     h2_excess = copy.deepcopy(h2_consumed)
     h2_excess.mols = (excess_h2_ratio - 1) * h2_consumed.mols
@@ -797,7 +825,10 @@ def add_plasma_flows_final(system: System):
     o2_oxidation = species.create_o2_species()
     c_reduction = species.create_c_species()
 
-    if feo_slag.mols > feo_target.mols:
+    if math.isclose(feo_slag.mols - feo_target.mols, 0.0, abs_tol=1e-9):
+        # no oxidation or reduction of feo required
+        pass
+    elif feo_slag.mols > feo_target.mols:
         # metallic fe is oxidised by injected O2
         o2_oxidation.mols = 0.5 * (feo_slag.mols - feo_target.mols)
         num_feo_formation_reactions = o2_oxidation.mols
@@ -840,6 +871,11 @@ def add_plasma_flows_final(system: System):
     o2_injected.mols = o2_combustion.mols + o2_oxidation.mols
     o2_injected.temp_kelvin = celsius_to_kelvin(25) # assume room temp
     steelmaking_device.inputs['o2'].set(o2_injected)
+
+    try: # does this do something weird to the heat balance??
+        h2o.mols += ironbearing_material.species('H2O').mols # the LOI (loss on ignition) species in the ore
+    except:
+        pass # no LOI species in the ore / dri
 
     co = species.create_co_species()
     co.mols = 2 * num_co_reactions + c_reduction.mols
@@ -1011,7 +1047,9 @@ def add_heat_exchanger_flows_final(system: System):
 
     May need to use two heat exchangers. It is unclear if the top gas from
     the plasma reactor in the hybrid system can be used as a reducing gas
-    for the fluidized bed section. May need two heat exchangers. 
+    for the fluidized bed section. 
+    Seems a little unlikely, if the gas is too hot, will sinter and ruin the fluidized beds.
+    May need two heat exchangers, or if the off gas is too hot, heat some input scrap.
     The same goes for the top has of the EAF in the fluidized bed, but this
     is not assumed to be the case. (so a bit of asymmetry here)
     """
@@ -1224,12 +1262,12 @@ def operating_cost_per_tonne(inputs: Dict[str, float]) -> Dict[str, float]:
     # TODO! This will vary a lot based on hydrogen storage and plant capacity factor.
     electricity_cpmwh = 93.1
     
-    # Cost per tonne all in USD
+    # cpt = cost per tonne (USD), cpk = cost per kg (USD)
     ore_cpt = 100.0 # big difference between my price and the slides
     cao_cpk = 0.08 # cost per kg
     mgo_cpk = 0.49 
     o2_cpk = 0.0 # could make this free, since it's a byproduct of electrolysis?
-    h2o_cpt = 0.0 # assumption that water should be close to zero cost, especially since it's a byproduct of reduction?
+    h2o_cpk = 0.0 # assumption that water should be close to zero cost, especially since it's a byproduct of reduction?
     carbon_cpt = 130.0
     
     # usd per hour. Kind of a guess so that it comes out 
@@ -1243,7 +1281,7 @@ def operating_cost_per_tonne(inputs: Dict[str, float]) -> Dict[str, float]:
         'MgO' : inputs['MgO'] * mgo_cpk,
         'Carbon' : inputs['C'] * carbon_cpt / 1000,
         'Oxygen' : inputs['O2'] * o2_cpk,
-        'Water' : inputs['H2O'] * o2_cpk,
+        'Water' : inputs['H2O'] * h2o_cpk,
         'Labour' : 1.5 * labour_cph,
     }
 
