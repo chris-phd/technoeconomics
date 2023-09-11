@@ -754,6 +754,22 @@ def delta_h_feo_h2_fe_h2o(temp_kelvin = 298.15): # TODO! Check with another sour
     products = [fe, h2o]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
+def delta_h_fe2o3_3h2_3fe_3h2o(temp_kelvin: float = 298.15):
+    """
+    Fe2O3 + 3 H2 -> 2 Fe + 3 H2O
+    """
+    fe2o3 = create_fe2o3_species()
+    fe2o3.mols = 1
+    h2 = create_h2_species()
+    h2.mols = 3
+    reactants = [fe2o3, h2]
+    fe = create_fe_species()
+    fe.mols = 2
+    h2o = create_h2o_species()
+    h2o.mols = 3
+    products = [fe, h2o]
+    return compute_reaction_enthalpy(reactants, products, temp_kelvin)
+
 def delta_h_2h2o_2h2_o2(temp_kelvin: float = 298.15):
     """
     2 H2O + 474.2 kJ/mol electricity + 97.2 kJ/mol heat -> 2 H2 + O2

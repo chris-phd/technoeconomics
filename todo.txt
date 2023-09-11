@@ -32,11 +32,8 @@
 - Cost for injected carbon and graphite electodes are the same, but should
   be treated differently in the operating cost section..
 - The cost for MgO was taken from the cost of MgCO3
-- Add the chemical composition of the iron ore samples that we have for the experimental work.
-  - ASK JOHN OR ALI
 - report costs of the inputs in absolute terms.
 
-
-
-# BUGS
-- Mass balance in H2 heater 1 for the hybrid33 system!!!
+## BUGS
+- Energy to create the thermal plasma very inaccurate above 3000K.
+  - Might be another good argument to try and incorporate cantera???
