@@ -30,13 +30,18 @@ def main():
     # TODO: Add transferred and non-transferred arc system.
     annual_steel_production_tonnes = 1.5e6 # tonnes / year
     plant_lifetime_years = 20.0
-    plasma_system = create_plasma_system("Plasma SC", annual_steel_production_tonnes, plant_lifetime_years)
+    plasma_system = create_plasma_system("Plasma", annual_steel_production_tonnes, plant_lifetime_years)
     dri_eaf_system = create_dri_eaf_system("DRI-EAF", annual_steel_production_tonnes, plant_lifetime_years)
     hybrid33_system = create_hybrid_system("Hybrid 33", 33.33, annual_steel_production_tonnes, plant_lifetime_years)
     hybrid95_system = create_hybrid_system("Hybrid 95", 95.0, annual_steel_production_tonnes, plant_lifetime_years)
+    systems = [plasma_system, dri_eaf_system, hybrid33_system, hybrid95_system]
 
     # Overwrite system vars here to modify behaviour
-    plasma_system.system_vars['ore name'] = 'IOB'
+    for system in systems:
+        system.system_vars['spot electricity hours'] = 8.0
+        system.system_vars['h2 storage hours of operation'] = 24.0 - system.system_vars['spot electricity hours']
+
+    # plasma_system.system_vars['ore name'] = 'IOB'
     dri_eaf_system.system_vars['h2 storage method'] = 'compressed gas vessels'
 
     ## Calculate The Mass and Energy Flow
@@ -52,7 +57,6 @@ def main():
     add_steel_plant_capex(hybrid95_system)
 
     ## Energy and Mass Flow Plots
-    systems = [plasma_system, dri_eaf_system, hybrid33_system, hybrid95_system]
     system_names = [s.name for s in systems]
 
     # Plot the energy flow
@@ -75,9 +79,6 @@ def main():
     add_stacked_histogram_data_to_axis(output_mass_ax, system_names, output_mass_labels, outputs_for_systems)
     add_titles_to_axis(output_mass_ax, 'Output Mass Flow / Tonne Liquid Steel', 'Mass (kg)')
 
-    # change the subplot configuration setting 'right' to 0.78
-    
-
     plt.show()
 
     ## Calculate the levelised cost of production
@@ -96,7 +97,6 @@ def main():
 
 # Mass and Energy Flows - System Level
 def add_plasma_mass_and_energy(system: System):
-    verify_system_vars(system)
     add_ore_composition(system)
     add_steel_out(system)
     add_plasma_flows_initial(system)
@@ -115,7 +115,6 @@ def add_plasma_mass_and_energy(system: System):
 
 
 def add_dri_eaf_mass_and_energy(system: System):
-    verify_system_vars(system)
     add_ore_composition(system)
     add_steel_out(system)
     add_eaf_flows_initial(system)
@@ -136,7 +135,6 @@ def add_dri_eaf_mass_and_energy(system: System):
 
 
 def add_hybrid_mass_and_energy(system: System):
-    verify_system_vars(system)
     add_ore_composition(system)
     add_steel_out(system)
     add_plasma_flows_initial(system)
@@ -159,14 +157,6 @@ def add_hybrid_mass_and_energy(system: System):
     balance_join2_flows(system)
     adjust_plasma_energy_flows(system)
     add_h2_heater_flows(system)
-
-
-def verify_system_vars(system: System):
-    # TODO.
-    # Raise exception if the system variables necessary
-    # for calculating the mass and energy flow are not set
-    # correctly.
-    pass
 
 
 # Mass and Energy Flows - Device Level
@@ -215,11 +205,8 @@ def add_ore_composition(system: System):
     Ore composition simple is the hematite ore with only SiO2, Al2O3, CaO and MgO
     impurities.
     """
-
     ore_name = system.system_vars.get('ore name', 'default')
     
-
-
     # Mass percent of dry ore.
     # Remaining mass percent is oxygen in the iron oxide.
     # Values are in mass / weight percent.
@@ -459,8 +446,8 @@ def add_ore(system: System):
         # Add electrical energy to heat the ore
         # Assume no thermal losses for now.
         electrical_heat_eff = 0.98
-        electrical_energy = EnergyFlow('electricity', ore_preheating_device.energy_balance() / electrical_heat_eff)
-        ore_preheating_device.inputs['electricity'].set(electrical_energy)
+        electrical_energy = EnergyFlow('base electricity', ore_preheating_device.energy_balance() / electrical_heat_eff)
+        ore_preheating_device.inputs['base electricity'].set(electrical_energy)
         electrical_losses = EnergyFlow('losses', electrical_energy.energy * (1 - electrical_heat_eff))
         ore_preheating_device.outputs['losses'].set(electrical_losses)
     
@@ -751,7 +738,7 @@ def add_eaf_flows_final(system: System):
     # TODO: reduce repetition with the plasma steelmaking
     electric_arc_eff = 0.8 # Makarov2022
     electrical_energy = steelmaking_device.energy_balance() / electric_arc_eff
-    steelmaking_device.inputs['electricity'].energy = electrical_energy
+    steelmaking_device.inputs['base electricity'].energy = electrical_energy
     steelmaking_device.outputs['losses'].energy = electrical_energy * (1 - electric_arc_eff)
 
     # Add the radiation and conduction losses 
@@ -765,9 +752,9 @@ def add_eaf_flows_final(system: System):
     steelmaking_device.outputs['losses'].energy += radiation_losses + conduction_losses
 
     # Increase the electrical energy to balance the thermal losses 
-    steelmaking_device.inputs['electricity'].energy += radiation_losses + conduction_losses
+    steelmaking_device.inputs['base electricity'].energy += radiation_losses + conduction_losses
 
-    # print(f"Total energy = {steelmaking_device.inputs['electricity'].energy*2.77778e-7:.2e} kWh")
+    # print(f"Total energy = {steelmaking_device.inputs['base electricity'].energy*2.77778e-7:.2e} kWh")
 
 
 def add_plasma_flows_final(system: System):
@@ -918,7 +905,7 @@ def add_plasma_flows_final(system: System):
     # Assume high efficiency RF ICP plasma gun.
     plasma_torch_eff = system.system_vars['plasma torch eff pecent'] * 0.01
     electrical_energy = steelmaking_device.energy_balance() / plasma_torch_eff
-    steelmaking_device.inputs['electricity'].energy = electrical_energy
+    steelmaking_device.inputs['base electricity'].energy = electrical_energy
     steelmaking_device.outputs['losses'].energy = electrical_energy * (1 - plasma_torch_eff)
 
     # Add the thermal losses 
@@ -932,12 +919,12 @@ def add_plasma_flows_final(system: System):
     radiation_losses = steelsurface_radiation_losses(np.pi*(plasma_surface_radius)**2, 
                                                      steel_bath_temp, celsius_to_kelvin(25),
                                                      capacity_tonnes, tap_to_tap_secs)
-    radiation_losses += hydrogen_plasma_radiation_losses(steelmaking_device.inputs['electricity'].energy + conduction_losses)
+    radiation_losses += hydrogen_plasma_radiation_losses(steelmaking_device.inputs['base electricity'].energy + conduction_losses)
     steelmaking_device.outputs['losses'].energy += radiation_losses + conduction_losses
 
     # Increase the electrical energy to balance the thermal losses 
-    steelmaking_device.inputs['electricity'].energy += radiation_losses + conduction_losses
-    # print(f"Total energy = {steelmaking_device.inputs['electricity'].energy*2.77778e-7:.2e} kWh")
+    steelmaking_device.inputs['base electricity'].energy += radiation_losses + conduction_losses
+    # print(f"Total energy = {steelmaking_device.inputs['base electricity'].energy*2.77778e-7:.2e} kWh")
 
 
 def add_electrolysis_flows(system: System):
@@ -981,11 +968,20 @@ def add_electrolysis_flows(system: System):
     h2o.temp_kelvin = water_input_temp
     electrolyser.inputs['h2o'].set(h2o)
 
+    electrical_energy_source = 'base electricity'
+    electrolyser.device_vars['oversize factor'] = 1.0
+    if 'h2 storage' in system.devices:
+        # We assume there is no maximum oversize factor. We always try to utilise spot
+        # electricity prices
+        electrical_energy_source = 'spot electricity'
+        electrolyser.device_vars['oversize factor'] = 24.0 / system.system_vars['spot electricity hours']
+        assert electrolyser.device_vars['oversize factor'] >= 1.0, "Error: Oversize factor should be >= 1.0"
+
     # determine the electrical energy required.
     lhv_efficiency = system.system_vars['electrolysis lhv efficiency percent'] * 0.01
     h2_lhv = 120e6 # J/kg
     electrical_energy = h2.mass * h2_lhv / lhv_efficiency
-    electrolyser.inputs['electricity'].energy = electrical_energy
+    electrolyser.inputs[electrical_energy_source].energy += electrical_energy
     electrolyser.outputs['losses'].energy = electrical_energy * (1-lhv_efficiency)
 
     # Should really calculate the chemical energy out from the delta_h function
@@ -996,14 +992,11 @@ def add_electrolysis_flows(system: System):
     # Note that the energy above is just the energy to perform electrolysis at
     # 25 deg. There is also the energy required to heat the species to the
     # specified output temp. For simplicity, we assume no losses here.
-    electrolyser.inputs['electricity'].energy += (electrolyser.thermal_energy_balance())
+    electrical_energy = (electrolyser.thermal_energy_balance())
+    electrolyser.inputs[electrical_energy_source].energy += electrical_energy
 
 
 def add_h2_storage_flows(system: System):
-    """
-    Adds the mass flows so that the correct masses are ready for condenser and scrubber intial
-    """
-
     # Assume no H2 leakage.
     # Neglect the temperature difference from the output of the electrolyser (~70C)
     # to the output of the storage device (~25C). 
@@ -1029,7 +1022,8 @@ def add_h2_storage_flows(system: System):
     else:
         raise ValueError("Error: Unknown h2 storage device")
     
-    system.devices['h2 storage'].inputs['electricity'].energy = compressor_energy
+    # We assume we will only ever fill storage if we are taking advantage of low spot prices
+    system.devices['h2 storage'].inputs['spot electricity'].energy = compressor_energy
     system.devices['h2 storage'].outputs['losses'].energy = compressor_energy
 
 
@@ -1230,11 +1224,10 @@ def adjust_plasma_energy_flows(system: System):
         # the heat exchanger
         raise Exception('Expected negative or zero energy balance in the plasma smelter before adjustment')
 
-    system.devices[device_name].inputs['electricity'].energy += energy_balance
-    assert system.devices[device_name].inputs['electricity'], "electricity draw must be positive"
+    system.devices[device_name].inputs['base electricity'].energy += energy_balance
+    assert system.devices[device_name].inputs['base electricity'], "electricity draw must be positive"
 
 
-# H2 heater energy requirements!!
 def add_h2_heater_flows(system: System):
     h2_heaters = system.devices_containing_name('h2 heater')
     if len(h2_heaters) == 0:
@@ -1259,7 +1252,7 @@ def add_h2_heater_flows(system: System):
             efficiency = 0.98
             required_thermal_energy = system.devices[heater_name].thermal_energy_balance()
             if required_thermal_energy >= 0:
-                system.devices[heater_name].inputs['electricity'].energy += required_thermal_energy / efficiency
+                system.devices[heater_name].inputs['base electricity'].energy += required_thermal_energy / efficiency
                 system.devices[heater_name].outputs['losses'].energy += required_thermal_energy * (1 - efficiency) / efficiency
             else:
                 # the heat exchanger has given all the necessary heat
@@ -1270,21 +1263,21 @@ def add_h2_heater_flows(system: System):
 # Plot Helpers
 def electricity_demand_per_major_device(system: System) -> Dict[str, float]:
     electricity = {
-        '1. water electrolysis': system.devices['water electrolysis'].inputs.get('electricity', EnergyFlow(0.0)).energy,
-        '2. h2 storage': system.devices['h2 storage'].inputs.get('electricity', EnergyFlow(0.0)).energy,
+        '1. water electrolysis': system.devices['water electrolysis'].inputs.get('spot electricity', EnergyFlow(0.0)).energy,
+        '2. h2 storage': system.devices['h2 storage'].inputs.get('spot electricity', EnergyFlow(0.0)).energy,
         '3. h2 heater': 0.0,
-        '4. ore heater': system.devices['ore heater'].inputs.get('electricity', EnergyFlow(0.0)).energy,
+        '4. ore heater': system.devices['ore heater'].inputs.get('base electricity', EnergyFlow(0.0)).energy,
         '5. plasma or eaf': 0.0,
     }
 
     h2_heaters = system.devices_containing_name('h2 heater')
     for device_name in h2_heaters:
-        electricity['3. h2 heater'] += system.devices[device_name].inputs.get('electricity', EnergyFlow(0.0)).energy
+        electricity['3. h2 heater'] += system.devices[device_name].inputs.get('base electricity', EnergyFlow(0.0)).energy
 
     if 'plasma smelter' in system.devices:
-        electricity['5. plasma or eaf'] += system.devices['plasma smelter'].inputs.get('electricity', EnergyFlow(0.0)).energy
+        electricity['5. plasma or eaf'] += system.devices['plasma smelter'].inputs.get('base electricity', EnergyFlow(0.0)).energy
     elif 'eaf' in system.devices:
-        electricity['5. plasma or eaf'] += system.devices['eaf'].inputs.get('electricity', EnergyFlow(0.0)).energy
+        electricity['5. plasma or eaf'] += system.devices['eaf'].inputs.get('base electricity', EnergyFlow(0.0)).energy
     else:
         raise Exception("Expected a device called 'plasma smelter' or 'eaf' in the steel making system")
 
@@ -1317,9 +1310,11 @@ def add_titles_to_axis(ax: plt.Axes, title: str, y_label: str):
 
 # Levelised Cost of Production Helpers
 def operating_cost_per_tonne(inputs: Dict[str, float]) -> Dict[str, float]:
+    # TODO! Update the electrcity prices based on the location of the plant
+
     # Electricity cost USD / MWh
-    # TODO! This will vary a lot based on hydrogen storage and plant capacity factor.
-    electricity_cpmwh = 93.1
+    base_electricity_cpmwh = 93.1
+    spot_electricity_cpmwh = 54.5
     
     # cpt = cost per tonne (USD), cpk = cost per kg (USD)
     ore_cpt = 100.0 # big difference between my price and the slides
@@ -1334,7 +1329,8 @@ def operating_cost_per_tonne(inputs: Dict[str, float]) -> Dict[str, float]:
     labour_cph = 40.0
 
     cost = {
-        'Electricity' : inputs['electricity'] * electricity_cpmwh / 3.6e+9,
+        'Base Electricity' : inputs['base electricity'] * base_electricity_cpmwh / 3.6e+9,
+        'Spot Electricity': inputs['spot electricity'] * spot_electricity_cpmwh / 3.6e+9,
         'Ore' : inputs['ore'] * ore_cpt / 1000,
         'CaO' : inputs['CaO'] * cao_cpk,
         'MgO' : inputs['MgO'] * mgo_cpk,
@@ -1367,6 +1363,7 @@ def annuity_factor(years: float) -> float:
 
 
 def lcop(capex, annual_operating_cost, annual_production, plant_lifetime_years):
+    # TODO! lcop will depend on the capacity factor of the plant
     return (annuity_factor(plant_lifetime_years)*capex + annual_operating_cost) / annual_production
 
 

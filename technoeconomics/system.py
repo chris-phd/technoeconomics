@@ -14,7 +14,7 @@ class EnergyFlow:
     def __init__(self, name: str, energy: float = 0.0):
         self._name = name
         self._energy = energy
-
+        
     def __repr__(self):
         return f"EnergyFlow({self._name}, {self._energy} J)"
 

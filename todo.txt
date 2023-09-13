@@ -3,7 +3,8 @@
 - Fix the enthalpy of reaction calculations. (Tests failing)
 - Fix the fluidized bed mass and energy flows to utilise all the
   devices.
-- Add H2 storage, and how this adjusts the electricity cost. (or H2 cost?)
+- Add H2 storage 
+  - How this adjusts the electricity cost. (or H2 cost?)
   - ASK JOHN OR ALI
 - sensitivity analysis and error bars in plots.
 - Add non-thermal plasma ironmaking
