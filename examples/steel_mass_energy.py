@@ -30,10 +30,10 @@ def main():
     # TODO: Add transferred and non-transferred arc system.
     annual_steel_production_tonnes = 1.5e6 # tonnes / year
     plant_lifetime_years = 20.0
-    plasma_system = create_plasma_system("Plasma", annual_steel_production_tonnes, plant_lifetime_years)
-    dri_eaf_system = create_dri_eaf_system("DRI-EAF", annual_steel_production_tonnes, plant_lifetime_years)
-    hybrid33_system = create_hybrid_system("Hybrid 33", 33.33, annual_steel_production_tonnes, plant_lifetime_years)
-    hybrid95_system = create_hybrid_system("Hybrid 95", 95.0, annual_steel_production_tonnes, plant_lifetime_years)
+    plasma_system = create_plasma_system("Plasma", 'salt caverns', annual_steel_production_tonnes, plant_lifetime_years)
+    dri_eaf_system = create_dri_eaf_system("DRI-EAF", 'salt caverns', annual_steel_production_tonnes, plant_lifetime_years)
+    hybrid33_system = create_hybrid_system("Hybrid 33", 'salt caverns', 33.33, annual_steel_production_tonnes, plant_lifetime_years)
+    hybrid95_system = create_hybrid_system("Hybrid 95", 'salt caverns', 95.0, annual_steel_production_tonnes, plant_lifetime_years)
     systems = [plasma_system, dri_eaf_system, hybrid33_system, hybrid95_system]
 
     # Overwrite system vars here to modify behaviour
@@ -997,6 +997,9 @@ def add_electrolysis_flows(system: System):
 
 
 def add_h2_storage_flows(system: System):
+    if 'h2 storage' not in system.devices:
+        return
+    
     # Assume no H2 leakage.
     # Neglect the temperature difference from the output of the electrolyser (~70C)
     # to the output of the storage device (~25C). 
@@ -1263,12 +1266,18 @@ def add_h2_heater_flows(system: System):
 # Plot Helpers
 def electricity_demand_per_major_device(system: System) -> Dict[str, float]:
     electricity = {
-        '1. water electrolysis': system.devices['water electrolysis'].inputs.get('spot electricity', EnergyFlow(0.0)).energy,
-        '2. h2 storage': system.devices['h2 storage'].inputs.get('spot electricity', EnergyFlow(0.0)).energy,
+        '1. water electrolysis': 0.0,
+        '2. h2 storage': 0.0,
         '3. h2 heater': 0.0,
         '4. ore heater': system.devices['ore heater'].inputs.get('base electricity', EnergyFlow(0.0)).energy,
         '5. plasma or eaf': 0.0,
     }
+
+    electricity['1. water electrolysis'] += system.devices['water electrolysis'].inputs.get('spot electricity', EnergyFlow(0.0)).energy
+    electricity['1. water electrolysis'] += system.devices['water electrolysis'].inputs.get('base electricity', EnergyFlow(0.0)).energy
+
+    if 'h2 storage' in system.devices:
+        electricity['2. h2 storage'] += system.devices['h2 storage'].inputs.get('spot electricity', EnergyFlow(0.0)).energy
 
     h2_heaters = system.devices_containing_name('h2 heater')
     for device_name in h2_heaters:
@@ -1330,7 +1339,7 @@ def operating_cost_per_tonne(inputs: Dict[str, float]) -> Dict[str, float]:
 
     cost = {
         'Base Electricity' : inputs['base electricity'] * base_electricity_cpmwh / 3.6e+9,
-        'Spot Electricity': inputs['spot electricity'] * spot_electricity_cpmwh / 3.6e+9,
+        'Spot Electricity': inputs.get('spot electricity', 0.0) * spot_electricity_cpmwh / 3.6e+9,
         'Ore' : inputs['ore'] * ore_cpt / 1000,
         'CaO' : inputs['CaO'] * cao_cpk,
         'MgO' : inputs['MgO'] * mgo_cpk,
