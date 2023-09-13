@@ -38,8 +38,8 @@ def create_plasma_system(system_name='plasma steelmaking', annual_capacity_tls=1
 
     water_electrolysis = Device('water electrolysis', electrolyser_capex_desantis2021() * annual_capacity_tls)
     plasma_system.add_device(water_electrolysis)
-    # h2_storage = Device('h2 storage')
-    # plasma_system.add_device(h2_storage)
+    h2_storage = Device('h2 storage')
+    plasma_system.add_device(h2_storage)
     h2_heat_exchanger = Device('h2 heat exchanger')
     plasma_system.add_device(h2_heat_exchanger)
     condenser = Device('condenser and scrubber')
@@ -119,8 +119,8 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking', annual_capacity_tls
 
     water_electrolysis = Device('water electrolysis', electrolyser_capex_desantis2021() * annual_capacity_tls)
     dri_eaf_system.add_device(water_electrolysis)
-    # h2_storage = Device('h2 storage')
-    # plasma_system.add_device(h2_storage)
+    h2_storage = Device('h2 storage')
+    dri_eaf_system.add_device(h2_storage)
     h2_heat_exchanger = Device('h2 heat exchanger')
     dri_eaf_system.add_device(h2_heat_exchanger)
     join_1 = Device('join 1')
@@ -242,8 +242,8 @@ def create_hybrid_system(system_name='hybrid steelmaking', prereduction_perc=33.
 
     water_electrolysis = Device('water electrolysis', electrolyser_capex_desantis2021() * annual_capacity_tls)
     hybrid_system.add_device(water_electrolysis)
-    # h2_storage = Device('h2 storage')
-    # plasma_system.add_device(h2_storage)
+    h2_storage = Device('h2 storage')
+    hybrid_system.add_device(h2_storage)
     h2_heat_exchanger = Device('h2 heat exchanger')
     hybrid_system.add_device(h2_heat_exchanger)
     h2_heater_1 = Device('h2 heater 1')

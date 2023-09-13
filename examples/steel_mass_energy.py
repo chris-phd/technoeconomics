@@ -8,6 +8,7 @@ import math
 import matplotlib.pyplot as plt
 from typing import Type, List, Union, Dict
 from steel_plants import create_plasma_system, create_dri_eaf_system, create_hybrid_system
+from steel_plant_capex import add_steel_plant_capex
 
 try:
     import technoeconomics.species as species 
@@ -30,21 +31,25 @@ def main():
     annual_steel_production_tonnes = 1.5e6 # tonnes / year
     plant_lifetime_years = 20.0
     plasma_system = create_plasma_system("Plasma", annual_steel_production_tonnes, plant_lifetime_years)
-    dri_eaf_system = create_dri_eaf_system("DRI-EAF", annual_steel_production_tonnes, plant_lifetime_years)
+    dri_eaf_system = create_dri_eaf_system("DRI-EAF salt caverns", annual_steel_production_tonnes, plant_lifetime_years)
     hybrid33_system = create_hybrid_system("Hybrid 33", 33.33, annual_steel_production_tonnes, plant_lifetime_years)
     hybrid95_system = create_hybrid_system("Hybrid 95", 95.0, annual_steel_production_tonnes, plant_lifetime_years)
 
     # Overwrite system vars here to modify behaviour
     plasma_system.system_vars['ore name'] = 'IOB'
-    dri_eaf_system.system_vars['ore name'] = 'IOC'
-    hybrid33_system.system_vars['ore name'] = 'IOD'
-    hybrid95_system.system_vars['ore name'] = 'IOE'
+    dri_eaf_system.system_vars['h2 storage method'] = 'compressed gas vessel'
 
     ## Calculate The Mass and Energy Flow
     add_plasma_mass_and_energy(plasma_system)
     add_dri_eaf_mass_and_energy(dri_eaf_system)
     add_hybrid_mass_and_energy(hybrid33_system)
     add_hybrid_mass_and_energy(hybrid95_system)
+
+    ##
+    add_steel_plant_capex(plasma_system)
+    add_steel_plant_capex(dri_eaf_system)
+    add_steel_plant_capex(hybrid33_system)
+    add_steel_plant_capex(hybrid95_system)
 
     ## Energy and Mass Flow Plots
     systems = [plasma_system, dri_eaf_system, hybrid33_system, hybrid95_system]

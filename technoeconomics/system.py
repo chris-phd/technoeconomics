@@ -47,6 +47,7 @@ class Device:
         self._inputs = {}
         self._outputs = {}
         self._capex = capex
+        self._device_vars = {}
 
     def __repr__(self):
         s = f"Device({self.name}\n"
@@ -81,6 +82,14 @@ class Device:
     @property
     def capex(self):
         return self._capex
+    
+    @capex.setter
+    def capex(self, value):
+        self._capex = value
+
+    @property
+    def device_vars(self):
+        return self._device_vars
 
     def add_input(self, flow: Union[Species, Mixture, EnergyFlow]):
         if flow.name in self._inputs:
@@ -362,7 +371,6 @@ class System:
 
         return inputs
                     
-
     def system_outputs(self, ignore_flows_named=[], separate_mixtures_named=[], mass_flow_only=False) -> Dict[str, float]:
         """
         Returns the mass of each output (kg) or energy (J) rather than the 
