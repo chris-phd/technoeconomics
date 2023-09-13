@@ -16,11 +16,18 @@ except ImportError:
     from technoeconomics.system import System
 
 
-def add_steel_plant_capex(system: System, h2_storage_hours_of_operation: float = 12):
-    # system.
-    h2_storage_method = 'salt cavern'
-    if 'h2 storage method' in system.system_vars:
-        h2_storage_method = system.system_vars['h2 storage method']
+def add_steel_plant_capex(system: System):
+    if 'h2 storage' in system.devices:
+        add_h2_storage_capex(system)
+
+
+def add_h2_storage_capex(system: System):
+    if 'h2 storage method' not in system.system_vars or \
+        'h2 storage hours of operation' not in system.system_vars:
+        raise ValueError('h2 storage method or h2 storage hours of operation not defined')
+
+    h2_storage_method = system.system_vars['h2 storage method']
+    h2_storage_hours_of_operation = system.system_vars['h2 storage hours of operation']
 
     mass_h2_per_tonne_steel = system.devices['water electrolysis'].first_output_containing_name('h2').mass
     tonnes_steel_per_hour = system.annual_capacity / (365.25 * 24)
@@ -28,17 +35,15 @@ def add_steel_plant_capex(system: System, h2_storage_hours_of_operation: float =
     system.devices['h2 storage'].device_vars['h2 storage size [kg]'] = h2_storage_required
     system.devices['h2 storage'].device_vars['h2 storage type'] = h2_storage_method
     
-    if h2_storage_method.lower() == 'salt cavern':
+    if h2_storage_method.lower() == 'salt caverns':
         system.devices['h2 storage'].capex = h2_storage_required * salt_cavern_capex_lord2014()
-    elif h2_storage_method.lower() == 'compressed gas vessel':
+        # required h2 storage is less than a typical salt canvern. Would need to share with some
+        # other applications.
+    elif h2_storage_method.lower() == 'compressed gas vessels':
         system.devices['h2 storage'].capex = h2_storage_required * compressed_h2_gas_vessel_elberry2021()
         system.devices['h2 storage'].device_vars['num h2 storage vessels'] = int(math.ceil(h2_storage_required / 300.0))
     else:
         raise ValueError('h2 storage method not recognised')
-
-    # So the H2 required is alot smaller than a typical salt cavern.
-    # So ideally need to share with some other storage application.. or use lots of storage vessels. 
-
 
 # lord2014
 # A. S. Lord, P. H. Kobos, and D. J. Borns, “Geologic storage of hydrogen: 

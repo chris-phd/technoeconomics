@@ -6,7 +6,7 @@ import os
 import numpy as np
 import math
 import matplotlib.pyplot as plt
-from typing import Type, List, Union, Dict
+from typing import List, Dict
 from steel_plants import create_plasma_system, create_dri_eaf_system, create_hybrid_system
 from steel_plant_capex import add_steel_plant_capex
 
@@ -30,14 +30,14 @@ def main():
     # TODO: Add transferred and non-transferred arc system.
     annual_steel_production_tonnes = 1.5e6 # tonnes / year
     plant_lifetime_years = 20.0
-    plasma_system = create_plasma_system("Plasma", annual_steel_production_tonnes, plant_lifetime_years)
-    dri_eaf_system = create_dri_eaf_system("DRI-EAF salt caverns", annual_steel_production_tonnes, plant_lifetime_years)
+    plasma_system = create_plasma_system("Plasma SC", annual_steel_production_tonnes, plant_lifetime_years)
+    dri_eaf_system = create_dri_eaf_system("DRI-EAF", annual_steel_production_tonnes, plant_lifetime_years)
     hybrid33_system = create_hybrid_system("Hybrid 33", 33.33, annual_steel_production_tonnes, plant_lifetime_years)
     hybrid95_system = create_hybrid_system("Hybrid 95", 95.0, annual_steel_production_tonnes, plant_lifetime_years)
 
     # Overwrite system vars here to modify behaviour
     plasma_system.system_vars['ore name'] = 'IOB'
-    dri_eaf_system.system_vars['h2 storage method'] = 'compressed gas vessel'
+    dri_eaf_system.system_vars['h2 storage method'] = 'compressed gas vessels'
 
     ## Calculate The Mass and Energy Flow
     add_plasma_mass_and_energy(plasma_system)
@@ -75,15 +75,13 @@ def main():
     add_stacked_histogram_data_to_axis(output_mass_ax, system_names, output_mass_labels, outputs_for_systems)
     add_titles_to_axis(output_mass_ax, 'Output Mass Flow / Tonne Liquid Steel', 'Mass (kg)')
 
-    # plt.show()
+    # change the subplot configuration setting 'right' to 0.78
+    
+
+    plt.show()
 
     ## Calculate the levelised cost of production
     inputs_per_tonne_for_systems = [s.system_inputs(separate_mixtures_named=['flux'], mass_flow_only=False) for s in systems]
-
-    # CAPEX. The cost for a 1.5e6 tonne / year plant
-    # dri_eaf_cost = 1.33e+09
-    # plasma_cost  = 1.30e+09
-    # hybrid_cost  = 1.62e+09
 
     total_direct_indirect_capex = [capex_direct_and_indirect(s.capex()) for s in systems]
     operating_costs_per_tonne_itemised = [operating_cost_per_tonne(inputs) for inputs in inputs_per_tonne_for_systems]
@@ -105,6 +103,7 @@ def add_plasma_mass_and_energy(system: System):
     add_ore(system)
     add_plasma_flows_final(system)
     add_electrolysis_flows(system)
+    add_h2_storage_flows(system)
     merge_join_flows(system, 'join 1')
     add_heat_exchanger_flows_initial(system)
     add_condenser_and_scrubber_flows_initial(system)
@@ -125,6 +124,7 @@ def add_dri_eaf_mass_and_energy(system: System):
     add_briquetting_flows(system)
     add_eaf_flows_final(system)
     add_electrolysis_flows(system)
+    add_h2_storage_flows(system)
     merge_join_flows(system, 'join 1')
     add_heat_exchanger_flows_initial(system)
     add_condenser_and_scrubber_flows_initial(system)
@@ -145,6 +145,7 @@ def add_hybrid_mass_and_energy(system: System):
     add_briquetting_flows(system)
     add_plasma_flows_final(system)
     add_electrolysis_flows(system)
+    add_h2_storage_flows(system)
     merge_join_flows(system, 'join 1')
     merge_join_flows(system, 'join 3')
     add_heat_exchanger_flows_initial(system)
@@ -741,7 +742,6 @@ def add_eaf_flows_final(system: System):
     infiltrated_air_mass = 200.0 # from pfeifer 2022 (TODO read the original paper)
     infiltrated_air = species.create_air_mixture(infiltrated_air_mass)
     infiltrated_air.name = 'infiltrated air'
-    infiltrated_air
     infiltrated_air.temp_kelvin = celsius_to_kelvin(25)
     steelmaking_device.inputs['infiltrated air'].set(infiltrated_air)
 
@@ -999,6 +999,40 @@ def add_electrolysis_flows(system: System):
     electrolyser.inputs['electricity'].energy += (electrolyser.thermal_energy_balance())
 
 
+def add_h2_storage_flows(system: System):
+    """
+    Adds the mass flows so that the correct masses are ready for condenser and scrubber intial
+    """
+
+    # Assume no H2 leakage.
+    # Neglect the temperature difference from the output of the electrolyser (~70C)
+    # to the output of the storage device (~25C). 
+    system.devices['h2 storage'].outputs['h2 rich gas'].set(system.devices['h2 storage'].inputs['h2 rich gas'])
+
+    # Not all of the hydrogen flowing into the H2 storage device goes into storage.
+    # Some passes straight to the next device. Only the excess is stored.
+    # This is to make the flows / wiring of the system as a whole a little simpler.
+    # Calculate the fraction of hydrogen that ends up in storage.
+    stored_h2_frac = system.system_vars['h2 storage hours of operation'] / 24.0
+    stored_h2_mass = stored_h2_frac * system.devices['h2 storage'].inputs['h2 rich gas'].mass
+    h2_hhv = 142.0e6 # J/kg
+
+    if system.system_vars['h2 storage method'].lower() == 'salt caverns':
+        # Pressure around ~100 bar (but could be in range of 50-160). 
+        # Assume mixed isothermal, adiabatic compression. Figure 6 in elberry2021
+        # Compress requires 6% of HHV energy
+        compressor_energy = 0.06 * stored_h2_mass * h2_hhv
+    elif system.system_vars['h2 storage method'].lower() == 'compressed gas vessels':
+        # Pressure is ~160 bar. Assume mixed isothermal, adiabatic compression. Figure 6 in elberry2021
+        # Compress requires 7% of HHV energy
+        compressor_energy = 0.07 * stored_h2_mass * h2_hhv
+    else:
+        raise ValueError("Error: Unknown h2 storage device")
+    
+    system.devices['h2 storage'].inputs['electricity'].energy = compressor_energy
+    system.devices['h2 storage'].outputs['losses'].energy = compressor_energy
+
+
 def merge_join_flows(system: System, join_device_name: str):
     """
     Call once the input flows have been calculated. SO ANNOYING! THIS NEW CODE SHOULD BE BETTER!!
@@ -1237,19 +1271,20 @@ def add_h2_heater_flows(system: System):
 def electricity_demand_per_major_device(system: System) -> Dict[str, float]:
     electricity = {
         '1. water electrolysis': system.devices['water electrolysis'].inputs.get('electricity', EnergyFlow(0.0)).energy,
-        '2. h2 heater': 0.0,
-        '3. ore heater': system.devices['ore heater'].inputs.get('electricity', EnergyFlow(0.0)).energy,
-        '4. plasma or eaf': 0.0,
+        '2. h2 storage': system.devices['h2 storage'].inputs.get('electricity', EnergyFlow(0.0)).energy,
+        '3. h2 heater': 0.0,
+        '4. ore heater': system.devices['ore heater'].inputs.get('electricity', EnergyFlow(0.0)).energy,
+        '5. plasma or eaf': 0.0,
     }
 
     h2_heaters = system.devices_containing_name('h2 heater')
     for device_name in h2_heaters:
-        electricity['2. h2 heater'] += system.devices[device_name].inputs.get('electricity', EnergyFlow(0.0)).energy
+        electricity['3. h2 heater'] += system.devices[device_name].inputs.get('electricity', EnergyFlow(0.0)).energy
 
     if 'plasma smelter' in system.devices:
-        electricity['4. plasma or eaf'] += system.devices['plasma smelter'].inputs.get('electricity', EnergyFlow(0.0)).energy
+        electricity['5. plasma or eaf'] += system.devices['plasma smelter'].inputs.get('electricity', EnergyFlow(0.0)).energy
     elif 'eaf' in system.devices:
-        electricity['4. plasma or eaf'] += system.devices['eaf'].inputs.get('electricity', EnergyFlow(0.0)).energy
+        electricity['5. plasma or eaf'] += system.devices['eaf'].inputs.get('electricity', EnergyFlow(0.0)).energy
     else:
         raise Exception("Expected a device called 'plasma smelter' or 'eaf' in the steel making system")
 
@@ -1276,6 +1311,7 @@ def add_titles_to_axis(ax: plt.Axes, title: str, y_label: str):
     ax.set_title(title)
     ax.set_ylabel(y_label)
     ax.legend(bbox_to_anchor = (1.0, 1.0), loc='upper left')
+    plt.subplots_adjust(right=0.8)
     ax.grid(axis='y', linestyle='--')
 
 

@@ -70,6 +70,8 @@ def create_plasma_system(system_name='plasma steelmaking', annual_capacity_tls=1
     plasma_system.system_vars['electrolysis lhv efficiency percent'] = 70.0
     plasma_system.system_vars['hydrogen loops'] = [plasma_system.system_vars['ironmaking device names']]
     plasma_system.system_vars['h2 consuming device names'] = plasma_system.system_vars['ironmaking device names']
+    plasma_system.system_vars['h2 storage method'] = 'salt caverns'
+    plasma_system.system_vars['h2 storage hours of operation'] = 12.0
 
     # electrolysis flows
     plasma_system.add_input(water_electrolysis.name, create_dummy_species('h2o'))
@@ -78,6 +80,10 @@ def create_plasma_system(system_name='plasma steelmaking', annual_capacity_tls=1
     plasma_system.add_output(water_electrolysis.name, EnergyFlow('losses'))
     plasma_system.add_output(water_electrolysis.name, EnergyFlow('chemical'))
 
+    # h2 storage
+    plasma_system.add_flow(water_electrolysis.name, h2_storage.name, create_dummy_species('h2 rich gas'))
+    plasma_system.add_input(h2_storage.name, EnergyFlow('electricity'))
+    plasma_system.add_output(h2_storage.name, EnergyFlow('losses'))
 
     # condenser
     plasma_system.add_output(condenser.name, create_dummy_species('h2o'))
@@ -87,7 +93,7 @@ def create_plasma_system(system_name='plasma steelmaking', annual_capacity_tls=1
 
     # join
     plasma_system.add_flow(condenser.name, join_1.name, create_dummy_species('recycled h2 rich gas'))
-    plasma_system.add_flow(water_electrolysis.name, join_1.name, create_dummy_species('h2 rich gas'))
+    plasma_system.add_flow(h2_storage.name, join_1.name, create_dummy_species('h2 rich gas'))
 
     # heat exchanger
     plasma_system.add_flow(join_1.name, h2_heat_exchanger.name, create_dummy_species('h2 rich gas'))
@@ -161,6 +167,8 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking', annual_capacity_tls
     dri_eaf_system.system_vars['electrolysis lhv efficiency percent'] = 70.0
     dri_eaf_system.system_vars['hydrogen loops'] = [dri_eaf_system.system_vars['ironmaking device names']]
     dri_eaf_system.system_vars['h2 consuming device names'] = dri_eaf_system.system_vars['ironmaking device names']
+    dri_eaf_system.system_vars['h2 storage method'] = 'salt caverns'
+    dri_eaf_system.system_vars['h2 storage hours of operation'] = 12.0
 
     # electrolysis flows
     dri_eaf_system.add_input(water_electrolysis.name, create_dummy_species('h2o'))
@@ -169,6 +177,11 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking', annual_capacity_tls
     dri_eaf_system.add_output(water_electrolysis.name, EnergyFlow('losses'))
     dri_eaf_system.add_output(water_electrolysis.name, EnergyFlow('chemical'))
 
+    # h2 storage
+    dri_eaf_system.add_flow(water_electrolysis.name, h2_storage.name, create_dummy_species('h2 rich gas'))
+    dri_eaf_system.add_input(h2_storage.name, EnergyFlow('electricity'))
+    dri_eaf_system.add_output(h2_storage.name, EnergyFlow('losses'))
+
     # condenser
     dri_eaf_system.add_output(condenser.name, create_dummy_species('h2o'))
     dri_eaf_system.add_output(condenser.name, EnergyFlow('losses'))
@@ -176,7 +189,7 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking', annual_capacity_tls
 
     # join
     dri_eaf_system.add_flow(condenser.name, join_1.name, create_dummy_species('recycled h2 rich gas'))
-    dri_eaf_system.add_flow(water_electrolysis.name, join_1.name, create_dummy_species('h2 rich gas'))
+    dri_eaf_system.add_flow(h2_storage.name, join_1.name, create_dummy_species('h2 rich gas'))
 
     # heat exchanger
     dri_eaf_system.add_flow(join_1.name, h2_heat_exchanger.name, create_dummy_species('h2 rich gas'))
@@ -299,6 +312,8 @@ def create_hybrid_system(system_name='hybrid steelmaking', prereduction_perc=33.
     hybrid_system.system_vars['electrolysis lhv efficiency percent'] = 70.0
     hybrid_system.system_vars['hydrogen loops'] = [ironmaking_device_names, [plasma_smelter.name]]
     hybrid_system.system_vars['h2 consuming device names'] = ironmaking_device_names + [plasma_smelter.name]
+    hybrid_system.system_vars['h2 storage method'] = 'salt caverns'
+    hybrid_system.system_vars['h2 storage hours of operation'] = 12.0
 
     # electrolysis flows
     hybrid_system.add_input(water_electrolysis.name, create_dummy_species('h2o'))
@@ -307,6 +322,10 @@ def create_hybrid_system(system_name='hybrid steelmaking', prereduction_perc=33.
     hybrid_system.add_output(water_electrolysis.name, EnergyFlow('losses'))
     hybrid_system.add_output(water_electrolysis.name, EnergyFlow('chemical'))
 
+    # h2 storage
+    hybrid_system.add_flow(water_electrolysis.name, h2_storage.name, create_dummy_species('h2 rich gas'))
+    hybrid_system.add_input(h2_storage.name, EnergyFlow('electricity'))
+    hybrid_system.add_output(h2_storage.name, EnergyFlow('losses'))
 
     # condenser
     hybrid_system.add_output(condenser.name, create_dummy_species('h2o'))
@@ -316,7 +335,7 @@ def create_hybrid_system(system_name='hybrid steelmaking', prereduction_perc=33.
 
     # join 1
     hybrid_system.add_flow(condenser.name, join_1.name, create_dummy_species('recycled h2 rich gas'))
-    hybrid_system.add_flow(water_electrolysis.name, join_1.name, create_dummy_species('h2 rich gas'))
+    hybrid_system.add_flow(h2_storage.name, join_1.name, create_dummy_species('h2 rich gas'))
 
     # heat exchanger
     hybrid_system.add_flow(join_1.name, h2_heat_exchanger.name, create_dummy_species('h2 rich gas'))
