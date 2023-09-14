@@ -41,6 +41,7 @@ def main():
     for system in systems:
         system.system_vars['cheap electricity hours'] = 8.0
         system.system_vars['h2 storage hours of operation'] = 24.0 - system.system_vars['cheap electricity hours']
+        system.system_vars['scrap perc'] = 20.0
 
     # plasma_system.system_vars['ore name'] = 'IOB'
     dri_eaf_system.system_vars['h2 storage method'] = 'compressed gas vessels'
@@ -80,7 +81,7 @@ def main():
     add_stacked_histogram_data_to_axis(output_mass_ax, system_names, output_mass_labels, outputs_for_systems)
     add_titles_to_axis(output_mass_ax, 'Output Mass Flow / Tonne Liquid Steel', 'Mass (kg)')
 
-    # plt.show()
+    plt.show()
 
     ## Calculate the levelised cost of production
     inputs_per_tonne_for_systems = [s.system_inputs(separate_mixtures_named=['flux'], mass_flow_only=False) for s in systems]
@@ -165,8 +166,8 @@ def add_hybrid_mass_and_energy(system: System):
 def add_steel_out(system: System):
     # settings
     steel_target_mass = 1000.0 # kg
-    steel_carbon_mass_perc = 1.0 # %
-    scrap_perc = 0.0 # %
+    steel_carbon_mass_perc = system.system_vars['steel carbon perc'] # %
+    scrap_perc = system.system_vars['scrap perc'] # %
 
     # create the species
     fe = species.create_fe_species()
@@ -175,12 +176,15 @@ def add_steel_out(system: System):
     fe.mass = steel_target_mass * (1 - steel_carbon_mass_perc*0.01) * (1 - scrap_perc*0.01)
     c.mass = steel_target_mass * (1 - scrap_perc*0.01) * steel_carbon_mass_perc * 0.01 # kg
     scrap.mass = steel_target_mass * scrap_perc * 0.01 # kg
+    scrap.name = 'scrap'
+    scrap.temp_kelvin = celsius_to_kelvin(25)
 
     steel = species.Mixture('steel', [fe, c, scrap])
     steel.temp_kelvin = system.system_vars['steel exit temp K']
 
     steelmaking_device_name = system.system_vars['steelmaking device name']
     system.get_output(steelmaking_device_name, 'steel').set(steel)
+    system.get_input(steelmaking_device_name, 'scrap').set(scrap)
 
 
 def hematite_normalise(ore_comp: Dict[str, float]):
@@ -958,7 +962,7 @@ def add_electrolysis_flows(system: System):
         assert h2_consumed >= 0
         h2.mols += h2_consumed
     electrolyser.outputs['h2 rich gas'].set(h2)
-    assert 50.0 < h2.mass < 60.0 # we know roughly how much H2 to expect from stoichiometry
+    assert 20.0 < h2.mass < 60.0, "Expect around 55kg of H2, but can be lower if scrap is used."
     
     o2 = species.create_o2_species()
     o2.mols = h2.mols * 0.5

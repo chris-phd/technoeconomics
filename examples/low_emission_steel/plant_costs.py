@@ -28,9 +28,10 @@ def operating_cost_per_tonne(inputs: Dict[str, float], spot_electricity_hours: f
     
     # cpt = cost per tonne (USD), cpk = cost per kg (USD)
     ore_cpt = 100.0 # big difference between my price and the slides
-    cao_cpk = 0.08 # cost per kg
+    scrap_cpt = 250.0 # check this
+    cao_cpk = 0.08 
     mgo_cpk = 0.49 
-    o2_cpk = 0.0 # could make this free, since it's a byproduct of electrolysis?
+    o2_cpk = 0.0 # free, since it's a byproduct of electrolysis
     h2o_cpk = 0.0 # assumption that water should be close to zero cost, especially since it's a byproduct of reduction?
     carbon_cpt = 130.0
     
@@ -41,6 +42,7 @@ def operating_cost_per_tonne(inputs: Dict[str, float], spot_electricity_hours: f
     cost = {
         'Base Electricity' : inputs['base electricity'] * base_electricity_cpmwh / 3.6e+9,
         'Cheap Spot Electricity': inputs.get('cheap electricity', 0.0) * cheap_spot_electricity_cpmwh / 3.6e+9,
+        'Scrap' : inputs['scrap'] * scrap_cpt,
         'Ore' : inputs['ore'] * ore_cpt / 1000,
         'CaO' : inputs['CaO'] * cao_cpk,
         'MgO' : inputs['MgO'] * mgo_cpk,

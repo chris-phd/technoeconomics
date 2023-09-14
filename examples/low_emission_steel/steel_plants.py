@@ -73,6 +73,8 @@ def create_plasma_system(system_name='plasma steelmaking', h2_storage_method: Op
     plasma_system.system_vars['electrolysis lhv efficiency percent'] = 70.0
     plasma_system.system_vars['hydrogen loops'] = [plasma_system.system_vars['ironmaking device names']]
     plasma_system.system_vars['h2 consuming device names'] = plasma_system.system_vars['ironmaking device names']
+    plasma_system.system_vars['scrap perc'] = 0.0
+    plasma_system.system_vars['steel carbon perc'] = 1.0
     if h2_storage_method is not None:
         plasma_system.system_vars['h2 storage method'] = h2_storage_method
 
@@ -125,6 +127,7 @@ def create_plasma_system(system_name='plasma steelmaking', h2_storage_method: Op
     plasma_system.add_input(plasma_smelter.name, create_dummy_species('carbon'))
     plasma_system.add_input(plasma_smelter.name, create_dummy_mixture('flux'))
     plasma_system.add_input(plasma_smelter.name, create_dummy_species('o2'))
+    plasma_system.add_input(plasma_smelter.name, create_dummy_species('scrap'))
     plasma_system.add_output(plasma_smelter.name, create_dummy_mixture('slag'))
     plasma_system.add_output(plasma_smelter.name, create_dummy_mixture('steel'))
 
@@ -180,6 +183,8 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking', h2_storage_method: 
     dri_eaf_system.system_vars['electrolysis lhv efficiency percent'] = 70.0
     dri_eaf_system.system_vars['hydrogen loops'] = [dri_eaf_system.system_vars['ironmaking device names']]
     dri_eaf_system.system_vars['h2 consuming device names'] = dri_eaf_system.system_vars['ironmaking device names']
+    dri_eaf_system.system_vars['scrap perc'] = 0.0
+    dri_eaf_system.system_vars['steel carbon perc'] = 1.0
     if h2_storage_method is not None:
         dri_eaf_system.system_vars['h2 storage method'] = h2_storage_method
 
@@ -263,6 +268,7 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking', h2_storage_method: 
     dri_eaf_system.add_input(eaf.name, create_dummy_mixture('flux'))
     dri_eaf_system.add_input(eaf.name, create_dummy_species('o2'))
     dri_eaf_system.add_input(eaf.name, create_dummy_mixture('infiltrated air'))
+    dri_eaf_system.add_input(eaf.name, create_dummy_species('scrap'))
     dri_eaf_system.add_output(eaf.name, create_dummy_mixture('infiltrated air'))
     dri_eaf_system.add_output(eaf.name, create_dummy_mixture('carbon gas'))
     dri_eaf_system.add_output(eaf.name, create_dummy_mixture('slag'))
@@ -335,6 +341,8 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
     hybrid_system.system_vars['electrolysis lhv efficiency percent'] = 70.0
     hybrid_system.system_vars['hydrogen loops'] = [ironmaking_device_names, [plasma_smelter.name]]
     hybrid_system.system_vars['h2 consuming device names'] = ironmaking_device_names + [plasma_smelter.name]
+    hybrid_system.system_vars['scrap perc'] = 0.0
+    hybrid_system.system_vars['steel carbon perc'] = 1.0
     if h2_storage_method is not None:
         hybrid_system.system_vars['h2 storage method'] = h2_storage_method
 
@@ -431,6 +439,7 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
     hybrid_system.add_input(plasma_smelter.name, create_dummy_species('carbon'))
     hybrid_system.add_input(plasma_smelter.name, create_dummy_mixture('flux'))
     hybrid_system.add_input(plasma_smelter.name, create_dummy_species('o2'))
+    hybrid_system.add_input(plasma_smelter.name, create_dummy_species('scrap'))
     hybrid_system.add_output(plasma_smelter.name, create_dummy_mixture('slag'))
     hybrid_system.add_output(plasma_smelter.name, create_dummy_mixture('steel'))
 

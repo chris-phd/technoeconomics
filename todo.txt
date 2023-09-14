@@ -3,15 +3,13 @@
 - Fix the enthalpy of reaction calculations. (Tests failing)
 - Fix the fluidized bed mass and energy flows to utilise all the
   devices.
-- Add H2 storage 
-  - How this adjusts the electricity cost. (or H2 cost?)
-  - ASK JOHN OR ALI
 - sensitivity analysis and error bars in plots.
-- Add non-thermal plasma ironmaking
-- Understand the heat transfer efficiecy from the plasma to the ore.
+2 Add non-thermal plasma ironmaking
+1 Understand the heat transfer efficiecy from the plasma to the ore.
   - how much gas do we need per kg of ore / dri?
   - break total plasma efficiency up into two numbers
   - total efficiency to the ore will be electrical-thermal efficiency + heat transfer efficiency.
+- Plasma furnace should be able to operate with a mixture of Argon and H2...
 
 ## Moderate
 - wortler2013, the source currently used for the capex of the fluidized beds,
@@ -30,6 +28,7 @@
 - All electricitiy consuming devices should be able to utilise spot prices for some fraction of thier electricity.
   - Could just make 'base electricity' distribute between cheap and expensive electricity at the point
     where the prices are calculated.
+- add_plasma_flows_final: Need to calculate the reaction enthalpy from monotomic H reduction. The fraction of H reduction will depend on temp
 
 ## Minor
 - update the requirements.txt
