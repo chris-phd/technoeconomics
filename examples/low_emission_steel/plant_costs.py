@@ -3,17 +3,78 @@
 import sys
 import os
 import math
+from typing import Dict
 
 try:
     from technoeconomics.system import System
 except ImportError:
     # If the technoeconomics package is not installed via pip,
     # add the package directory to the system path.
-    examples_dir = os.path.dirname(os.path.abspath(__file__))
+    examples_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     package_dir = os.path.dirname(examples_dir)
     sys.path.insert(0, package_dir)
 
     from technoeconomics.system import System
+
+
+# Levelised Cost of Production Helpers
+def operating_cost_per_tonne(inputs: Dict[str, float]) -> Dict[str, float]:
+    # TODO! Update the electrcity prices based on the location of the plant
+
+    # Electricity cost USD / MWh
+    base_electricity_cpmwh = 93.1
+    spot_electricity_cpmwh = 54.5
+    
+    # cpt = cost per tonne (USD), cpk = cost per kg (USD)
+    ore_cpt = 100.0 # big difference between my price and the slides
+    cao_cpk = 0.08 # cost per kg
+    mgo_cpk = 0.49 
+    o2_cpk = 0.0 # could make this free, since it's a byproduct of electrolysis?
+    h2o_cpk = 0.0 # assumption that water should be close to zero cost, especially since it's a byproduct of reduction?
+    carbon_cpt = 130.0
+    
+    # usd per hour. Kind of a guess so that it comes out 
+    # at 60 USD / tonne of steel. 
+    labour_cph = 40.0
+
+    cost = {
+        'Base Electricity' : inputs['base electricity'] * base_electricity_cpmwh / 3.6e+9,
+        'Spot Electricity': inputs.get('spot electricity', 0.0) * spot_electricity_cpmwh / 3.6e+9,
+        'Ore' : inputs['ore'] * ore_cpt / 1000,
+        'CaO' : inputs['CaO'] * cao_cpk,
+        'MgO' : inputs['MgO'] * mgo_cpk,
+        'Carbon' : inputs['C'] * carbon_cpt / 1000,
+        'Oxygen' : inputs['O2'] * o2_cpk,
+        'Water' : inputs['H2O'] * h2o_cpk,
+        'Labour' : 1.5 * labour_cph,
+    }
+
+    return cost 
+
+
+def capex_direct_and_indirect(direct_capex: float) -> float:
+    r_contg = 0.1 # contingency cost coefficient
+    r_cons = 0.09 # construction cost coefficient
+    c_direct = (1 + r_contg) * direct_capex
+    c_indirect = r_cons * c_direct
+    return c_direct + c_indirect
+
+
+def annuity_factor(years: float) -> float:
+    r_nom = 0.07 # the constant nominal discount rate
+    r_i = 0.025 # inflation rate
+    r_real = (1+r_nom)/(1+r_i)-1 # the constant real discount rate
+    n = years 
+
+    # TODO: verify this formula.
+    f = (r_real*(1+r_real**n))/((1+r_real)**n - 1) 
+    return f
+
+
+def lcop(capex, annual_operating_cost, annual_production, plant_lifetime_years):
+    # TODO! lcop will depend on the capacity factor of the plant
+    return (annuity_factor(plant_lifetime_years)*capex + annual_operating_cost) / annual_production
+
 
 
 def add_steel_plant_capex(system: System):

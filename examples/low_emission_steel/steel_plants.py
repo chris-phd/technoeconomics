@@ -11,7 +11,7 @@ try:
 except ImportError:
     # If the technoeconomics package is not installed via pip,
     # add the package directory to the system path.
-    examples_dir = os.path.dirname(os.path.abspath(__file__))
+    examples_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     package_dir = os.path.dirname(examples_dir)
     sys.path.insert(0, package_dir)
 

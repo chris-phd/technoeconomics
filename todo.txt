@@ -12,7 +12,6 @@
   - how much gas do we need per kg of ore / dri?
   - break total plasma efficiency up into two numbers
   - total efficiency to the ore will be electrical-thermal efficiency + heat transfer efficiency.
-- Make the thermodynamic and mass balance resiliant to LOI.
 
 ## Moderate
 - wortler2013, the source currently used for the capex of the fluidized beds,
@@ -28,6 +27,9 @@
   the species? Does it make sense to do this, or create nefarious bugs?
 - Add the ore type and other important system_vars to the sim report...
 - Need to be very clear about the difference between levelised capital cost and direct capex.
+- All electricitiy consuming devices should be able to utilise spot prices for some fraction of thier electricity.
+  - Could just make 'base electricity' distribute between cheap and expensive electricity at the point
+    where the prices are calculated.
 
 ## Minor
 - update the requirements.txt
@@ -39,7 +41,6 @@
 ## BUGS
 - Energy to create the thermal plasma very inaccurate above 3000K.
   - Might be another good argument to try and incorporate cantera???
-
 
 ## Comments
 - A big assumption here is that the steel plant is always running at full capacity.
