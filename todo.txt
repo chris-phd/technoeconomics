@@ -38,7 +38,7 @@
 - The cost for MgO was taken from the cost of MgCO3
 - report costs of the inputs in absolute terms.
 
-## BUGS
+## Bugs
 - Energy to create the thermal plasma very inaccurate above 3000K.
   - Might be another good argument to try and incorporate cantera???
 

@@ -80,7 +80,7 @@ def create_plasma_system(system_name='plasma steelmaking', h2_storage_method: Op
     plasma_system.add_input(water_electrolysis.name, create_dummy_species('h2o'))
     plasma_system.add_output(water_electrolysis.name, create_dummy_species('o2'))
     if h2_storage_method is not None:
-        electricity_type = 'spot electricity'
+        electricity_type = 'cheap electricity'
     else:
         electricity_type = 'base electricity'
     plasma_system.add_input(water_electrolysis.name, EnergyFlow(electricity_type))
@@ -90,7 +90,7 @@ def create_plasma_system(system_name='plasma steelmaking', h2_storage_method: Op
     # h2 storage
     if h2_storage_method is not None:
         plasma_system.add_flow(water_electrolysis.name, h2_storage.name, create_dummy_species('h2 rich gas'))
-        plasma_system.add_input(h2_storage.name, EnergyFlow('spot electricity'))
+        plasma_system.add_input(h2_storage.name, EnergyFlow('cheap electricity'))
         plasma_system.add_output(h2_storage.name, EnergyFlow('losses'))
 
     # condenser
@@ -187,7 +187,7 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking', h2_storage_method: 
     dri_eaf_system.add_input(water_electrolysis.name, create_dummy_species('h2o'))
     dri_eaf_system.add_output(water_electrolysis.name, create_dummy_species('o2'))
     if h2_storage_method is not None:
-        electricity_type = 'spot electricity'
+        electricity_type = 'cheap electricity'
     else:
         electricity_type = 'base electricity'
     dri_eaf_system.add_input(water_electrolysis.name, EnergyFlow(electricity_type))
@@ -197,7 +197,7 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking', h2_storage_method: 
     # h2 storage
     if h2_storage_method is not None:
         dri_eaf_system.add_flow(water_electrolysis.name, h2_storage.name, create_dummy_species('h2 rich gas'))
-        dri_eaf_system.add_input(h2_storage.name, EnergyFlow('spot electricity'))
+        dri_eaf_system.add_input(h2_storage.name, EnergyFlow('cheap electricity'))
         dri_eaf_system.add_output(h2_storage.name, EnergyFlow('losses'))
 
     # condenser
@@ -342,7 +342,7 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
     hybrid_system.add_input(water_electrolysis.name, create_dummy_species('h2o'))
     hybrid_system.add_output(water_electrolysis.name, create_dummy_species('o2'))
     if h2_storage_method is not None:
-        electricity_type = 'spot electricity'
+        electricity_type = 'cheap electricity'
     else:
         electricity_type = 'base electricity'
     hybrid_system.add_input(water_electrolysis.name, EnergyFlow(electricity_type))
@@ -352,7 +352,7 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
     # h2 storage
     if h2_storage_method is not None:
         hybrid_system.add_flow(water_electrolysis.name, h2_storage.name, create_dummy_species('h2 rich gas'))
-        hybrid_system.add_input(h2_storage.name, EnergyFlow('spot electricity'))
+        hybrid_system.add_input(h2_storage.name, EnergyFlow('cheap electricity'))
         hybrid_system.add_output(h2_storage.name, EnergyFlow('losses'))
 
     # condenser

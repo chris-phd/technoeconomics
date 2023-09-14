@@ -39,8 +39,8 @@ def main():
 
     # Overwrite system vars here to modify behaviour
     for system in systems:
-        system.system_vars['spot electricity hours'] = 8.0
-        system.system_vars['h2 storage hours of operation'] = 24.0 - system.system_vars['spot electricity hours']
+        system.system_vars['cheap electricity hours'] = 8.0
+        system.system_vars['h2 storage hours of operation'] = 24.0 - system.system_vars['cheap electricity hours']
 
     # plasma_system.system_vars['ore name'] = 'IOB'
     dri_eaf_system.system_vars['h2 storage method'] = 'compressed gas vessels'
@@ -80,13 +80,14 @@ def main():
     add_stacked_histogram_data_to_axis(output_mass_ax, system_names, output_mass_labels, outputs_for_systems)
     add_titles_to_axis(output_mass_ax, 'Output Mass Flow / Tonne Liquid Steel', 'Mass (kg)')
 
-    plt.show()
+    # plt.show()
 
     ## Calculate the levelised cost of production
     inputs_per_tonne_for_systems = [s.system_inputs(separate_mixtures_named=['flux'], mass_flow_only=False) for s in systems]
 
     total_direct_indirect_capex = [capex_direct_and_indirect(s.capex()) for s in systems]
-    operating_costs_per_tonne_itemised = [operating_cost_per_tonne(inputs) for inputs in inputs_per_tonne_for_systems]
+    operating_costs_per_tonne_itemised = [operating_cost_per_tonne(inputs, s.system_vars['cheap electricity hours']) \
+                                          for inputs, s in zip(inputs_per_tonne_for_systems, systems)]
     annual_opex = [sum(cpt.values()) * system.annual_capacity for cpt, system in zip(operating_costs_per_tonne_itemised, systems)]
 
     lcop_for_systems = []
@@ -974,8 +975,8 @@ def add_electrolysis_flows(system: System):
     if 'h2 storage' in system.devices:
         # We assume there is no maximum oversize factor. We always try to utilise spot
         # electricity prices
-        electrical_energy_source = 'spot electricity'
-        electrolyser.device_vars['oversize factor'] = 24.0 / system.system_vars['spot electricity hours']
+        electrical_energy_source = 'cheap electricity'
+        electrolyser.device_vars['oversize factor'] = 24.0 / system.system_vars['cheap electricity hours']
         assert electrolyser.device_vars['oversize factor'] >= 1.0, "Error: Oversize factor should be >= 1.0"
 
     # determine the electrical energy required.
@@ -1027,7 +1028,7 @@ def add_h2_storage_flows(system: System):
         raise ValueError("Error: Unknown h2 storage device")
     
     # We assume we will only ever fill storage if we are taking advantage of low spot prices
-    system.devices['h2 storage'].inputs['spot electricity'].energy = compressor_energy
+    system.devices['h2 storage'].inputs['cheap electricity'].energy = compressor_energy
     system.devices['h2 storage'].outputs['losses'].energy = compressor_energy
 
 
@@ -1274,11 +1275,11 @@ def electricity_demand_per_major_device(system: System) -> Dict[str, float]:
         '5. plasma or eaf': 0.0,
     }
 
-    electricity['1. water electrolysis'] += system.devices['water electrolysis'].inputs.get('spot electricity', EnergyFlow(0.0)).energy
+    electricity['1. water electrolysis'] += system.devices['water electrolysis'].inputs.get('cheap electricity', EnergyFlow(0.0)).energy
     electricity['1. water electrolysis'] += system.devices['water electrolysis'].inputs.get('base electricity', EnergyFlow(0.0)).energy
 
     if 'h2 storage' in system.devices:
-        electricity['2. h2 storage'] += system.devices['h2 storage'].inputs.get('spot electricity', EnergyFlow(0.0)).energy
+        electricity['2. h2 storage'] += system.devices['h2 storage'].inputs.get('cheap electricity', EnergyFlow(0.0)).energy
 
     h2_heaters = system.devices_containing_name('h2 heater')
     for device_name in h2_heaters:

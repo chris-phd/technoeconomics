@@ -18,12 +18,13 @@ except ImportError:
 
 
 # Levelised Cost of Production Helpers
-def operating_cost_per_tonne(inputs: Dict[str, float]) -> Dict[str, float]:
+def operating_cost_per_tonne(inputs: Dict[str, float], spot_electricity_hours: float = 8.0) -> Dict[str, float]:
     # TODO! Update the electrcity prices based on the location of the plant
 
     # Electricity cost USD / MWh
-    base_electricity_cpmwh = 93.1
-    spot_electricity_cpmwh = 54.5
+    expensive_spot_electricity_cpmwh = 93.1
+    cheap_spot_electricity_cpmwh = 54.5
+    base_electricity_cpmwh = (spot_electricity_hours * cheap_spot_electricity_cpmwh + (24.0-spot_electricity_hours) * expensive_spot_electricity_cpmwh) / 24.0
     
     # cpt = cost per tonne (USD), cpk = cost per kg (USD)
     ore_cpt = 100.0 # big difference between my price and the slides
@@ -39,7 +40,7 @@ def operating_cost_per_tonne(inputs: Dict[str, float]) -> Dict[str, float]:
 
     cost = {
         'Base Electricity' : inputs['base electricity'] * base_electricity_cpmwh / 3.6e+9,
-        'Spot Electricity': inputs.get('spot electricity', 0.0) * spot_electricity_cpmwh / 3.6e+9,
+        'Cheap Spot Electricity': inputs.get('cheap electricity', 0.0) * cheap_spot_electricity_cpmwh / 3.6e+9,
         'Ore' : inputs['ore'] * ore_cpt / 1000,
         'CaO' : inputs['CaO'] * cao_cpk,
         'MgO' : inputs['MgO'] * mgo_cpk,
