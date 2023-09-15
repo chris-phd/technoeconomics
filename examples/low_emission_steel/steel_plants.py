@@ -55,6 +55,8 @@ def create_plasma_system(system_name='plasma steelmaking', h2_storage_method: Op
     plasma_system.add_device(join_1)
 
     # System variables defaults. Can be overwritten by user before mass and energy flows.
+    plasma_system.system_vars['cheap electricity hours'] = 8.0
+    plasma_system.system_vars['h2 storage hours of operation'] = 24.0 - plasma_system.system_vars['cheap electricity hours']
     plasma_system.system_vars['steelmaking device name'] = plasma_smelter.name
     plasma_system.system_vars['feo soluble in slag percent'] = 27.0
     plasma_system.system_vars['plasma reaction temp K'] = 2500 
@@ -75,6 +77,7 @@ def create_plasma_system(system_name='plasma steelmaking', h2_storage_method: Op
     plasma_system.system_vars['h2 consuming device names'] = plasma_system.system_vars['ironmaking device names']
     plasma_system.system_vars['scrap perc'] = 0.0
     plasma_system.system_vars['steel carbon perc'] = 1.0
+    plasma_system.system_vars['max heat exchanger temp K'] = celsius_to_kelvin(1400)
     if h2_storage_method is not None:
         plasma_system.system_vars['h2 storage method'] = h2_storage_method
 
@@ -167,6 +170,8 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking', h2_storage_method: 
     dri_eaf_system.add_device(eaf)
 
     # System variables defaults. Can be overwritten by user before mass and energy flows.
+    dri_eaf_system.system_vars['cheap electricity hours'] = 8.0
+    dri_eaf_system.system_vars['h2 storage hours of operation'] = 24.0 - dri_eaf_system.system_vars['cheap electricity hours']
     dri_eaf_system.system_vars['fluidized beds reduction percent'] = 95
     dri_eaf_system.system_vars['final reduction percent'] = dri_eaf_system.system_vars['fluidized beds reduction percent']
     dri_eaf_system.system_vars['steelmaking device name'] = eaf.name
@@ -185,6 +190,7 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking', h2_storage_method: 
     dri_eaf_system.system_vars['h2 consuming device names'] = dri_eaf_system.system_vars['ironmaking device names']
     dri_eaf_system.system_vars['scrap perc'] = 0.0
     dri_eaf_system.system_vars['steel carbon perc'] = 1.0
+    dri_eaf_system.system_vars['max heat exchanger temp K'] = celsius_to_kelvin(1400)
     if h2_storage_method is not None:
         dri_eaf_system.system_vars['h2 storage method'] = h2_storage_method
 
@@ -321,6 +327,8 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
         ironmaking_device_names += [fluidized_bed_3.name]
 
     # System variables defaults. Can be overwritten by user before mass and energy flows.
+    hybrid_system.system_vars['cheap electricity hours'] = 8.0
+    hybrid_system.system_vars['h2 storage hours of operation'] = 24.0 - hybrid_system.system_vars['cheap electricity hours']
     hybrid_system.system_vars['fluidized beds reduction percent'] = prereduction_perc
     hybrid_system.system_vars['steelmaking device name'] = plasma_smelter.name
     hybrid_system.system_vars['feo soluble in slag percent'] = 27.0
@@ -343,6 +351,7 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
     hybrid_system.system_vars['h2 consuming device names'] = ironmaking_device_names + [plasma_smelter.name]
     hybrid_system.system_vars['scrap perc'] = 0.0
     hybrid_system.system_vars['steel carbon perc'] = 1.0
+    hybrid_system.system_vars['max heat exchanger temp K'] = celsius_to_kelvin(1400)
     if h2_storage_method is not None:
         hybrid_system.system_vars['h2 storage method'] = h2_storage_method
 

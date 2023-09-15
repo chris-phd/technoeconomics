@@ -1,15 +1,19 @@
-#TODO
+# TODO
 ## Major
 - Fix the enthalpy of reaction calculations. (Tests failing)
-- Fix the fluidized bed mass and energy flows to utilise all the
+2 Fix the fluidized bed mass and energy flows to utilise all the
   devices.
 - sensitivity analysis and error bars in plots.
-2 Add non-thermal plasma ironmaking
+- Add blast furnace with H2 injection for comparison.
+  - Need to add the previous literature
+  - Add BOF device to the blast furnace with H2 injection.
+3 Add non-thermal plasma ironmaking
 1 Understand the heat transfer efficiecy from the plasma to the ore.
   - how much gas do we need per kg of ore / dri?
   - break total plasma efficiency up into two numbers
   - total efficiency to the ore will be electrical-thermal efficiency + heat transfer efficiency.
 - Plasma furnace should be able to operate with a mixture of Argon and H2...
+- Add scrap pre-heating to the mass energy flow.
 
 ## Moderate
 - wortler2013, the source currently used for the capex of the fluidized beds,
@@ -25,17 +29,15 @@
   the species? Does it make sense to do this, or create nefarious bugs?
 - Add the ore type and other important system_vars to the sim report...
 - Need to be very clear about the difference between levelised capital cost and direct capex.
-- All electricitiy consuming devices should be able to utilise spot prices for some fraction of thier electricity.
-  - Could just make 'base electricity' distribute between cheap and expensive electricity at the point
-    where the prices are calculated.
 - add_plasma_flows_final: Need to calculate the reaction enthalpy from monotomic H reduction. The fraction of H reduction will depend on temp
 
 ## Minor
 - update the requirements.txt
 - Cost for injected carbon and graphite electodes are the same, but should
-  be treated differently in the operating cost section..
+  be treated differently in the operating cost section.
 - The cost for MgO was taken from the cost of MgCO3
 - report costs of the inputs in absolute terms.
+- Move all the capex functions to the plant_costs.py file
 
 ## Bugs
 - Energy to create the thermal plasma very inaccurate above 3000K.

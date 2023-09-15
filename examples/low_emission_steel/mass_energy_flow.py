@@ -6,7 +6,7 @@ import os
 import numpy as np
 import math
 import matplotlib.pyplot as plt
-from typing import List, Dict
+from typing import Dict, List, Union
 from steel_plants import create_plasma_system, create_dri_eaf_system, create_hybrid_system
 from plant_costs import capex_direct_and_indirect, operating_cost_per_tonne, lcop
 from examples.low_emission_steel.plant_costs import add_steel_plant_capex
@@ -39,12 +39,9 @@ def main():
 
     # Overwrite system vars here to modify behaviour
     for system in systems:
-        system.system_vars['cheap electricity hours'] = 8.0
-        system.system_vars['h2 storage hours of operation'] = 24.0 - system.system_vars['cheap electricity hours']
         system.system_vars['scrap perc'] = 20.0
-
     # plasma_system.system_vars['ore name'] = 'IOB'
-    dri_eaf_system.system_vars['h2 storage method'] = 'compressed gas vessels'
+    # dri_eaf_system.system_vars['h2 storage method'] = 'compressed gas vessels'
 
     ## Calculate The Mass and Energy Flow
     add_plasma_mass_and_energy(plasma_system)
@@ -680,7 +677,6 @@ def add_eaf_flows_final(system: System):
         o2_oxidation.mols = 0.5 * (feo_slag.mols - feo_dri.mols)
         num_feo_formation_reactions = o2_oxidation.mols
         steelmaking_device.inputs['chemical'].energy += -num_feo_formation_reactions * species.delta_h_2fe_o2_2feo(reaction_temp)
-
     else:
         # feo is reduced by the injected carbon.
         # we assume all reduction is by pure carbon, non is by CO gas. 
@@ -816,20 +812,20 @@ def add_plasma_flows_final(system: System):
     # determine the mass of h2o in the off gas
     h2o = species.create_h2o_species()
     h2o.mols = num_fe_formations + num_feo_formations + num_fe3o4_formations
-    h2o.temp_kelvin = reaction_temp - 200 # guess
+    h2_consumed_mols = h2o.mols
 
-    # the amount of h2 in the in gas
-    h2_consumed = species.create_h2_species()
-    h2_consumed.mols = h2o.mols
-    h2_consumed.temp_kelvin = celsius_to_kelvin(25)
-
+    h2_excess = species.create_h2_species()
     assert excess_h2_ratio >= 1
-    h2_excess = copy.deepcopy(h2_consumed)
-    h2_excess.mols = h2_consumed.mols * (excess_h2_ratio - 1)
+    h2_excess.mols = h2_consumed_mols * (excess_h2_ratio - 1)
 
     h2_total = species.create_h2_species()
-    h2_total.mols = h2_consumed.mols + h2_excess.mols
-    h2_total.temp_kelvin = celsius_to_kelvin(25)
+    h2_total.mols = h2_consumed_mols + h2_excess.mols
+
+    # the amount of h2 in the in gas
+    # input H2 temp may be adjusted later after we know the exact exit temp from the
+    # heat exchanger
+    h2_input_temp = system.system_vars['max heat exchanger temp K'] - 300.0
+    h2_total.temp_kelvin = h2_input_temp
     steelmaking_device.first_input_containing_name('h2 rich gas').set(h2_total)
 
     # Add the carbon required for the alloy
@@ -893,16 +889,54 @@ def add_plasma_flows_final(system: System):
     except:
         pass # no LOI species in the ore / dri
 
+    # Ignore infiltrated air. Plasma smelter requires a controlled environment, so the 
+    # reactor should be air tight.
+    plasma_surface_radius = 3.8 * 0.5 
+    capacity_tonnes = 180*0.5 
+    bath_residence_secs = 60*60*0.5 # steel bath residence time per tonne of steel. Equivalent to tap to tap time in EAF
+    bath_radiation_losses = steelsurface_radiation_losses(np.pi*(plasma_surface_radius)**2, 
+                                                     steel_bath_temp, celsius_to_kelvin(25),
+                                                     capacity_tonnes, bath_residence_secs)
+
     co = species.create_co_species()
     co.mols = 2 * num_co_reactions + c_reduction.mols
     co2 = species.create_co2_species()
     co2.mols = num_co2_reactions
     off_gas = species.Mixture('off gas', [co, co2, h2o, h2_excess])
-    off_gas.temp_kelvin = reaction_temp
+
+    # Solve for the off gas temperature that balances the energy balance.
+    # Solve iteratively. Use the maximum safe exit temp as the initial guess.
+    off_gas_temp = system.system_vars['max heat exchanger temp K']
+    off_gas.temp_kelvin = off_gas_temp
     steelmaking_device.first_output_containing_name('h2 rich gas').set(off_gas)
 
-    # IGNORE LOSSES FROM INFILTRATED AIR, BECAUSE WE NEED TO HEAT RECOVER THE OFF GAS
-    # OPTIMISTICALLY ASSUME THE PLASMA SMELTER IS PRETTY MUCH AIR TIGHT / CONTROLLED ATMOSPHERE. 
+    # TODO reduce repetition with the Mixture::merge function and with the heat exchanger calculation
+    i = 0
+    max_iter = 100
+    while True:
+        # Add the losses        
+        conduction_losses = 0.04 * steelmaking_device.thermal_energy_balance() # does this cause instabilities, since it ignores losses??
+        steelmaking_device.outputs['losses'].energy = bath_radiation_losses + conduction_losses
+
+        reactor_energy_balance = steelmaking_device.energy_balance()
+        if abs(reactor_energy_balance) < 1e-6:
+            break
+
+        mols_times_molar_heat_capacity = off_gas.heat_energy(off_gas.temp_kelvin + 1)
+        dT = -reactor_energy_balance / mols_times_molar_heat_capacity
+        off_gas.temp_kelvin += dT
+
+        # reactor_energy_balance > 0, off gas temp is too high
+        # reactor_energy_balance < 0, off gas temp is too low
+
+        # Update the losses
+        i += 1
+        if i > max_iter:
+            raise Exception(f'Plasma smelter off gas exit temp calc did not converge after {max_iter} iterations')
+
+    return
+
+    # OLD PLASMA FINAL CODE
 
     # TODO: Reduce repetition with the EAF?
     # Need to add the required electrical energy to balance the 
@@ -921,15 +955,15 @@ def add_plasma_flows_final(system: System):
     conduction_losses = 0.04 * steelmaking_device.thermal_energy_balance()
     plasma_surface_radius = 3.8 * 0.5 
     capacity_tonnes = 180*0.5 
-    tap_to_tap_secs = 60*60*0.5
-    radiation_losses = steelsurface_radiation_losses(np.pi*(plasma_surface_radius)**2, 
+    bath_residence_secs = 60*60*0.5
+    bath_radiation_losses = steelsurface_radiation_losses(np.pi*(plasma_surface_radius)**2, 
                                                      steel_bath_temp, celsius_to_kelvin(25),
-                                                     capacity_tonnes, tap_to_tap_secs)
-    radiation_losses += hydrogen_plasma_radiation_losses(steelmaking_device.inputs['base electricity'].energy + conduction_losses)
-    steelmaking_device.outputs['losses'].energy += radiation_losses + conduction_losses
+                                                     capacity_tonnes, bath_residence_secs)
+    bath_radiation_losses += hydrogen_plasma_radiation_losses(steelmaking_device.inputs['base electricity'].energy + conduction_losses)
+    steelmaking_device.outputs['losses'].energy += bath_radiation_losses + conduction_losses
 
     # Increase the electrical energy to balance the thermal losses 
-    steelmaking_device.inputs['base electricity'].energy += radiation_losses + conduction_losses
+    steelmaking_device.inputs['base electricity'].energy += bath_radiation_losses + conduction_losses
     # print(f"Total energy = {steelmaking_device.inputs['base electricity'].energy*2.77778e-7:.2e} kWh")
 
 
