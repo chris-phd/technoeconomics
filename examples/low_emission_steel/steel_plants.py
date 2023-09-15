@@ -49,6 +49,8 @@ def create_plasma_system(system_name='plasma steelmaking', h2_storage_method: Op
     plasma_system.add_device(condenser)
     ore_heater = Device('ore heater')
     plasma_system.add_device(ore_heater)
+    plasma_torch = Device('plasma torch')
+    plasma_system.add_device(plasma_torch)
     plasma_smelter = Device('plasma smelter', plasma_capex_desantis2021() * annual_capacity_tls)
     plasma_system.add_device(plasma_smelter)
     join_1 = Device('join 1')
@@ -59,7 +61,7 @@ def create_plasma_system(system_name='plasma steelmaking', h2_storage_method: Op
     plasma_system.system_vars['h2 storage hours of operation'] = 24.0 - plasma_system.system_vars['cheap electricity hours']
     plasma_system.system_vars['steelmaking device name'] = plasma_smelter.name
     plasma_system.system_vars['feo soluble in slag percent'] = 27.0
-    plasma_system.system_vars['plasma reaction temp K'] = 2500 
+    plasma_system.system_vars['plasma temp K'] = 2500 
     plasma_system.system_vars['plasma reduction percent'] = 95.0
     plasma_system.system_vars['final reduction percent'] = plasma_system.system_vars['plasma reduction percent']
     plasma_system.system_vars['plasma h2 excess ratio'] = 1.5
@@ -121,10 +123,14 @@ def create_plasma_system(system_name='plasma steelmaking', h2_storage_method: Op
     plasma_system.add_input(ore_heater.name, EnergyFlow('base electricity'))
     plasma_system.add_output(ore_heater.name, EnergyFlow('losses'))
 
+    # plasma torch
+    plasma_system.add_flow(h2_heat_exchanger.name, plasma_torch.name, create_dummy_species('h2 rich gas'))
+    plasma_system.add_input(plasma_torch.name, EnergyFlow('base electricity'))
+    plasma_system.add_output(plasma_torch.name, EnergyFlow('losses'))
+
     # plasma smelter
     plasma_system.add_flow(ore_heater.name, plasma_smelter.name, create_dummy_mixture('ore'))
-    plasma_system.add_flow(h2_heat_exchanger.name, plasma_smelter.name, create_dummy_species('h2 rich gas'))
-    plasma_system.add_input(plasma_smelter.name, EnergyFlow('base electricity'))
+    plasma_system.add_flow(plasma_torch.name, plasma_smelter.name, create_dummy_species('plasma h2 rich gas'))
     plasma_system.add_output(plasma_smelter.name, EnergyFlow('losses'))
     plasma_system.add_input(plasma_smelter.name, EnergyFlow('chemical'))
     plasma_system.add_input(plasma_smelter.name, create_dummy_species('carbon'))
@@ -306,6 +312,8 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
     hybrid_system.add_device(fluidized_bed_2)
     briquetting = Device('briquetting')
     hybrid_system.add_device(briquetting)
+    plasma_torch = Device('plasma torch')
+    hybrid_system.add_device(plasma_torch)
     plasma_smelter = Device('plasma smelter', plasma_capex_desantis2021() * annual_capacity_tls)
     hybrid_system.add_device(plasma_smelter)
     join_1 = Device('join 1')
@@ -332,7 +340,7 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
     hybrid_system.system_vars['fluidized beds reduction percent'] = prereduction_perc
     hybrid_system.system_vars['steelmaking device name'] = plasma_smelter.name
     hybrid_system.system_vars['feo soluble in slag percent'] = 27.0
-    hybrid_system.system_vars['plasma reaction temp K'] = 2500 
+    hybrid_system.system_vars['plasma temp K'] = 2500 
     hybrid_system.system_vars['plasma reduction percent'] = 95.0
     hybrid_system.system_vars['final reduction percent'] = hybrid_system.system_vars['plasma reduction percent']
     hybrid_system.system_vars['plasma torch eff pecent'] = 55.0
@@ -439,10 +447,14 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
     # briquetting
     hybrid_system.add_flow(ironmaking_device_names[-1], briquetting.name, create_dummy_mixture('dri'))
 
+    # plasma torch
+    hybrid_system.add_flow(join_2.name, plasma_torch.name, create_dummy_species('pre plasma h2 rich gas'))
+    hybrid_system.add_input(plasma_torch.name, EnergyFlow('base electricity'))
+    hybrid_system.add_output(plasma_torch.name, EnergyFlow('losses'))
+
     # plasma smelter
     hybrid_system.add_flow(briquetting.name, plasma_smelter.name, create_dummy_mixture('hbi'))
-    hybrid_system.add_flow(join_2.name, plasma_smelter.name, create_dummy_species('plasma h2 rich gas'))
-    hybrid_system.add_input(plasma_smelter.name, EnergyFlow('base electricity'))
+    hybrid_system.add_flow(plasma_torch.name, plasma_smelter.name, create_dummy_species('plasma h2 rich gas'))
     hybrid_system.add_input(plasma_smelter.name, EnergyFlow('chemical'))
     hybrid_system.add_output(plasma_smelter.name, EnergyFlow('losses'))
     hybrid_system.add_input(plasma_smelter.name, create_dummy_species('carbon'))
