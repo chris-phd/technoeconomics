@@ -28,6 +28,8 @@ class EnergyFlow:
 
     @energy.setter
     def energy(self, value):
+        if value < 0.0:
+            raise ValueError("Energy cannot be negative")
         self._energy = value
 
     def set(self, other_energy_flow):

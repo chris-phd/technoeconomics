@@ -34,14 +34,16 @@ def main():
     plasma_system = create_plasma_system("Plasma", 'salt caverns', annual_steel_production_tonnes, plant_lifetime_years)
     dri_eaf_system = create_dri_eaf_system("DRI-EAF", 'salt caverns', annual_steel_production_tonnes, plant_lifetime_years)
     hybrid33_system = create_hybrid_system("Hybrid 33", 'salt caverns', 33.33, annual_steel_production_tonnes, plant_lifetime_years)
-    hybrid95_system = create_hybrid_system("Hybrid 95", 'salt caverns', 95.0, annual_steel_production_tonnes, plant_lifetime_years)
+    hybrid95_system = create_hybrid_system("Hybrid 90", 'salt caverns', 90.0, annual_steel_production_tonnes, plant_lifetime_years)
     systems = [plasma_system, dri_eaf_system, hybrid33_system, hybrid95_system]
 
     # Overwrite system vars here to modify behaviour
     for system in systems:
-        system.system_vars['scrap perc'] = 20.0
+        system.system_vars['scrap perc'] = 0.0
     # plasma_system.system_vars['ore name'] = 'IOB'
     # dri_eaf_system.system_vars['h2 storage method'] = 'compressed gas vessels'
+    # Need high excess h2 ratio, otherwise not enough H2 to maintain the energy balance
+    hybrid95_system.system_vars['plasma h2 excess ratio'] = 15.0
 
     ## Calculate The Mass and Energy Flow
     add_plasma_mass_and_energy(plasma_system)
@@ -78,7 +80,7 @@ def main():
     add_stacked_histogram_data_to_axis(output_mass_ax, system_names, output_mass_labels, outputs_for_systems)
     add_titles_to_axis(output_mass_ax, 'Output Mass Flow / Tonne Liquid Steel', 'Mass (kg)')
 
-    plt.show()
+    # plt.show()
 
     ## Calculate the levelised cost of production
     inputs_per_tonne_for_systems = [s.system_inputs(separate_mixtures_named=['flux'], mass_flow_only=False) for s in systems]
@@ -111,7 +113,7 @@ def add_plasma_mass_and_energy(system: System):
     add_heat_exchanger_flows_final(system)
     add_condenser_and_scrubber_flows_final(system)
     merge_join_flows(system, 'join 1')
-    adjust_plasma_energy_flows(system)
+    adjust_plasma_torch_electricity(system)
 
 
 def add_dri_eaf_mass_and_energy(system: System):
@@ -155,7 +157,7 @@ def add_hybrid_mass_and_energy(system: System):
     merge_join_flows(system, 'join 1')
     merge_join_flows(system, 'join 3')
     balance_join2_flows(system)
-    adjust_plasma_energy_flows(system)
+    adjust_plasma_torch_electricity(system)
     add_h2_heater_flows(system)
 
 
@@ -734,7 +736,8 @@ def add_eaf_flows_final(system: System):
     infiltrated_air.temp_kelvin = celsius_to_kelvin(25)
     steelmaking_device.inputs['infiltrated air'].set(infiltrated_air)
 
-    infiltrated_air.temp_kelvin = reaction_temp - 200.0 # guess
+    # Guess exit temp. Could try to make it the 4% of total energy suggested by Sujay Kumar Dutta, pg 425
+    infiltrated_air.temp_kelvin = reaction_temp - 200.0
     steelmaking_device.outputs['infiltrated air'].set(infiltrated_air)
 
     # TODO: reduce repetition with the plasma steelmaking
@@ -743,18 +746,16 @@ def add_eaf_flows_final(system: System):
     steelmaking_device.inputs['base electricity'].energy = electrical_energy
     steelmaking_device.outputs['losses'].energy = electrical_energy * (1 - electric_arc_eff)
 
-    # Add the radiation and conduction losses 
-    # Conduction losses are 4% of input heat. From sujay kumar dutta pg 425 
-    conduction_losses = 0.04 * steelmaking_device.thermal_energy_balance()
+    # Add the radiation losses from steel bath
     eaf_surface_radius = 3.8
     capacity_tonnes = 180
     tap_to_tap_secs = 60*60
     radiation_losses = steelsurface_radiation_losses(np.pi*(eaf_surface_radius)**2, reaction_temp, celsius_to_kelvin(25),
                                                      capacity_tonnes, tap_to_tap_secs)
-    steelmaking_device.outputs['losses'].energy += radiation_losses + conduction_losses
+    steelmaking_device.outputs['losses'].energy += radiation_losses
 
     # Increase the electrical energy to balance the thermal losses 
-    steelmaking_device.inputs['base electricity'].energy += radiation_losses + conduction_losses
+    steelmaking_device.inputs['base electricity'].energy += radiation_losses
 
     # print(f"Total energy = {steelmaking_device.inputs['base electricity'].energy*2.77778e-7:.2e} kWh")
 
@@ -807,8 +808,8 @@ def add_plasma_flows_final(system: System):
 
     print("add_plasma_flows_final: Need to calculate the reaction enthalpy from monotomic H reduction. The fraction of H reduction will depend on temp")
     plasma_smelter.inputs['chemical'].energy = -num_fe_formations * species.delta_h_feo_h2_fe_h2o(plasma_temp) \
-                                              -num_feo_formations * species.delta_h_fe3o4_h2_3feo_h2o(plasma_temp) \
-                                              -num_fe3o4_formations * species.delta_h_3fe2o3_h2_2fe3o4_h2o(plasma_temp)
+                                               -num_feo_formations * species.delta_h_fe3o4_h2_3feo_h2o(plasma_temp) \
+                                               -num_fe3o4_formations * species.delta_h_3fe2o3_h2_2fe3o4_h2o(plasma_temp)
 
     # determine the mass of h2o in the off gas
     h2o = species.create_h2o_species()
@@ -821,6 +822,10 @@ def add_plasma_flows_final(system: System):
 
     h2_total = species.create_h2_species()
     h2_total.mols = h2_consumed_mols + h2_excess.mols
+
+    if h2_total.mass < 1:
+        # Not enough h2 gas to carry enough heat to melt the iron material.
+        raise Exception(f"Error: Not enough H2 gas to carry heat. Device {plasma_smelter.name} in system {system.name}")
 
     # the amount of h2 in the in gas
     # input H2 temp to the plasma torch may be adjusted later after we know 
@@ -928,23 +933,21 @@ def add_plasma_flows_final(system: System):
     i = 0
     max_iter = 100
     while True:
-        # Add the losses        
-        conduction_losses = 0.04 * plasma_smelter.thermal_energy_balance() # does this cause instabilities, since it ignores losses??
-        plasma_smelter.outputs['losses'].energy = bath_radiation_losses + conduction_losses
-
         reactor_energy_balance = plasma_smelter.energy_balance()
         if abs(reactor_energy_balance) < 0.5e-5:
             break # could not seem to converge smaller than this.
 
         mols_times_molar_heat_capacity = off_gas.heat_energy(off_gas.temp_kelvin + 1)
         dT = -reactor_energy_balance / mols_times_molar_heat_capacity
-        off_gas.temp_kelvin += dT
+        new_off_gas_temp = off_gas.temp_kelvin + dT
 
-        if off_gas.temp_kelvin < celsius_to_kelvin(25):
+        if new_off_gas_temp < celsius_to_kelvin(25):
             s = "Error: Plasma smelter off gas temp is too low."
             s += " Likely that the input hydrogen does not have enough heat energy"
             s += " to sustain the plasma"
             raise Exception(s)
+
+        off_gas.temp_kelvin += dT
 
         # reactor_energy_balance > 0, off gas temp is too high
         # reactor_energy_balance < 0, off gas temp is too low
@@ -954,37 +957,7 @@ def add_plasma_flows_final(system: System):
         if i > max_iter:
             raise Exception(f'Plasma smelter off gas exit temp calc did not converge after {max_iter} iterations')
 
-    return
-
-    # OLD PLASMA FINAL CODE
-
-    # TODO: Reduce repetition with the EAF?
-    # Need to add the required electrical energy to balance the 
-    # required thermal energy, accounting for the energy already. provided
-    # by the chemical reactions (oxidation, reduction, combustion etc.)
-    # Assume high efficiency RF ICP plasma gun.
-    plasma_torch_eff = system.system_vars['plasma torch electro-thermal eff pecent'] * 0.01
-    electrical_energy = plasma_smelter.energy_balance() / plasma_torch_eff
-    plasma_smelter.inputs['base electricity'].energy = electrical_energy
-    plasma_smelter.outputs['losses'].energy = electrical_energy * (1 - plasma_torch_eff)
-
-    # Add the thermal losses 
-    # Assume same as an EAF. Convection and conduction losses are 4% of input heat. 
-    # From sujay kumar dutta pg 425 
-    # assume the plasma smelter is smaller than the EAF due to superior kinetics
-    conduction_losses = 0.04 * plasma_smelter.thermal_energy_balance()
-    plasma_surface_radius = 3.8 * 0.5 
-    capacity_tonnes = 180*0.5 
-    bath_residence_secs = 60*60*0.5
-    bath_radiation_losses = steelsurface_radiation_losses(np.pi*(plasma_surface_radius)**2, 
-                                                     steel_bath_temp, celsius_to_kelvin(25),
-                                                     capacity_tonnes, bath_residence_secs)
-    bath_radiation_losses += hydrogen_plasma_radiation_losses(plasma_smelter.inputs['base electricity'].energy + conduction_losses)
-    plasma_smelter.outputs['losses'].energy += bath_radiation_losses + conduction_losses
-
-    # Increase the electrical energy to balance the thermal losses 
-    plasma_smelter.inputs['base electricity'].energy += bath_radiation_losses + conduction_losses
-    # print(f"Total energy = {steelmaking_device.inputs['base electricity'].energy*2.77778e-7:.2e} kWh")
+    print(f"Total energy = {plasma_torch.inputs['base electricity'].energy*2.77778e-7:.2e} kWh")
 
 
 def add_electrolysis_flows(system: System):
@@ -1129,12 +1102,12 @@ def balance_join2_flows(system: System):
     device = system.devices['join 2']
 
     input_mass = device.inputs['h2 rich gas'].mass
-    plasma_mass = device.outputs['plasma h2 rich gas'].mass
+    plasma_mass = device.outputs['pre plasma h2 rich gas'].mass
     h2_fluidized_beds = species.create_h2_species()
     h2_fluidized_beds.mass = input_mass - plasma_mass
     device.outputs['h2 rich gas'].set(h2_fluidized_beds)
 
-    device.outputs['plasma h2 rich gas'].temp_kelvin = device.inputs['h2 rich gas'].temp_kelvin
+    device.outputs['pre plasma h2 rich gas'].temp_kelvin = device.inputs['h2 rich gas'].temp_kelvin
     device.outputs['h2 rich gas'].temp_kelvin = device.inputs['h2 rich gas'].temp_kelvin
 
 def add_heat_exchanger_flows_initial(system: System):
@@ -1275,20 +1248,15 @@ def add_condenser_and_scrubber_flows_final(system: System):
     condenser.outputs['losses'].set(thermal_losses)
 
 
-def adjust_plasma_energy_flows(system: System):
+def adjust_plasma_torch_electricity(system: System):
     """
-    Can reduce the energy requirements after the heat exchanger energy has been calculated.
+    Adjust the energy requirements after exit temp of the h2 gas from the 
+    heat exchanger energy has been calculated accuratly
     """
-    device_name = system.system_vars['steelmaking device name']
 
-    energy_balance = system.devices[device_name].energy_balance()
-    if energy_balance > 1e-5:
-        # unexpected, would expect inputs to be greater than inputs after recovering some heat from
-        # the heat exchanger
-        raise Exception('Expected negative or zero energy balance in the plasma smelter before adjustment')
-
-    system.devices[device_name].inputs['base electricity'].energy += energy_balance
-    assert system.devices[device_name].inputs['base electricity'], "electricity draw must be positive"
+    energy_balance = system.devices['plasma torch'].energy_balance()
+    system.devices['plasma torch'].inputs['base electricity'].energy += energy_balance
+    assert system.devices['plasma torch'].inputs['base electricity'], "electricity draw must be positive"
 
 
 def add_h2_heater_flows(system: System):
