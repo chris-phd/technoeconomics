@@ -1312,7 +1312,8 @@ def electricity_demand_per_major_device(system: System) -> Dict[str, float]:
         electricity['3. h2 heater'] += system.devices[device_name].inputs.get('base electricity', EnergyFlow(0.0)).energy
 
     if 'plasma smelter' in system.devices:
-        electricity['5. plasma or eaf'] += system.devices['plasma smelter'].inputs.get('base electricity', EnergyFlow(0.0)).energy
+        electricity['5. plasma or eaf'] += system.devices['plasma smelter'].inputs.get('base electricity', EnergyFlow(0.0)).energy \
+                                        +  system.devices['plasma torch'].inputs.get('base electricity', EnergyFlow(0.0)).energy
     elif 'eaf' in system.devices:
         electricity['5. plasma or eaf'] += system.devices['eaf'].inputs.get('base electricity', EnergyFlow(0.0)).energy
     else:
