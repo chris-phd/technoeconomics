@@ -23,6 +23,7 @@
   energy evaluation does not balance.
 - raise Exception if a dummy species is used in the mass / energy eval.
 - Validate the energy required to create the thermal plasma using factsage.
+  - My code becomes very inaccurate when H2 begins to dissassociate.
 - Compare the thermal plasma energy requirements to blast furnace energy requirements
   - Just use published data for the initial comparison, don't need to add BF energy flow.
 - When setting the mass of a Mixture, distribute the mass equally based on the existing ratio 
@@ -30,6 +31,9 @@
 - Add the ore type and other important system_vars to the sim report...
 - Need to be very clear about the difference between levelised capital cost and direct capex.
 - add_plasma_flows_final: Need to calculate the reaction enthalpy from monotomic H reduction. The fraction of H reduction will depend on temp
+- Add heat transfer efficiency to the plasma smelter and to the EAF.
+  - This might be the main reason that my EAF system is so efficient.
+  - WORK ON THIS AT THE START OF NEXT WEEK!!!
 
 ## Minor
 - update the requirements.txt
@@ -45,3 +49,8 @@
 
 ## Comments
 - A big assumption here is that the steel plant is always running at full capacity.
+- Electricity demand for all the major pathways is very similar at the commit:
+  6fbfa30fbb2e0dfafb3364f7dff1129f1a7eff92
+  Seems that the main difference is that we assume all the energy from the plasma is 
+  perfectly transferred to the iron bearing material, and the heat exchanger does not
+  suffer from maximum temperature problems..

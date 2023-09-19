@@ -635,6 +635,9 @@ def steelsurface_radiation_losses(A, Ts, Tr, capacity_tonnes=180, tap_to_tap_sec
 
 
 def hydrogen_plasma_radiation_losses(total_input_energy_less_radiation_losses):
+    # TODO: Function probably no longer relevant, and we can move to a heat transfer 
+    # efficiency model based on empirical data, as found in Badr chapter 4.
+
     # Radiation from the plasma contributes to losses. 
     # Different mechanisms will dominate, depending on the state of the plasma (density, 
     # temperature, geometry, external magnetic fields, etc.)
