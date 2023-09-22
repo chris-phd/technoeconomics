@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import copy
+import cantera as ct
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase, main
@@ -240,6 +241,41 @@ class SpeciesThermoTest(TestCase):
         delta_h_5000K = h2.heat_energy(5000.0)
         factsage_delta_h = 6.10239E+05
         # self.assertAlmostEqual(delta_h_5000K / 10000, factsage_delta_h / 10000, places=1)
+
+
+class SpeciesThermoTest(TestCase):
+    def test_thermo_data(self):
+        pass
+
+class CanteraThermoTest(TestCase):
+    def test_cantera_species(self):
+        
+        h2o = species.CanteraSolution('H2O')
+        pass
+
+        # gas_species = ct.Species.list_from_file('nasa_gas.yaml') 
+        # condensed_species = ct.Species.list_from_file('nasa_condensed.yaml')
+        
+        # gas = ct.Solution(thermo='IdealGas', species=gas_species)
+
+        # gas.TPX = 300.0, ct.one_atm, 'H2O:1.0, H2:2.0'
+        # pass
+        
+        # The solution object just stores information related to the
+        # phase of the object, it has no concept of the amount of the
+        # substance. 
+        # You can get these properties by proxy using a reactor object,
+        # and then adjusting the volume, but it might be simpler
+        # to just wrap the solution object in a class that stores
+        # the mols.
+
+        # Reactions still need to be worked out, especially for the 
+        # condensed phases.
+
+        # TODO: Check that cp changes with temp,
+        # also check if the delta H is correct, especially for when hydrogen
+        # begins to dissassociate / become a plasma.
+
 
 
 if __name__ == '__main__':

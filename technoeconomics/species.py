@@ -1,10 +1,29 @@
 #!/usr/bin/env python3
 
+import cantera as ct
 import copy
 import math
 from typing import List
 
 from technoeconomics.thermo import ShomateEquation, SimpleHeatCapacity, ThermoData, LatentHeat
+
+class CanteraSolution:
+    _gas_species = ct.Species.list_from_file('nasa_gas.yaml') 
+    # _condensed_species = ct.Species.list_from_file('nasa_condensed.yaml')
+    _gas_species_names = [s.name for s in _gas_species]
+
+    def __init__(self, *species_names: str):
+        for name in species_names:
+            if name not in CanteraSolution._gas_species_names:
+                raise Exception(f"No species named {name} in the available cantera databases")
+        
+        species = []
+        for name in species_names:
+            species += [CanteraSolution._gas_species[CanteraSolution._gas_species_names.index(name)]]
+        
+        self._solution = ct.Solution(thermo='IdealGas', species=species)
+
+        
 
 class Species:
     def __init__(self, name: str, molecular_mass_kg_mol: float, thermo_data: ThermoData, delta_h_formation: float = None):
