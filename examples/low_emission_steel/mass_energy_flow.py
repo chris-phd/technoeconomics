@@ -43,7 +43,9 @@ def main():
     # plasma_system.system_vars['ore name'] = 'IOB'
     # dri_eaf_system.system_vars['h2 storage method'] = 'compressed gas vessels'
     # Need high excess h2 ratio, otherwise not enough H2 to maintain the energy balance
-    hybrid95_system.system_vars['plasma h2 excess ratio'] = 15.0
+    plasma_system.system_vars['plasma h2 excess ratio'] = 1.75
+    hybrid33_system.system_vars['plasma h2 excess ratio'] = 3.5
+    hybrid95_system.system_vars['plasma h2 excess ratio'] = 30.0
 
     ## Calculate The Mass and Energy Flow
     add_plasma_mass_and_energy(plasma_system)
@@ -80,7 +82,7 @@ def main():
     add_stacked_histogram_data_to_axis(output_mass_ax, system_names, output_mass_labels, outputs_for_systems)
     add_titles_to_axis(output_mass_ax, 'Output Mass Flow / Tonne Liquid Steel', 'Mass (kg)')
 
-    # plt.show()
+    plt.show()
 
     ## Calculate the levelised cost of production
     inputs_per_tonne_for_systems = [s.system_inputs(separate_mixtures_named=['flux'], mass_flow_only=False) for s in systems]
@@ -634,24 +636,6 @@ def steelsurface_radiation_losses(A, Ts, Tr, capacity_tonnes=180, tap_to_tap_sec
     return q_watts * tap_to_tap_secs / capacity_tonnes
 
 
-def hydrogen_plasma_radiation_losses(total_input_energy_less_radiation_losses):
-    # TODO: Function probably no longer relevant, and we can move to a heat transfer 
-    # efficiency model based on empirical data, as found in Badr chapter 4.
-
-    # Radiation from the plasma contributes to losses. 
-    # Different mechanisms will dominate, depending on the state of the plasma (density, 
-    # temperature, geometry, external magnetic fields, etc.)
-    # Blackbody radiation, bremsstrahlung, cyclotron radiation, etc.
-    # for now, use an empirical value for the energy loss due to radiation, as measured by dudnik2020
-    # Y. D. Dudnik, V. Kovshechnikov, A. Safronov, V. Kuznetsov, V. Shiryaev, and O. Vasilieva, 
-    # “Radiation energy losses in a single chamber three phase plasma torch with rod electrodes,” 
-    #  in Journal of Physics: Conference Series, IOP Publishing, 2020, p. 012086.
-
-    # Energy loss from radiation to plasma walls is ~10% of input power at atmospheric pressure
-    energy_loss_frac_total_energy = 0.1
-    return energy_loss_frac_total_energy * total_input_energy_less_radiation_losses / (1 - energy_loss_frac_total_energy)
-
-
 def add_eaf_flows_final(system: System):
     # TODO: May be underestimating he energy requirement for the EAF. 
     # According to Sujay Kumar Dutta, it should be around 825 kWh / tonne steel. 
@@ -729,7 +713,7 @@ def add_eaf_flows_final(system: System):
     co2 = species.create_co2_species()
     co2.mols = num_co2_reactions
     off_gas = species.Mixture('carbon gas', [co, co2])
-    off_gas.temp_kelvin = reaction_temp
+    off_gas.temp_kelvin = reaction_temp - 200.0
     steelmaking_device.outputs['carbon gas'].set(off_gas)
 
     # losses due to infiltrated air
@@ -778,7 +762,7 @@ def add_plasma_flows_final(system: System):
     plasma_torch = system.devices['plasma torch']
     first_ironmaking_device_name = system.system_vars['ironmaking device names'][0]
     ore_composition_simple = system.system_vars['ore composition simple']
-    steel_bath_temp = system.system_vars['steel exit temp K']
+    steel_bath_temp_K = system.system_vars['steel exit temp K']
 
 
     # the plasma smelter can use hbi or ore fines.
@@ -916,7 +900,7 @@ def add_plasma_flows_final(system: System):
     capacity_tonnes = 180*0.5 
     bath_residence_secs = 60*60*0.5 # steel bath residence time per tonne of steel. Equivalent to tap to tap time in EAF
     bath_radiation_losses = steelsurface_radiation_losses(np.pi*(plasma_surface_radius)**2, 
-                                                     steel_bath_temp, celsius_to_kelvin(25),
+                                                     steel_bath_temp_K, celsius_to_kelvin(25),
                                                      capacity_tonnes, bath_residence_secs)
     plasma_smelter.outputs['losses'].energy = bath_radiation_losses
     
@@ -928,15 +912,20 @@ def add_plasma_flows_final(system: System):
 
     # Solve for the off gas temperature that balances the energy balance.
     # Solve iteratively. Use the maximum safe exit temp as the initial guess.
+    initial_working_gas_temp = plasma_smelter.first_input_containing_name('h2 rich gas').temp_kelvin
     off_gas.temp_kelvin = system.system_vars['max heat exchanger temp K']
     plasma_smelter.first_output_containing_name('h2 rich gas').set(off_gas)
     off_gas = plasma_smelter.first_output_containing_name('h2 rich gas')
+
+    plasma_to_melt_efficiency = system.system_vars['plasma energy to melt eff percent'] * 0.01
+    plasma_to_melt_losses = (1 - plasma_to_melt_efficiency) * off_gas.heat_energy(initial_working_gas_temp)
+    # plasma_to_melt_losses = 0.0
 
     # TODO reduce repetition with the Mixture::merge function and with the heat exchanger calculation
     i = 0
     max_iter = 100
     while True:
-        reactor_energy_balance = plasma_smelter.energy_balance()
+        reactor_energy_balance = plasma_smelter.energy_balance() + plasma_to_melt_losses
         if abs(reactor_energy_balance) < 0.5e-5:
             break # could not seem to converge smaller than this.
 
@@ -944,23 +933,26 @@ def add_plasma_flows_final(system: System):
         dT = -reactor_energy_balance / mols_times_molar_heat_capacity
         new_off_gas_temp = off_gas.temp_kelvin + dT
 
-        if new_off_gas_temp < celsius_to_kelvin(25):
+        if new_off_gas_temp < steel_bath_temp_K:
             s = "Error: Plasma smelter off gas temp is too low."
-            s += " Likely that the input hydrogen does not have enough heat energy"
-            s += " to sustain the plasma"
+            s += " Likely that the input hydrogen does not have enough heat energy."
+            s += " Can only transfer energy to the melt if temp of the off gas is"
+            s += " greater than the temp of the off gas."
             raise Exception(s)
 
         off_gas.temp_kelvin += dT
-
-        # reactor_energy_balance > 0, off gas temp is too high
-        # reactor_energy_balance < 0, off gas temp is too low
+        plasma_to_melt_losses = (1 - plasma_to_melt_efficiency) * off_gas.heat_energy(initial_working_gas_temp)
 
         # Update the losses
         i += 1
         if i > max_iter:
             raise Exception(f'Plasma smelter off gas exit temp calc did not converge after {max_iter} iterations')
 
-    print(f"Total energy = {plasma_torch.inputs['base electricity'].energy*2.77778e-7:.2e} kWh")
+    plasma_smelter.outputs['losses'].energy += plasma_to_melt_losses
+
+    print(f"System = {system.name}")
+    print(f"  Off Gas Temp = {off_gas.temp_kelvin:.2f} K")
+    print(f"  Total energy = {plasma_torch.inputs['base electricity'].energy*2.77778e-7:.2e} kWh")
 
 
 def add_electrolysis_flows(system: System):

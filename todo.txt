@@ -46,6 +46,8 @@
 ## Bugs
 - Energy to create the thermal plasma very inaccurate above 3000K.
   - Might be another good argument to try and incorporate cantera???
+- The electricity requirement for the hybrid 33 pathway is very high..
+  Why is this??
 
 ## Comments
 - A big assumption here is that the steel plant is always running at full capacity.
@@ -54,3 +56,6 @@
   Seems that the main difference is that we assume all the energy from the plasma is 
   perfectly transferred to the iron bearing material, and the heat exchanger does not
   suffer from maximum temperature problems..
+
+- Possibly lower the steel bath temperature to 1600C, rather than
+  1650, to match the phase diagrams. 
