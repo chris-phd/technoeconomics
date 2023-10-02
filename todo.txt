@@ -48,6 +48,12 @@
   - Might be another good argument to try and incorporate cantera???
 - The electricity requirement for the hybrid 33 pathway is very high..
   Why is this??
+  - Pehaps because it needs to circulate alot of extra H2 as a carrier of thermal 
+    energy just to handle the melting. The reason this is not as prevelant in the
+    higher reduction degrees is becuase the iron ore has been reduced to iron, so 
+    there is less stuff to melt.
+    Still need to deal with the maximum temperature that the heat exchanger can 
+    safely handle.
 
 ## Comments
 - A big assumption here is that the steel plant is always running at full capacity.
@@ -56,6 +62,3 @@
   Seems that the main difference is that we assume all the energy from the plasma is 
   perfectly transferred to the iron bearing material, and the heat exchanger does not
   suffer from maximum temperature problems..
-
-- Possibly lower the steel bath temperature to 1600C, rather than
-  1650, to match the phase diagrams. 
