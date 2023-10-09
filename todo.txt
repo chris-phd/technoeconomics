@@ -7,13 +7,15 @@
 - Add blast furnace with H2 injection for comparison.
   - Need to add the previous literature
   - Add BOF device to the blast furnace with H2 injection.
-3 Add non-thermal plasma ironmaking
+3 Add plasma ironmaking - BOF pathway...
 1 Understand the heat transfer efficiecy from the plasma to the ore.
   - how much gas do we need per kg of ore / dri?
   - break total plasma efficiency up into two numbers
   - total efficiency to the ore will be electrical-thermal efficiency + heat transfer efficiency.
 - Plasma furnace should be able to operate with a mixture of Argon and H2...
 - Add scrap pre-heating to the mass energy flow.
+- Need to add in Argon as an option. It may be better suited as a carrier of thermal heat
+  for the high reduction degrees... Who knows.
 
 ## Moderate
 - wortler2013, the source currently used for the capex of the fluidized beds,
@@ -62,3 +64,19 @@
   Seems that the main difference is that we assume all the energy from the plasma is 
   perfectly transferred to the iron bearing material, and the heat exchanger does not
   suffer from maximum temperature problems..
+
+- Does the DRI-EAF route correctly account for the fact that the EAF route 
+  cannot be continously fed? So there is some booling of the HBI before it 
+  can be used in the EAF? There is a small note in hiebler2004 about this..
+
+- TBH the whole thing needs to be rewritten to use Cantera Solutions and Quantities
+  - https://cantera.org/documentation/dev/sphinx/html/cython/importing.html#cantera.Solution
+  - Need to check how well these work for solids and liquid phases though...
+  - Definitely, getting rid of the concept of Mixtures and Species, just going with a
+  Solution object for everything would clean up alot of problems...
+
+  - Upadhya 1984, has some energy requirements for early plasma reactors.
+    - Also says for SKF, minimal energy consumption is when pre-reduction percent is ~55%.
+  - heibler 2004, also has some size requirements for a hypothetical reactor. 
+  - Badr chapter 8.3, in the table.. 36 * 4 = 144 MW for a 1 Mtpa plant. 
+  - kumar1994, the power requirements for pilot scale plsama plants. 
