@@ -78,14 +78,14 @@ def lcop_capex_only(capex, annual_production, plant_lifetime_years):
     return annuity_factor(plant_lifetime_years)*capex / annual_production
 
 
-def lcop_operating_cost_only(annual_operating_cost, annual_production):
+def lcop_opex_only(annual_operating_cost, annual_production):
     return annual_operating_cost / annual_production
 
 
 def lcop_total(capex, annual_operating_cost, annual_production, plant_lifetime_years):
     # TODO! levelised cost of production will depend on the capacity factor of the plant
     return lcop_capex_only(capex, annual_production, plant_lifetime_years) + \
-           lcop_operating_cost_only(annual_operating_cost, annual_production)
+           lcop_opex_only(annual_operating_cost, annual_production)
 
 
 def add_steel_plant_capex(system: System):
