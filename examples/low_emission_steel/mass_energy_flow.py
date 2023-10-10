@@ -8,7 +8,7 @@ import math
 import matplotlib.pyplot as plt
 from typing import Dict, List, Union
 from steel_plants import create_plasma_system, create_dri_eaf_system, create_hybrid_system
-from plant_costs import capex_direct_and_indirect, operating_cost_per_tonne, lcop
+from plant_costs import capex_direct_and_indirect, operating_cost_per_tonne, lcop_total
 from examples.low_emission_steel.plant_costs import add_steel_plant_capex
 
 try:
@@ -82,7 +82,7 @@ def main():
     add_stacked_histogram_data_to_axis(output_mass_ax, system_names, output_mass_labels, outputs_for_systems)
     add_titles_to_axis(output_mass_ax, 'Output Mass Flow / Tonne Liquid Steel', 'Mass (kg)')
 
-    plt.show()
+    # plt.show()
 
     ## Calculate the levelised cost of production
     inputs_per_tonne_for_systems = [s.system_inputs(separate_mixtures_named=['flux'], mass_flow_only=False) for s in systems]
@@ -92,9 +92,13 @@ def main():
                                           for inputs, s in zip(inputs_per_tonne_for_systems, systems)]
     annual_opex = [sum(cpt.values()) * system.annual_capacity for cpt, system in zip(operating_costs_per_tonne_itemised, systems)]
 
+    lcop_itemised = []
+    for system, capex, operating_cost in zip(systems, total_direct_indirect_capex, operating_costs_per_tonne_itemised):
+        pass
+
     lcop_for_systems = []
     for system, capex, operating_cost in zip(systems, total_direct_indirect_capex, annual_opex):
-        cost_of_production = lcop(capex, operating_cost, system.annual_capacity, system.lifetime_years)
+        cost_of_production = lcop_total(capex, operating_cost, system.annual_capacity, system.lifetime_years)
         print(f"{system.name} lcop = {cost_of_production:.2f}")
         lcop_for_systems.append(cost_of_production)
 
