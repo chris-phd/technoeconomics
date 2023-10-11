@@ -57,6 +57,9 @@
     Still need to deal with the maximum temperature that the heat exchanger can 
     safely handle.
 
+- The incorrect enthalpies of reaction are crashing the plasma BOF pathway..
+  really need to fix this!!!
+
 ## Comments
 - A big assumption here is that the steel plant is always running at full capacity.
 - Electricity demand for all the major pathways is very similar at the commit:
@@ -80,3 +83,10 @@
   - heibler 2004, also has some size requirements for a hypothetical reactor. 
   - Badr chapter 8.3, in the table.. 36 * 4 = 144 MW for a 1 Mtpa plant. 
   - kumar1994, the power requirements for pilot scale plsama plants. 
+
+
+  the technology for the ore preheating is of great importance. if our main argument
+  is that plasma is good for heating and melting the ore, then shouldn't all the heating
+  be done my the plasma??
+
+  zang2023, has some reasonable numbers for input costs, LCOP for BF-BOF etc.

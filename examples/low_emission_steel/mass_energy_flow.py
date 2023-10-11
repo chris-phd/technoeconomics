@@ -32,31 +32,42 @@ def main():
     annual_steel_production_tonnes = 1.5e6 # tonnes / year
     plant_lifetime_years = 20.0
     plasma_system = create_plasma_system("Plasma", 'salt caverns', annual_steel_production_tonnes, plant_lifetime_years)
+    plasma_bof_system = create_plasma_system("Plasma BOF", 'salt caverns', annual_steel_production_tonnes, plant_lifetime_years)
     dri_eaf_system = create_dri_eaf_system("DRI-EAF", 'salt caverns', annual_steel_production_tonnes, plant_lifetime_years)
     hybrid33_system = create_hybrid_system("Hybrid 33", 'salt caverns', 33.33, annual_steel_production_tonnes, plant_lifetime_years)
+    hybrid55_system = create_hybrid_system("Hybrid 55", 'salt caverns', 55.0, annual_steel_production_tonnes, plant_lifetime_years)
     hybrid95_system = create_hybrid_system("Hybrid 90", 'salt caverns', 90.0, annual_steel_production_tonnes, plant_lifetime_years)
-    systems = [plasma_system, dri_eaf_system, hybrid33_system, hybrid95_system]
+    systems = [plasma_system, plasma_bof_system, dri_eaf_system, hybrid33_system, hybrid55_system, hybrid95_system]
 
     # Overwrite system vars here to modify behaviour
     for system in systems:
         system.system_vars['scrap perc'] = 0.0
+    plasma_bof_system.system_vars['b2 basicity'] = 1.0
+    plasma_bof_system.system_vars['b4 basicity'] = 0.8
+    plasma_bof_system.system_vars['feo soluble in slag percent'] = 1.0
     # plasma_system.system_vars['ore name'] = 'IOB'
     # dri_eaf_system.system_vars['h2 storage method'] = 'compressed gas vessels'
     # Need high excess h2 ratio, otherwise not enough H2 to maintain the energy balance
-    plasma_system.system_vars['plasma h2 excess ratio'] = 1.75
+    plasma_system.system_vars['plasma h2 excess ratio'] = 2.5 # 1.75 too low, anticipate 40-50% utilisation
+    plasma_bof_system.system_vars['plasma h2 excess ratio'] = 2.5 # 1.75 too low, as above
     hybrid33_system.system_vars['plasma h2 excess ratio'] = 3.5
+    hybrid55_system.system_vars['plasma h2 excess ratio'] = 5.5
     hybrid95_system.system_vars['plasma h2 excess ratio'] = 30.0
 
     ## Calculate The Mass and Energy Flow
     add_plasma_mass_and_energy(plasma_system)
+    add_plasma_mass_and_energy(plasma_bof_system)
     add_dri_eaf_mass_and_energy(dri_eaf_system)
     add_hybrid_mass_and_energy(hybrid33_system)
+    add_hybrid_mass_and_energy(hybrid55_system)
     add_hybrid_mass_and_energy(hybrid95_system)
 
     ##
     add_steel_plant_capex(plasma_system)
+    add_steel_plant_capex(plasma_bof_system)
     add_steel_plant_capex(dri_eaf_system)
     add_steel_plant_capex(hybrid33_system)
+    add_steel_plant_capex(hybrid55_system)
     add_steel_plant_capex(hybrid95_system)
 
     ## Energy and Mass Flow Plots
@@ -82,7 +93,7 @@ def main():
     add_stacked_histogram_data_to_axis(output_mass_ax, system_names, output_mass_labels, outputs_for_systems)
     add_titles_to_axis(output_mass_ax, 'Output Mass Flow / Tonne Liquid Steel', 'Mass (kg)')
 
-    # plt.show()
+    plt.show()
 
     ## Calculate the levelised cost of production
     inputs_per_tonne_for_systems = [s.system_inputs(separate_mixtures_named=['flux'], mass_flow_only=False) for s in systems]
@@ -90,7 +101,6 @@ def main():
     total_direct_indirect_capex = [capex_direct_and_indirect(s.capex()) for s in systems]
     operating_costs_per_tonne_itemised = [operating_cost_per_tonne(inputs, s.system_vars['cheap electricity hours']) \
                                           for inputs, s in zip(inputs_per_tonne_for_systems, systems)]
-    annual_opex = [sum(cpt.values()) * system.annual_capacity for cpt, system in zip(operating_costs_per_tonne_itemised, systems)]
 
     lcop_itemised_for_systems = []
     for system, capex, operating_costs in zip(systems, total_direct_indirect_capex, operating_costs_per_tonne_itemised):
@@ -862,7 +872,8 @@ def add_plasma_flows_final(system: System):
         # feo is reduced by the injected carbon
         c_reduction.mols = (feo_target.mols - feo_slag.mols)
         num_feo_c_reduction_reactions = c_reduction.mols
-        plasma_smelter.inputs['chemical'].energy += -num_feo_c_reduction_reactions * species.delta_h_feo_c_fe_co(plasma_temp)
+        # HACK! FIXME! enthalpies for the reactions are pretty broken I think.. can cantera do some of this??
+        plasma_smelter.inputs['chemical'].energy += 0.0 # -num_feo_c_reduction_reactions * species.delta_h_feo_c_fe_co(plasma_temp)
 
     total_o2_injected_mass = system.system_vars['o2 injection kg']
     assert total_o2_injected_mass >= o2_oxidation.mass
