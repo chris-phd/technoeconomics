@@ -89,6 +89,7 @@ def lcop_total(capex, annual_operating_cost, annual_production, plant_lifetime_y
 
 
 def add_steel_plant_capex(system: System):
+    # TODO! Need to unify the ways of defining the steel plant capex.
     if 'h2 storage' in system.devices:
         add_h2_storage_capex(system)
 

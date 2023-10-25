@@ -7,7 +7,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from typing import Dict, List, Union
-from steel_plants import create_plasma_system, create_dri_eaf_system, create_hybrid_system
+from steel_plants import create_plasma_system, create_plasma_bof_system, create_dri_eaf_system, create_hybrid_system
 from plant_costs import capex_direct_and_indirect, operating_cost_per_tonne, lcop_total, lcop_capex_only, lcop_opex_only
 from examples.low_emission_steel.plant_costs import add_steel_plant_capex
 
@@ -32,7 +32,7 @@ def main():
     annual_steel_production_tonnes = 1.5e6 # tonnes / year
     plant_lifetime_years = 20.0
     plasma_system = create_plasma_system("Plasma", 'salt caverns', annual_steel_production_tonnes, plant_lifetime_years)
-    plasma_bof_system = create_plasma_system("Plasma BOF", 'salt caverns', annual_steel_production_tonnes, plant_lifetime_years)
+    plasma_bof_system = create_plasma_bof_system("Plasma BOF", 'salt caverns', annual_steel_production_tonnes, plant_lifetime_years)
     dri_eaf_system = create_dri_eaf_system("DRI-EAF", 'salt caverns', annual_steel_production_tonnes, plant_lifetime_years)
     hybrid33_system = create_hybrid_system("Hybrid 33", 'salt caverns', 33.33, annual_steel_production_tonnes, plant_lifetime_years)
     hybrid55_system = create_hybrid_system("Hybrid 55", 'salt caverns', 55.0, annual_steel_production_tonnes, plant_lifetime_years)
@@ -42,9 +42,6 @@ def main():
     # Overwrite system vars here to modify behaviour
     for system in systems:
         system.system_vars['scrap perc'] = 0.0
-    plasma_bof_system.system_vars['b2 basicity'] = 1.0
-    plasma_bof_system.system_vars['b4 basicity'] = 0.8
-    plasma_bof_system.system_vars['feo soluble in slag percent'] = 1.0
     # plasma_system.system_vars['ore name'] = 'IOB'
     # dri_eaf_system.system_vars['h2 storage method'] = 'compressed gas vessels'
     # Need high excess h2 ratio, otherwise not enough H2 to maintain the energy balance
@@ -56,7 +53,7 @@ def main():
 
     ## Calculate The Mass and Energy Flow
     add_plasma_mass_and_energy(plasma_system)
-    add_plasma_mass_and_energy(plasma_bof_system)
+    add_plasma_bof_mass_and_energy(plasma_bof_system)
     add_dri_eaf_mass_and_energy(dri_eaf_system)
     add_hybrid_mass_and_energy(hybrid33_system)
     add_hybrid_mass_and_energy(hybrid55_system)
@@ -107,6 +104,7 @@ def main():
         lcop_itemised = {
             'capex': lcop_capex_only(capex, system.annual_capacity, system.lifetime_years)
         }
+
         for opex_name, opex_per_tonne in operating_costs.items():
             lcop_itemised[opex_name] = opex_per_tonne
 
@@ -134,6 +132,30 @@ def add_plasma_mass_and_energy(system: System):
     add_condenser_and_scrubber_flows_final(system)
     merge_join_flows(system, 'join 1')
     adjust_plasma_torch_electricity(system)
+
+
+def add_plasma_bof_mass_and_energy(system: System):
+    add_ore_composition(system)
+    add_steel_out(system)
+    add_bof_flows(system)
+    # HACK. Change the steelmaking device to the plasma smelter so the 
+    # rest of the code is the same as the pure plasma smelte 
+    system.system_vars['steelmaking device name'] = 'plasma smelter'
+    add_plasma_flows_initial(system)
+    add_ore(system)
+    add_plasma_flows_final(system)
+    add_electrolysis_flows(system)
+    add_h2_storage_flows(system)
+    merge_join_flows(system, 'join 1')
+    add_heat_exchanger_flows_initial(system)
+    add_condenser_and_scrubber_flows_initial(system)
+    merge_join_flows(system, 'join 1')
+    add_heat_exchanger_flows_final(system)
+    add_condenser_and_scrubber_flows_final(system)
+    merge_join_flows(system, 'join 1')
+    adjust_plasma_torch_electricity(system)
+    # END HACK. Change steelmaking device back to correct device
+    system.system_vars['steelmaking device name'] = 'bof'
 
 
 def add_dri_eaf_mass_and_energy(system: System):
@@ -1303,6 +1325,78 @@ def add_h2_heater_flows(system: System):
                 # the heat exchanger has given all the necessary heat
                 # cooling needs to take place. Add all as thermal losses
                 system.devices[heater_name].outputs['losses'].energy -= required_thermal_energy
+
+
+def add_bof_flows(system: System):
+    initial_c_perc = system.system_vars['bof hot metal C perc']
+    initial_si_perc = system.system_vars['bof hot metal Si perc']
+    feo_in_slag_perc = system.system_vars['bof feo in slag perc']
+    b2 = system.system_vars['bof b2 basicity']
+    b4 = system.system_vars['bof b4 basicity']
+
+    bof = system.devices[system.system_vars['steelmaking device name']]
+    steel = bof.outputs['steel']
+    hot_metal = copy.deepcopy(bof.outputs['steel'])
+
+    feo_slag = species.create_feo_species()
+    sio2_slag = species.create_sio2_species()
+    si_hot_metal = species.create_si_species()
+    cao_slag = species.create_cao_species()
+    mgo_slag = species.create_mgo_species()
+    cao_flux = species.create_cao_species()
+    mgo_flux = species.create_mgo_species()
+    co_emitted = species.create_co_species()
+    o2_injected = species.create_o2_species()
+
+    # Simplification: Mass of C and Si is calculated as a fraction of the 
+    # final mass of steel, rather than as a fraction of the hot metal
+    hot_metal.species('C').mass = initial_c_perc * 0.01 * hot_metal.mass
+    si_hot_metal.mass = initial_si_perc * 0.01 * hot_metal.mass
+    si_hot_metal.temp_kelvin = hot_metal.temp_kelvin
+    hot_metal.merge(si_hot_metal)
+
+    sio2_slag.mols = si_hot_metal.mols
+    sio2_slag.temp_kelvin = hot_metal.temp_kelvin
+    cao_flux.mols = b2*sio2_slag.mols
+    mgo_flux.mols = b4*sio2_slag.mols
+    cao_flux.temp_kelvin = mgo_flux.temp_kelvin = celsius_to_kelvin(25)
+    cao_slag.mols = cao_flux.mols
+    mgo_slag.mols = mgo_flux.mols
+    cao_slag.temp_kelvin = mgo_slag.temp_kelvin = hot_metal.temp_kelvin
+    total_slag_mass = (sio2_slag.mass + cao_slag.mass + mgo_slag.mass) / (1 - feo_in_slag_perc * 0.01)
+    feo_slag.mass = feo_in_slag_perc * 0.01 * total_slag_mass
+    hot_metal.species('Fe').mols += feo_slag.mols
+
+    flux = species.Mixture('flux', [cao_flux, mgo_flux])
+    flux.temp_kelvin = celsius_to_kelvin(25)
+    bof.inputs['flux'].set(flux)
+
+    slag = species.Mixture('slag', [sio2_slag, cao_slag, mgo_slag, feo_slag])
+    slag.temp_kelvin = hot_metal.temp_kelvin
+    bof.outputs['slag'].set(slag)
+
+    # TODO: would expect it to form a ratio of CO and CO2 as in the plasma and
+    # eaf furnaces. Add this later.
+    co_emitted.mols = hot_metal.species('C').mols - steel.species('C').mols
+    co_emitted.temp_kelvin = hot_metal.temp_kelvin - 200.0 # guess
+    carbon_gas = species.Mixture('carbon gas', [co_emitted])
+    carbon_gas.temp_kelvin = co_emitted.temp_kelvin
+    bof.outputs['carbon gas'].set(carbon_gas)
+
+    o2_injected.mols = 0.5 * co_emitted.mols + 0.5 * feo_slag.mols + sio2_slag.mols
+    o2_injected.temp_kelvin = celsius_to_kelvin(25)
+    bof.inputs['o2'].set(o2_injected)
+
+    bof.inputs['steel'].set(hot_metal)
+
+    # TODO! pick up from here tomorrow.
+    # add the heat energy from the oxidation reactions. Need to ensure
+    # there is enough heat generated to heat the input flux etc.
+    # any waste heat can be given off as losses...
+    
+    # Add the energy from the oxidation reactions
+
+
 
 
 # Plot Helpers

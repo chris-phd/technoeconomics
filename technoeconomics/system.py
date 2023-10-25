@@ -285,6 +285,8 @@ class System:
                 color = "red"
             elif "electricity" in flow.name:
                 color = "gold"
+            elif "chemical" in flow.name:
+                color = "blue"
             self._graph_dot.edge(from_device_name, to_device_name, flow.name, color=color)
 
             # Add to the internal data structure. The system holds the master copy.

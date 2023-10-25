@@ -532,6 +532,22 @@ def create_al2o3_species():
                         thermo_data)
     return species
 
+def create_si_species():
+    heat_capacities = [SimpleHeatCapacity(273.15, 298.0, 44.57),
+                        ShomateEquation(298.0, 1685.0,
+                                        (22.81719, 3.899510, -0.082885,
+                                        0.042111, -0.354063, -8.163946,
+                                        43.27846, 0.000000)),
+                        SimpleHeatCapacity(1685.0, 3504.616, 27.19604)
+
+    ]
+    latent_heats = [LatentHeat(1414.0, 50210)]
+    thermo_data = ThermoData(heat_capacities, latent_heats)
+    species = Species('Si',
+                      0.0280855,
+                      thermo_data)
+    return species
+
 def create_sio2_species():
     heat_capacities = [SimpleHeatCapacity(273.15, 298.0, 44.57),
                         ShomateEquation(298.0, 847.0,
@@ -550,7 +566,8 @@ def create_sio2_species():
     thermo_data = ThermoData(heat_capacities, latent_heats)
     species = Species('SiO2',
                       0.060084,
-                      thermo_data)
+                      thermo_data,
+                      -910.7e3)
     return species
 
 def create_cao_species():
@@ -688,6 +705,20 @@ def delta_h_c_2h2_ch4(temp_kelvin = 298.15):
     ch4 = create_ch4_species()
     ch4.mols = 1
     products = [ch4]
+    return compute_reaction_enthalpy(reactants, products, temp_kelvin)
+
+def delta_h_2fe_o2_2feo(temp_kelvin = 298.15):
+    """
+    2Fe + O2 -> 2FeO
+    """
+    fe = create_fe_species()
+    fe.mols = 2
+    o2 = create_o2_species()
+    o2.mols = 1
+    reactants = [fe, o2]
+    feo = create_feo_species()
+    feo.mols = 2
+    products = [feo]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
 def delta_h_feo_c_fe_co(temp_kelvin = 298.15): # Check delta h this gives to a source

@@ -72,6 +72,12 @@
   cannot be continously fed? So there is some booling of the HBI before it 
   can be used in the EAF? There is a small note in hiebler2004 about this..
 
+- should probably go for device specific system vars to avoid name clashes when
+  using multiple devices with the same inputs or outputs or concepts.
+
+- SHOULD BE USING WAY MORE CAO AND MUCH LESS MGO. expect ~8:1 in the BOF
+  - MgO is input in as doloma, which is ~60% CaO and ~40% MgO
+
 - TBH the whole thing needs to be rewritten to use Cantera Solutions and Quantities
   - https://cantera.org/documentation/dev/sphinx/html/cython/importing.html#cantera.Solution
   - Need to check how well these work for solids and liquid phases though...
