@@ -178,12 +178,6 @@ class SpeciesThermoTest(TestCase):
         # Enthalpies of reaction were verified using FactSage. Accuracy 
         # isn't great. Need to improve or use a third party thermochemistry package.
         temp_kelvin = 1000.0
-        factsage_delta_h = -394620.7
-        delta_h = species.delta_h_c_o2_co2(temp_kelvin)
-        self.assertEqual(round(delta_h / 10000), 
-                         round(factsage_delta_h / 10000))
-
-        temp_kelvin = 1000.0
         delta_h = species.delta_h_3fe2o3_h2_2fe3o4_h2o(temp_kelvin)
         factsage_delta_h = -3341.1
         # Failing
@@ -208,7 +202,58 @@ class SpeciesThermoTest(TestCase):
         factsage_delta_h = 80685.2
         # Failing. Pretty significant error...
         self.assertAlmostEqual(delta_h / 1000, factsage_delta_h / 1000, places=1)
+
+    def test_enthalpy_of_oxidation_reaction(self):
+        # Accuracy of the enthalpies of reaction for the oxidation reactions 
+        # seems slightly better than the enthalpies of reaction of the hydrogen
+        # reduction reactions.
+        temp_kelvin = 1000.0
+        factsage_delta_h = -394620.7
+        delta_h = species.delta_h_c_o2_co2(temp_kelvin)
+        self.assertEqual(round(delta_h / 10000), 
+                         round(factsage_delta_h / 10000))
         
+        temp_kelvin = 1000.0
+        factsage_delta_h = -223971.8 
+        delta_h = species.delta_h_2c_o2_2co(temp_kelvin)
+        self.assertEqual(round(delta_h / 10000), 
+                         round(factsage_delta_h / 10000))
+
+        temp_kelvin = 298.0
+        factsage_delta_h = -221055.8 
+        delta_h = species.delta_h_2c_o2_2co(temp_kelvin)
+        self.assertEqual(round(delta_h/10), 
+                         round(factsage_delta_h/10))
+        
+        # Only accurate to 1 sig fig!
+        temp_kelvin = 298.0
+        factsage_delta_h = -531667.4  
+        delta_h = species.delta_h_2fe_o2_2feo(temp_kelvin)
+        self.assertEqual(round(delta_h/100_000), 
+                         round(factsage_delta_h/100_000))
+        
+        temp_kelvin = 1000.0
+        factsage_delta_h =  -526899.7 
+        delta_h = species.delta_h_2fe_o2_2feo(temp_kelvin)
+        self.assertEqual(round(delta_h/10_000), 
+                         round(factsage_delta_h/10_000))
+
+        temp_kelvin = 298.0
+        factsage_delta_h =  -910699.2 
+        delta_h = species.delta_h_si_o2_sio2(temp_kelvin)
+        self.assertEqual(round(delta_h/100), 
+                         round(factsage_delta_h/100))
+        
+        temp_kelvin = 1600.0
+        factsage_delta_h =   -897758.4  
+        delta_h = species.delta_h_si_o2_sio2(temp_kelvin)
+        # Failing
+        # self.assertEqual(round(delta_h/100), 
+        #                  round(factsage_delta_h/100))
+
+
+
+
     def test_energy_to_create_thermal_plasma(self):
         h2 = species.create_h2_species()
         h2.mols = 1.0

@@ -28,10 +28,10 @@ def main():
     hybrid95_system = create_hybrid_system("hybrid95 steelmaking", 95.0)
     plasma_bof_system = create_plasma_bof_system()
 
-    # plasma_system.render(output_directory="/home/chris/Desktop/")
-    # dri_eaf_system.render(output_directory="/home/chris/Desktop/")
-    # hybrid33_system.render(output_directory="/home/chris/Desktop/")
-    # hybrid95_system.render(output_directory="/home/chris/Desktop/")
+    plasma_system.render(output_directory="/home/chris/Desktop/")
+    dri_eaf_system.render(output_directory="/home/chris/Desktop/")
+    hybrid33_system.render(output_directory="/home/chris/Desktop/")
+    hybrid95_system.render(output_directory="/home/chris/Desktop/")
     plasma_bof_system.render(output_directory="/home/chris/Desktop/")
 
 
