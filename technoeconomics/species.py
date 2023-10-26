@@ -545,7 +545,8 @@ def create_si_species():
     thermo_data = ThermoData(heat_capacities, latent_heats)
     species = Species('Si',
                       0.0280855,
-                      thermo_data)
+                      thermo_data,
+                      0)
     return species
 
 def create_sio2_species():
@@ -705,6 +706,20 @@ def delta_h_c_2h2_ch4(temp_kelvin = 298.15):
     ch4 = create_ch4_species()
     ch4.mols = 1
     products = [ch4]
+    return compute_reaction_enthalpy(reactants, products, temp_kelvin)
+
+def delta_h_si_o2_sio2(temp_kelvin = 298.15):
+    """
+    Si + O2 -> SiO2
+    """
+    si = create_si_species()
+    si.mols = 1
+    o2 = create_o2_species()
+    o2.mols = 1
+    reactants = [si, o2]
+    sio2 = create_sio2_species()
+    sio2.mols = 1
+    products = [sio2]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
 def delta_h_2fe_o2_2feo(temp_kelvin = 298.15):

@@ -90,8 +90,6 @@ def main():
     add_stacked_histogram_data_to_axis(output_mass_ax, system_names, output_mass_labels, outputs_for_systems)
     add_titles_to_axis(output_mass_ax, 'Output Mass Flow / Tonne Liquid Steel', 'Mass (kg)')
 
-    plt.show()
-
     ## Calculate the levelised cost of production
     inputs_per_tonne_for_systems = [s.system_inputs(separate_mixtures_named=['flux'], mass_flow_only=False) for s in systems]
 
@@ -113,6 +111,14 @@ def main():
         print(f"{system.name} total lcop = {sum(lcop_itemised.values()):.2f}")
         for k, v in lcop_itemised.items():
             print(f"    {k} = {v:.2f}")
+
+    # Plot a breakdown of the LCOP
+    lcop_labels = histogram_labels_from_datasets(lcop_itemised_for_systems)
+    _, lcop_ax = plt.subplots()
+    add_stacked_histogram_data_to_axis(lcop_ax, system_names, lcop_labels, lcop_itemised_for_systems)
+    add_titles_to_axis(lcop_ax, 'Levelised Cost of Liquid Steel', '$USD / tonne liquid steel')
+
+    plt.show()
 
 
 # Mass and Energy Flows - System Level
@@ -1395,8 +1401,18 @@ def add_bof_flows(system: System):
     # any waste heat can be given off as losses...
     
     # Add the energy from the oxidation reactions
+    reaction_temp = hot_metal.temp_kelvin
+    chemical_energy = -species.delta_h_2c_o2_2co(reaction_temp) * co_emitted.mols * 0.5 \
+                      -species.delta_h_2fe_o2_2feo(reaction_temp) * feo_slag.mols * 0.5 \
+                      -species.delta_h_si_o2_sio2(reaction_temp) * sio2_slag.mols
+    
+    bof.inputs['chemical'].energy = chemical_energy
 
-
+    if bof.energy_balance() > 0:
+        raise Exception("Error: Not enough energy from the oxidation reactions to heat the input flux and scrap")
+    
+    # All extra energy is set as losses
+    bof.outputs['losses'].energy = -bof.energy_balance()
 
 
 # Plot Helpers
