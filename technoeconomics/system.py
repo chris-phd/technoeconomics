@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import copy
 import graphviz
 from typing import Optional, Type, Union, Dict
 
@@ -230,6 +231,10 @@ class System:
     def system_vars(self):
         return self._system_vars
     
+    @system_vars.setter
+    def system_vars(self, value):
+        self._system_vars = value
+
     @property
     def annual_capacity(self):
         return self._annual_capacity

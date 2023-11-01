@@ -47,7 +47,7 @@ def main():
     # Overwrite system vars here to modify behaviour
     for system in systems:
         system.system_vars['scrap perc'] = 0.0
-        system.system_vars['ore name'] = 'IOB'
+        system.system_vars['ore name'] = 'IOC'
     # dri_eaf_system.system_vars['h2 storage method'] = 'compressed gas vessels'
     
     # For systems where hydrogen is the carrier of thermal energy as well as the reducing
@@ -60,12 +60,12 @@ def main():
     hybrid95_system.system_vars['plasma h2 excess ratio'] = 30.0
 
     ## Calculate The Mass and Energy Flow
-    solve_mass_energy_flow(plasma_system, add_plasma_mass_and_energy)
-    solve_mass_energy_flow(plasma_bof_system, add_plasma_bof_mass_and_energy)
-    solve_mass_energy_flow(dri_eaf_system, add_dri_eaf_mass_and_energy)
-    solve_mass_energy_flow(hybrid33_system, add_hybrid_mass_and_energy)
-    solve_mass_energy_flow(hybrid55_system, add_hybrid_mass_and_energy)
-    solve_mass_energy_flow(hybrid95_system, add_hybrid_mass_and_energy)
+    plasma_system = solve_mass_energy_flow(plasma_system, add_plasma_mass_and_energy)
+    plasma_bof_system = solve_mass_energy_flow(plasma_bof_system, add_plasma_bof_mass_and_energy)
+    dri_eaf_system = solve_mass_energy_flow(dri_eaf_system, add_dri_eaf_mass_and_energy)
+    hybrid33_system = solve_mass_energy_flow(hybrid33_system, add_hybrid_mass_and_energy)
+    hybrid55_system = solve_mass_energy_flow(hybrid55_system, add_hybrid_mass_and_energy)
+    hybrid95_system = solve_mass_energy_flow(hybrid95_system, add_hybrid_mass_and_energy)
 
     ##
     add_steel_plant_capex(plasma_system)
@@ -130,15 +130,27 @@ def main():
 
 
 # Mass and Energy Flows - System Level
-def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable):
+def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable) -> System:
+    system_initial = copy.deepcopy(system)
+    system_vars = copy.deepcopy(system.system_vars)
+
+    first = True
     converged = False
     while not converged:
+        
+        if not first:
+            system = copy.deepcopy(system_initial)
+            system.system_vars = copy.deepcopy(system_vars)
+        first = False
+
         try:
             mass_and_energy_func(system)
             converged = True
         except IncreaseExcessHydrogenPlasma:
-            system.system_vars['plasma h2 excess ratio'] += 0.5
-            print(f"System {system.name} did not converge. Increasing excess h2 ratio to {system.system_vars['plasma h2 excess ratio']}")
+            system_vars['plasma h2 excess ratio'] += 0.5
+            print(f"System {system.name} did not converge. Increasing excess h2 ratio to {system_vars['plasma h2 excess ratio']}")
+
+    return system
 
 def add_plasma_mass_and_energy(system: System):
     add_ore_composition(system)
