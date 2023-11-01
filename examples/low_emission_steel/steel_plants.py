@@ -87,8 +87,8 @@ def create_plasma_system(system_name='plasma steelmaking', h2_storage_method: Op
         plasma_system.system_vars['h2 storage method'] = h2_storage_method
 
     # electrolysis flows
-    plasma_system.add_input(water_electrolysis.name, create_dummy_species('h2o'))
-    plasma_system.add_output(water_electrolysis.name, create_dummy_species('o2'))
+    plasma_system.add_input(water_electrolysis.name, create_dummy_species('H2O'))
+    plasma_system.add_output(water_electrolysis.name, create_dummy_species('O2'))
     if h2_storage_method is not None:
         electricity_type = 'cheap electricity'
     else:
@@ -104,7 +104,7 @@ def create_plasma_system(system_name='plasma steelmaking', h2_storage_method: Op
         plasma_system.add_output(h2_storage.name, EnergyFlow('losses'))
 
     # condenser
-    plasma_system.add_output(condenser.name, create_dummy_species('h2o'))
+    plasma_system.add_output(condenser.name, create_dummy_species('H2O'))
     plasma_system.add_output(condenser.name, EnergyFlow('losses'))
     plasma_system.add_output(condenser.name, create_dummy_mixture('carbon gas'))
     plasma_system.add_flow(h2_heat_exchanger.name, condenser.name, create_dummy_mixture('recycled h2 rich gas'))
@@ -138,7 +138,7 @@ def create_plasma_system(system_name='plasma steelmaking', h2_storage_method: Op
     plasma_system.add_input(plasma_smelter.name, EnergyFlow('chemical'))
     plasma_system.add_input(plasma_smelter.name, create_dummy_species('carbon'))
     plasma_system.add_input(plasma_smelter.name, create_dummy_mixture('flux'))
-    plasma_system.add_input(plasma_smelter.name, create_dummy_species('o2'))
+    plasma_system.add_input(plasma_smelter.name, create_dummy_species('O2'))
     plasma_system.add_input(plasma_smelter.name, create_dummy_species('scrap'))
     plasma_system.add_output(plasma_smelter.name, create_dummy_mixture('slag'))
     plasma_system.add_output(plasma_smelter.name, create_dummy_mixture('steel'))
@@ -209,8 +209,8 @@ def create_plasma_bof_system(system_name='plasma steelmaking', h2_storage_method
     plasma_bof_system.system_vars['bof hot metal C perc'] = 4.5 # perc C from the ironmaking step
 
     # electrolysis flows
-    plasma_bof_system.add_input(water_electrolysis.name, create_dummy_species('h2o'))
-    plasma_bof_system.add_output(water_electrolysis.name, create_dummy_species('o2'))
+    plasma_bof_system.add_input(water_electrolysis.name, create_dummy_species('H2O'))
+    plasma_bof_system.add_output(water_electrolysis.name, create_dummy_species('O2'))
     if h2_storage_method is not None:
         electricity_type = 'cheap electricity'
     else:
@@ -226,7 +226,7 @@ def create_plasma_bof_system(system_name='plasma steelmaking', h2_storage_method
         plasma_bof_system.add_output(h2_storage.name, EnergyFlow('losses'))
 
     # condenser
-    plasma_bof_system.add_output(condenser.name, create_dummy_species('h2o'))
+    plasma_bof_system.add_output(condenser.name, create_dummy_species('H2O'))
     plasma_bof_system.add_output(condenser.name, EnergyFlow('losses'))
     plasma_bof_system.add_output(condenser.name, create_dummy_mixture('carbon gas'))
     plasma_bof_system.add_flow(h2_heat_exchanger.name, condenser.name, create_dummy_mixture('recycled h2 rich gas'))
@@ -260,7 +260,7 @@ def create_plasma_bof_system(system_name='plasma steelmaking', h2_storage_method
     plasma_bof_system.add_input(plasma_smelter.name, EnergyFlow('chemical'))
     plasma_bof_system.add_input(plasma_smelter.name, create_dummy_species('carbon'))
     plasma_bof_system.add_input(plasma_smelter.name, create_dummy_mixture('flux'))
-    plasma_bof_system.add_input(plasma_smelter.name, create_dummy_species('o2'))
+    plasma_bof_system.add_input(plasma_smelter.name, create_dummy_species('O2'))
     plasma_bof_system.add_input(plasma_smelter.name, create_dummy_species('scrap'))
     plasma_bof_system.add_output(plasma_smelter.name, create_dummy_mixture('slag'))
     # bof
@@ -268,7 +268,7 @@ def create_plasma_bof_system(system_name='plasma steelmaking', h2_storage_method
     plasma_bof_system.add_output(bof.name, EnergyFlow('losses'))
     plasma_bof_system.add_input(bof.name, EnergyFlow('chemical'))
     plasma_bof_system.add_input(bof.name, create_dummy_mixture('flux'))
-    plasma_bof_system.add_input(bof.name, create_dummy_species('o2'))
+    plasma_bof_system.add_input(bof.name, create_dummy_species('O2'))
     plasma_bof_system.add_input(bof.name, create_dummy_species('scrap'))
     plasma_bof_system.add_output(bof.name, create_dummy_mixture('slag'))
     plasma_bof_system.add_output(bof.name, create_dummy_mixture('steel'))
@@ -335,8 +335,8 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking', h2_storage_method: 
         dri_eaf_system.system_vars['h2 storage method'] = h2_storage_method
 
     # electrolysis flows
-    dri_eaf_system.add_input(water_electrolysis.name, create_dummy_species('h2o'))
-    dri_eaf_system.add_output(water_electrolysis.name, create_dummy_species('o2'))
+    dri_eaf_system.add_input(water_electrolysis.name, create_dummy_species('H2O'))
+    dri_eaf_system.add_output(water_electrolysis.name, create_dummy_species('O2'))
     if h2_storage_method is not None:
         electricity_type = 'cheap electricity'
     else:
@@ -352,7 +352,7 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking', h2_storage_method: 
         dri_eaf_system.add_output(h2_storage.name, EnergyFlow('losses'))
 
     # condenser
-    dri_eaf_system.add_output(condenser.name, create_dummy_species('h2o'))
+    dri_eaf_system.add_output(condenser.name, create_dummy_species('H2O'))
     dri_eaf_system.add_output(condenser.name, EnergyFlow('losses'))
     dri_eaf_system.add_flow(h2_heat_exchanger.name, condenser.name, create_dummy_mixture('recycled h2 rich gas'))
 
@@ -412,7 +412,7 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking', h2_storage_method: 
     dri_eaf_system.add_input(eaf.name, EnergyFlow('chemical'))
     dri_eaf_system.add_input(eaf.name, create_dummy_species('carbon'))
     dri_eaf_system.add_input(eaf.name, create_dummy_mixture('flux'))
-    dri_eaf_system.add_input(eaf.name, create_dummy_species('o2'))
+    dri_eaf_system.add_input(eaf.name, create_dummy_species('O2'))
     dri_eaf_system.add_input(eaf.name, create_dummy_mixture('infiltrated air'))
     dri_eaf_system.add_input(eaf.name, create_dummy_species('scrap'))
     dri_eaf_system.add_output(eaf.name, create_dummy_mixture('infiltrated air'))
@@ -499,8 +499,8 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
         hybrid_system.system_vars['h2 storage method'] = h2_storage_method
 
     # electrolysis flows
-    hybrid_system.add_input(water_electrolysis.name, create_dummy_species('h2o'))
-    hybrid_system.add_output(water_electrolysis.name, create_dummy_species('o2'))
+    hybrid_system.add_input(water_electrolysis.name, create_dummy_species('H2O'))
+    hybrid_system.add_output(water_electrolysis.name, create_dummy_species('O2'))
     if h2_storage_method is not None:
         electricity_type = 'cheap electricity'
     else:
@@ -516,7 +516,7 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
         hybrid_system.add_output(h2_storage.name, EnergyFlow('losses'))
 
     # condenser
-    hybrid_system.add_output(condenser.name, create_dummy_species('h2o'))
+    hybrid_system.add_output(condenser.name, create_dummy_species('H2O'))
     hybrid_system.add_output(condenser.name, EnergyFlow('losses'))
     hybrid_system.add_output(condenser.name, create_dummy_mixture('carbon gas'))
     hybrid_system.add_flow(h2_heat_exchanger.name, condenser.name, create_dummy_mixture('recycled h2 rich gas'))
@@ -594,7 +594,7 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
     hybrid_system.add_output(plasma_smelter.name, EnergyFlow('losses'))
     hybrid_system.add_input(plasma_smelter.name, create_dummy_species('carbon'))
     hybrid_system.add_input(plasma_smelter.name, create_dummy_mixture('flux'))
-    hybrid_system.add_input(plasma_smelter.name, create_dummy_species('o2'))
+    hybrid_system.add_input(plasma_smelter.name, create_dummy_species('O2'))
     hybrid_system.add_input(plasma_smelter.name, create_dummy_species('scrap'))
     hybrid_system.add_output(plasma_smelter.name, create_dummy_mixture('slag'))
     hybrid_system.add_output(plasma_smelter.name, create_dummy_mixture('steel'))

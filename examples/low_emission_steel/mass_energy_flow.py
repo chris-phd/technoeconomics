@@ -47,7 +47,7 @@ def main():
     # Overwrite system vars here to modify behaviour
     for system in systems:
         system.system_vars['scrap perc'] = 0.0
-        system.system_vars['ore name'] = 'IOC'
+        system.system_vars['ore name'] = 'IOA'
     # dri_eaf_system.system_vars['h2 storage method'] = 'compressed gas vessels'
     
     # For systems where hydrogen is the carrier of thermal energy as well as the reducing
@@ -55,17 +55,24 @@ def main():
     # energy to melt the steel and maintain the heat balance. Values listed here is only the initial guess.
     plasma_system.system_vars['plasma h2 excess ratio'] = 2.5 # 1.75 too low, anticipate 40-50% utilisation
     plasma_bof_system.system_vars['plasma h2 excess ratio'] = 2.5 # 1.75 too low, as above
-    hybrid33_system.system_vars['plasma h2 excess ratio'] = 3.5
+    hybrid33_system.system_vars['plasma h2 excess ratio'] = 4.0
     hybrid55_system.system_vars['plasma h2 excess ratio'] = 5.5
     hybrid95_system.system_vars['plasma h2 excess ratio'] = 30.0
 
     ## Calculate The Mass and Energy Flow
-    plasma_system = solve_mass_energy_flow(plasma_system, add_plasma_mass_and_energy)
-    plasma_bof_system = solve_mass_energy_flow(plasma_bof_system, add_plasma_bof_mass_and_energy)
-    dri_eaf_system = solve_mass_energy_flow(dri_eaf_system, add_dri_eaf_mass_and_energy)
-    hybrid33_system = solve_mass_energy_flow(hybrid33_system, add_hybrid_mass_and_energy)
-    hybrid55_system = solve_mass_energy_flow(hybrid55_system, add_hybrid_mass_and_energy)
-    hybrid95_system = solve_mass_energy_flow(hybrid95_system, add_hybrid_mass_and_energy)
+    # plasma_system = solve_mass_energy_flow(plasma_system, add_plasma_mass_and_energy)
+    # plasma_bof_system = solve_mass_energy_flow(plasma_bof_system, add_plasma_bof_mass_and_energy)
+    # dri_eaf_system = solve_mass_energy_flow(dri_eaf_system, add_dri_eaf_mass_and_energy)
+    # hybrid33_system = solve_mass_energy_flow(hybrid33_system, add_hybrid_mass_and_energy)
+    # hybrid55_system = solve_mass_energy_flow(hybrid55_system, add_hybrid_mass_and_energy)
+    # hybrid95_system = solve_mass_energy_flow(hybrid95_system, add_hybrid_mass_and_energy)
+
+    solve_mass_energy_flow(plasma_system, add_plasma_mass_and_energy)
+    solve_mass_energy_flow(plasma_bof_system, add_plasma_bof_mass_and_energy)
+    solve_mass_energy_flow(dri_eaf_system, add_dri_eaf_mass_and_energy)
+    solve_mass_energy_flow(hybrid33_system, add_hybrid_mass_and_energy)
+    solve_mass_energy_flow(hybrid55_system, add_hybrid_mass_and_energy)
+    solve_mass_energy_flow(hybrid95_system, add_hybrid_mass_and_energy)
 
     ##
     add_steel_plant_capex(plasma_system)
@@ -131,26 +138,30 @@ def main():
 
 # Mass and Energy Flows - System Level
 def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable) -> System:
-    system_initial = copy.deepcopy(system)
-    system_vars = copy.deepcopy(system.system_vars)
+    system_solved = copy.deepcopy(system)
+    system_vars_solved = copy.deepcopy(system.system_vars)
 
     first = True
     converged = False
     while not converged:
         
         if not first:
-            system = copy.deepcopy(system_initial)
-            system.system_vars = copy.deepcopy(system_vars)
+            system_solved = copy.deepcopy(system)
+            system_solved.system_vars = copy.deepcopy(system_vars_solved)
         first = False
 
         try:
-            mass_and_energy_func(system)
+            mass_and_energy_func(system_solved)
             converged = True
         except IncreaseExcessHydrogenPlasma:
-            system_vars['plasma h2 excess ratio'] += 0.5
-            print(f"System {system.name} did not converge. Increasing excess h2 ratio to {system_vars['plasma h2 excess ratio']}")
+            system_vars_solved['plasma h2 excess ratio'] *= 1.1
+            print(f"System {system.name} did not converge. Increasing excess h2 ratio to {system_vars_solved['plasma h2 excess ratio']}")
 
-    return system
+    # copy the result to the master copy of the system
+    # TODO: THIS IS SERIOUSLY INEFFICIENCT should just be able to copy over the result, 
+    # but quick hack to avoid a mistake, just resolve
+    system.system_vars = copy.deepcopy(system_solved.system_vars)
+    mass_and_energy_func(system)
 
 def add_plasma_mass_and_energy(system: System):
     add_ore_composition(system)
@@ -783,7 +794,7 @@ def add_eaf_flows_final(system: System):
     o2_injected = species.create_o2_species()
     o2_injected.mols = o2_combustion.mols + o2_oxidation.mols
     o2_injected.temp_kelvin = celsius_to_kelvin(25) # assume room temp
-    steelmaking_device.inputs['o2'].set(o2_injected)
+    steelmaking_device.inputs['O2'].set(o2_injected)
 
     co = species.create_co_species()
     co.mols = 2 * num_co_reactions + c_reduction.mols
@@ -870,7 +881,7 @@ def add_plasma_flows_final(system: System):
     num_feo_formations = (num_fe_formations + delta_feo) / 3
     num_fe3o4_formations = (num_feo_formations + delta_fe3o4) / 2
 
-    print("add_plasma_flows_final: Need to calculate the reaction enthalpy from monotomic H reduction. The fraction of H reduction will depend on temp")
+    # TODO: Need to calculate the reaction enthalpy from monotomic H reduction. The fraction of H reduction will depend on the reaction temp
     plasma_smelter.inputs['chemical'].energy = -num_fe_formations * species.delta_h_feo_h2_fe_h2o(plasma_temp) \
                                                -num_feo_formations * species.delta_h_fe3o4_h2_3feo_h2o(plasma_temp) \
                                                -num_fe3o4_formations * species.delta_h_3fe2o3_h2_2fe3o4_h2o(plasma_temp)
@@ -965,7 +976,7 @@ def add_plasma_flows_final(system: System):
     o2_injected = species.create_o2_species()
     o2_injected.mols = o2_combustion.mols + o2_oxidation.mols
     o2_injected.temp_kelvin = celsius_to_kelvin(25) # assume room temp
-    plasma_smelter.inputs['o2'].set(o2_injected)
+    plasma_smelter.inputs['O2'].set(o2_injected)
 
     try: # does this do something weird to the heat balance??
         h2o.mols += ironbearing_material.species('H2O').mols # the LOI (loss on ignition) species in the ore
@@ -1063,12 +1074,12 @@ def add_electrolysis_flows(system: System):
     o2 = species.create_o2_species()
     o2.mols = h2.mols * 0.5
     o2.temp_kelvin = gas_output_temp
-    electrolyser.outputs['o2'].set(o2)
+    electrolyser.outputs['O2'].set(o2)
 
     h2o = species.create_h2o_species()
     h2o.mols = h2.mols
     h2o.temp_kelvin = water_input_temp
-    electrolyser.inputs['h2o'].set(h2o)
+    electrolyser.inputs['H2O'].set(h2o)
 
     electrical_energy_source = 'base electricity'
     electrolyser.device_vars['oversize factor'] = 1.0
@@ -1299,7 +1310,7 @@ def add_condenser_and_scrubber_flows_final(system: System):
     system.devices[condenser_device_name].outputs['recycled h2 rich gas'].temp_kelvin = condenser_temp
     h2o_out = copy.deepcopy(condenser_in_gas.species('H2O'))
     h2o_out.temp_kelvin = condenser_temp
-    condenser.outputs['h2o'].set(h2o_out)
+    condenser.outputs['H2O'].set(h2o_out)
 
     try:
         co_out = copy.deepcopy(condenser_in_gas.species('CO'))
@@ -1418,7 +1429,7 @@ def add_bof_flows(system: System):
 
     o2_injected.mols = 0.5 * co_emitted.mols + 0.5 * feo_slag.mols + sio2_slag.mols
     o2_injected.temp_kelvin = celsius_to_kelvin(25)
-    bof.inputs['o2'].set(o2_injected)
+    bof.inputs['O2'].set(o2_injected)
 
     bof.inputs['steel'].set(hot_metal)
 
