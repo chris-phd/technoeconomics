@@ -7,7 +7,6 @@
 - Add blast furnace with H2 injection for comparison.
   - Need to add the previous literature
   - Add BOF device to the blast furnace with H2 injection.
-3 Add plasma ironmaking - BOF pathway...
 1 Understand the heat transfer efficiecy from the plasma to the ore.
   - how much gas do we need per kg of ore / dri?
   - break total plasma efficiency up into two numbers
@@ -60,6 +59,11 @@
 - The incorrect enthalpies of reaction are crashing the plasma BOF pathway..
   really need to fix this!!!
 
+- TEA will crash when using ores other than the default. Due to energy / chemical balance
+  issues, etc.
+  - We should be able to dynamically solve the minimum excess h2 ratio required, as well
+  as the feo reudction / yield that allows the sim to run. 
+
 ## Comments
 - A big assumption here is that the steel plant is always running at full capacity.
 - Electricity demand for all the major pathways is very similar at the commit:
@@ -78,6 +82,8 @@
 - SHOULD BE USING WAY MORE CAO AND MUCH LESS MGO. expect ~8:1 in the BOF
   - MgO is input in as doloma, which is ~60% CaO and ~40% MgO
 
+- Will there be Si in the hot metal in the plasma BOF scenario given that H2 does not reduce SiO2??
+
 - TBH the whole thing needs to be rewritten to use Cantera Solutions and Quantities
   - https://cantera.org/documentation/dev/sphinx/html/cython/importing.html#cantera.Solution
   - Need to check how well these work for solids and liquid phases though...
@@ -90,6 +96,8 @@
   - Badr chapter 8.3, in the table.. 36 * 4 = 144 MW for a 1 Mtpa plant. 
   - kumar1994, the power requirements for pilot scale plsama plants. 
 
+- How efficient is the condensing system? If it is inefficient, the hydrogen utilisation is important.
+  - Could use factsage to examine how much water is condensed out of the steam.
 
   the technology for the ore preheating is of great importance. if our main argument
   is that plasma is good for heating and melting the ore, then shouldn't all the heating

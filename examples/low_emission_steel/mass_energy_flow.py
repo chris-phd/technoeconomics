@@ -6,7 +6,7 @@ import os
 import numpy as np
 import math
 import matplotlib.pyplot as plt
-from typing import Dict, List, Union
+from typing import Dict, List, Callable
 from steel_plants import create_plasma_system, create_plasma_bof_system, create_dri_eaf_system, create_hybrid_system
 from plant_costs import capex_direct_and_indirect, operating_cost_per_tonne, lcop_total, lcop_capex_only, lcop_opex_only
 from examples.low_emission_steel.plant_costs import add_steel_plant_capex
@@ -37,14 +37,22 @@ def main():
     hybrid33_system = create_hybrid_system("Hybrid 33", 'salt caverns', 33.33, annual_steel_production_tonnes, plant_lifetime_years)
     hybrid55_system = create_hybrid_system("Hybrid 55", 'salt caverns', 55.0, annual_steel_production_tonnes, plant_lifetime_years)
     hybrid95_system = create_hybrid_system("Hybrid 90", 'salt caverns', 90.0, annual_steel_production_tonnes, plant_lifetime_years)
-    systems = [plasma_system, plasma_bof_system, dri_eaf_system, hybrid33_system, hybrid55_system, hybrid95_system]
+    systems = [plasma_system, 
+               plasma_bof_system, 
+               dri_eaf_system, 
+               hybrid33_system, 
+               hybrid55_system, 
+               hybrid95_system]
 
     # Overwrite system vars here to modify behaviour
     for system in systems:
         system.system_vars['scrap perc'] = 0.0
-    # plasma_system.system_vars['ore name'] = 'IOB'
+        system.system_vars['ore name'] = 'IOC'
     # dri_eaf_system.system_vars['h2 storage method'] = 'compressed gas vessels'
-    # Need high excess h2 ratio, otherwise not enough H2 to maintain the energy balance
+    
+    # For systems where hydrogen is the carrier of thermal energy as well as the reducing
+    # agent, you excess h2 ratio may need to be adjusted to ensure there is anough thermal
+    # energy to melt the steel and maintain the heat balance. Values listed here is only the initial guess.
     plasma_system.system_vars['plasma h2 excess ratio'] = 2.5 # 1.75 too low, anticipate 40-50% utilisation
     plasma_bof_system.system_vars['plasma h2 excess ratio'] = 2.5 # 1.75 too low, as above
     hybrid33_system.system_vars['plasma h2 excess ratio'] = 3.5
@@ -52,12 +60,12 @@ def main():
     hybrid95_system.system_vars['plasma h2 excess ratio'] = 30.0
 
     ## Calculate The Mass and Energy Flow
-    add_plasma_mass_and_energy(plasma_system)
-    add_plasma_bof_mass_and_energy(plasma_bof_system)
-    add_dri_eaf_mass_and_energy(dri_eaf_system)
-    add_hybrid_mass_and_energy(hybrid33_system)
-    add_hybrid_mass_and_energy(hybrid55_system)
-    add_hybrid_mass_and_energy(hybrid95_system)
+    solve_mass_energy_flow(plasma_system, add_plasma_mass_and_energy)
+    solve_mass_energy_flow(plasma_bof_system, add_plasma_bof_mass_and_energy)
+    solve_mass_energy_flow(dri_eaf_system, add_dri_eaf_mass_and_energy)
+    solve_mass_energy_flow(hybrid33_system, add_hybrid_mass_and_energy)
+    solve_mass_energy_flow(hybrid55_system, add_hybrid_mass_and_energy)
+    solve_mass_energy_flow(hybrid95_system, add_hybrid_mass_and_energy)
 
     ##
     add_steel_plant_capex(plasma_system)
@@ -122,6 +130,16 @@ def main():
 
 
 # Mass and Energy Flows - System Level
+def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable):
+    converged = False
+    while not converged:
+        try:
+            mass_and_energy_func(system)
+            converged = True
+        except IncreaseExcessHydrogenPlasma:
+            system.system_vars['plasma h2 excess ratio'] += 0.5
+            print(f"System {system.name} did not converge. Increasing excess h2 ratio to {system.system_vars['plasma h2 excess ratio']}")
+
 def add_plasma_mass_and_energy(system: System):
     add_ore_composition(system)
     add_steel_out(system)
@@ -981,11 +999,7 @@ def add_plasma_flows_final(system: System):
         new_off_gas_temp = off_gas.temp_kelvin + dT
 
         if new_off_gas_temp < steel_bath_temp_K:
-            s = "Error: Plasma smelter off gas temp is too low."
-            s += " Likely that the input hydrogen does not have enough heat energy."
-            s += " Can only transfer energy to the melt if temp of the off gas is"
-            s += " greater than the temp of the off gas."
-            raise Exception(s)
+            raise IncreaseExcessHydrogenPlasma("Error: Plasma smelter off gas temp is too low.")
 
         off_gas.temp_kelvin += dT
         plasma_to_melt_losses = (1 - plasma_to_melt_efficiency) * off_gas.heat_energy(initial_working_gas_temp)
@@ -997,9 +1011,9 @@ def add_plasma_flows_final(system: System):
 
     plasma_smelter.outputs['losses'].energy += plasma_to_melt_losses
 
-    print(f"System = {system.name}")
-    print(f"  Off Gas Temp = {off_gas.temp_kelvin:.2f} K")
-    print(f"  Total energy = {plasma_torch.inputs['base electricity'].energy*2.77778e-7:.2e} kWh")
+    # print(f"System = {system.name}")
+    # print(f"  Off Gas Temp = {off_gas.temp_kelvin:.2f} K")
+    # print(f"  Total energy = {plasma_torch.inputs['base electricity'].energy*2.77778e-7:.2e} kWh")
 
 
 def add_electrolysis_flows(system: System):
@@ -1468,6 +1482,11 @@ def add_titles_to_axis(ax: plt.Axes, title: str, y_label: str):
     ax.legend(bbox_to_anchor = (1.0, 1.0), loc='upper left')
     plt.subplots_adjust(right=0.8)
     ax.grid(axis='y', linestyle='--')
+
+
+## Error helpers
+class IncreaseExcessHydrogenPlasma(Exception):
+    pass
 
 
 if __name__ == '__main__':
