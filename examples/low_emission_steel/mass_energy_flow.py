@@ -47,7 +47,7 @@ def main():
     # Overwrite system vars here to modify behaviour
     for system in systems:
         system.system_vars['scrap perc'] = 0.0
-        system.system_vars['ore name'] = 'IOC'
+        system.system_vars['ore name'] = 'IOB'
     # dri_eaf_system.system_vars['h2 storage method'] = 'compressed gas vessels'
     
     # For systems where hydrogen is the carrier of thermal energy as well as the reducing
@@ -724,18 +724,18 @@ def add_eaf_flows_final(system: System):
     o2_oxidation = species.create_o2_species()
     c_reduction = species.create_c_species()
 
-    steelmaking_device.inputs['chemical'].energy = 0.0
+    chemical_energy = 0.0
     if feo_slag.mols > feo_dri.mols:
         # metallic fe is oxidised by injected O2
         o2_oxidation.mols = 0.5 * (feo_slag.mols - feo_dri.mols)
         num_feo_formation_reactions = o2_oxidation.mols
-        steelmaking_device.inputs['chemical'].energy += -num_feo_formation_reactions * species.delta_h_2fe_o2_2feo(reaction_temp)
+        chemical_energy = -num_feo_formation_reactions * species.delta_h_2fe_o2_2feo(reaction_temp)
     else:
         # feo is reduced by the injected carbon.
         # we assume all reduction is by pure carbon, non is by CO gas. 
         c_reduction.mols = (feo_dri.mols - feo_slag.mols)
         num_feo_c_reduction_reactions = c_reduction.mols
-        steelmaking_device.inputs['chemical'].energy +=  -num_feo_c_reduction_reactions * species.delta_h_feo_c_fe_co(reaction_temp)
+        chemical_energy = -num_feo_c_reduction_reactions * species.delta_h_feo_c_fe_co(reaction_temp)
 
     # Add the target amount of O2 and calculate the required
     # Carbon for combustion. The target O2 consumption
@@ -756,8 +756,9 @@ def add_eaf_flows_final(system: System):
     num_co_reactions = n_reactions / 2.348
     num_co2_reactions = n_reactions - num_co_reactions
 
-    steelmaking_device.inputs['chemical'].energy += -num_co_reactions * species.delta_h_2c_o2_2co(reaction_temp) \
-                                                    -num_co2_reactions * species.delta_h_c_o2_co2(reaction_temp)
+    chemical_energy += -num_co_reactions * species.delta_h_2c_o2_2co(reaction_temp) \
+                       -num_co2_reactions * species.delta_h_c_o2_co2(reaction_temp)
+    steelmaking_device.inputs['chemical'].energy = chemical_energy
 
     c_combustion = species.create_c_species()
     c_combustion.mols = 2*num_co_reactions + num_co2_reactions
