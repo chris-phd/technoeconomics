@@ -82,6 +82,8 @@
 - SHOULD BE USING WAY MORE CAO AND MUCH LESS MGO. expect ~8:1 in the BOF
   - MgO is input in as doloma, which is ~60% CaO and ~40% MgO
 
+- WHy does using Argon improve the economics of the process??
+
 - Will there be Si in the hot metal in the plasma BOF scenario given that H2 does not reduce SiO2??
 
 - TBH the whole thing needs to be rewritten to use Cantera Solutions and Quantities
