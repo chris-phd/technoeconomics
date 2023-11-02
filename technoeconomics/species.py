@@ -188,6 +188,13 @@ class Mixture:
                 return species
         raise Exception("Mixture::species: species not found")
 
+    def remove_species(self, species_name):
+        for species in self._species:
+            if species.name == species_name:
+                self._species.remove(species)
+                return
+        # raise Exception("Mixture::remove_species: species not found")
+
     def num_species(self) -> int:
         return len(self._species)
 

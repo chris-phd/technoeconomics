@@ -851,7 +851,7 @@ def add_plasma_flows_final(system: System):
     first_ironmaking_device_name = system.system_vars['ironmaking device names'][0]
     ore_composition_simple = system.system_vars['ore composition simple']
     steel_bath_temp_K = system.system_vars['steel exit temp K']
-
+    argon_perc_in_plasma = system.system_vars.get('argon molar percent in h2 plasma', 0.0)
 
     # the plasma smelter can use hbi or ore fines.
     ironbearing_material = plasma_smelter.inputs.get('hbi')
@@ -882,9 +882,11 @@ def add_plasma_flows_final(system: System):
     num_fe3o4_formations = (num_feo_formations + delta_fe3o4) / 2
 
     # TODO: Need to calculate the reaction enthalpy from monotomic H reduction. The fraction of H reduction will depend on the reaction temp
-    plasma_smelter.inputs['chemical'].energy = -num_fe_formations * species.delta_h_feo_h2_fe_h2o(plasma_temp) \
-                                               -num_feo_formations * species.delta_h_fe3o4_h2_3feo_h2o(plasma_temp) \
-                                               -num_fe3o4_formations * species.delta_h_3fe2o3_h2_2fe3o4_h2o(plasma_temp)
+    # Why is this chemical energy positive? Don't we expect the overall reduction to be endo thermic, even
+    # for the reaction takes place at these higher temperatures??
+    chemical_energy = -num_fe_formations * species.delta_h_feo_h2_fe_h2o(plasma_temp) \
+                      -num_feo_formations * species.delta_h_fe3o4_h2_3feo_h2o(plasma_temp) \
+                      -num_fe3o4_formations * species.delta_h_3fe2o3_h2_2fe3o4_h2o(plasma_temp)
 
     # determine the mass of h2o in the off gas
     h2o = species.create_h2o_species()
@@ -902,16 +904,22 @@ def add_plasma_flows_final(system: System):
         # Not enough h2 gas to carry enough heat to melt the iron material.
         raise Exception(f"Error: Not enough H2 gas to carry heat. Device {plasma_smelter.name} in system {system.name}")
 
+    # convert to a mixture
+    hydrogen_frac_in_plasma = 1.0 - 0.01 * argon_perc_in_plasma
+    argon = species.create_ar_species()
+    argon.mols = h2_total.mols / hydrogen_frac_in_plasma - h2_total.mols
+    h2_rich_gas = species.Mixture('h2 rich gas', [h2_total, argon])
+
     # the amount of h2 in the in gas
     # input H2 temp to the plasma torch may be adjusted later after we know 
     # the exact exit temp from the heat exchanger
     h2_input_temp = system.system_vars['max heat exchanger temp K'] - 300.0
-    h2_total.temp_kelvin = h2_input_temp
+    h2_rich_gas.temp_kelvin = h2_input_temp
 
     # Flows for the plasma torch device.
-    plasma_torch.first_input_containing_name('h2 rich gas').set(h2_total)
-    h2_total.temp_kelvin = plasma_temp
-    plasma_torch.first_output_containing_name('h2 rich gas').set(h2_total)
+    plasma_torch.first_input_containing_name('h2 rich gas').set(h2_rich_gas)
+    h2_rich_gas.temp_kelvin = plasma_temp
+    plasma_torch.first_output_containing_name('h2 rich gas').set(h2_rich_gas)
     
     plasma_torch_eff = system.system_vars['plasma torch electro-thermal eff pecent'] * 0.01
     electrical_energy = plasma_torch.energy_balance() / plasma_torch_eff
@@ -919,7 +927,7 @@ def add_plasma_flows_final(system: System):
     plasma_torch.outputs['losses'].energy = electrical_energy * (1 - plasma_torch_eff)
 
     # Flows for the plasma smelter
-    plasma_smelter.first_input_containing_name('h2 rich gas').set(h2_total)
+    plasma_smelter.first_input_containing_name('h2 rich gas').set(h2_rich_gas)
 
     # Add the carbon required for the alloy
     c_alloy = copy.deepcopy(plasma_smelter.outputs['steel'].species('C'))
@@ -942,8 +950,7 @@ def add_plasma_flows_final(system: System):
         # feo is reduced by the injected carbon
         c_reduction.mols = (feo_target.mols - feo_slag.mols)
         num_feo_c_reduction_reactions = c_reduction.mols
-        # HACK! FIXME! enthalpies for the reactions are pretty broken I think.. can cantera do some of this??
-        plasma_smelter.inputs['chemical'].energy += 0.0 # -num_feo_c_reduction_reactions * species.delta_h_feo_c_fe_co(plasma_temp)
+        chemical_energy += -num_feo_c_reduction_reactions * species.delta_h_feo_c_fe_co(plasma_temp)
 
     total_o2_injected_mass = system.system_vars['o2 injection kg']
     assert total_o2_injected_mass >= o2_oxidation.mass
@@ -962,8 +969,9 @@ def add_plasma_flows_final(system: System):
     num_co2_reactions = n_reactions - num_co_reactions
 
     # This reaction may occur at a lower temp, since it is not at the plasma steel interface?
-    plasma_smelter.inputs['chemical'].energy += -num_co_reactions * species.delta_h_2c_o2_2co(plasma_temp) \
-                                              -num_co2_reactions * species.delta_h_c_o2_co2(plasma_temp)
+    chemical_energy += -num_co_reactions * species.delta_h_2c_o2_2co(plasma_temp) \
+                       -num_co2_reactions * species.delta_h_c_o2_co2(plasma_temp)
+    plasma_smelter.inputs['chemical'].energy += chemical_energy
 
     c_combustion = species.create_c_species()
     c_combustion.mols = 2*num_co_reactions + num_co2_reactions
@@ -997,7 +1005,7 @@ def add_plasma_flows_final(system: System):
     co.mols = 2 * num_co_reactions + c_reduction.mols
     co2 = species.create_co2_species()
     co2.mols = num_co2_reactions
-    off_gas = species.Mixture('off gas', [co, co2, h2o, h2_excess])
+    off_gas = species.Mixture('off gas', [co, co2, h2o, h2_excess, argon])
 
     # Solve for the off gas temperature that balances the energy balance.
     # Solve iteratively. Use the maximum safe exit temp as the initial guess.
@@ -1181,11 +1189,9 @@ def balance_join2_flows(system: System):
     """
     device = system.devices['join 2']
 
-    input_mass = device.inputs['h2 rich gas'].mass
     plasma_mass = device.outputs['pre plasma h2 rich gas'].mass
-    h2_fluidized_beds = species.create_h2_species()
-    h2_fluidized_beds.mass = input_mass - plasma_mass
-    device.outputs['h2 rich gas'].set(h2_fluidized_beds)
+    device.outputs['h2 rich gas'].set(device.inputs['h2 rich gas'])
+    device.outputs['h2 rich gas'].species('H2').mass -= plasma_mass
 
     device.outputs['pre plasma h2 rich gas'].temp_kelvin = device.inputs['h2 rich gas'].temp_kelvin
     device.outputs['h2 rich gas'].temp_kelvin = device.inputs['h2 rich gas'].temp_kelvin
@@ -1204,7 +1210,11 @@ def add_condenser_and_scrubber_flows_initial(system: System):
     Add the mass flows so that the correct masses are ready for the heat exchanger energy balance
     """
     condenser_device_name = 'condenser and scrubber'
-    system.devices[condenser_device_name].outputs['recycled h2 rich gas'].set(system.devices[condenser_device_name].inputs['recycled h2 rich gas'].species('H2'))
+    condenser = system.devices[condenser_device_name]
+    condenser.outputs['recycled h2 rich gas'].set(condenser.inputs['recycled h2 rich gas'])
+    condenser.outputs['recycled h2 rich gas'].remove_species('H2O')
+    condenser.outputs['recycled h2 rich gas'].remove_species('CO')
+    condenser.outputs['recycled h2 rich gas'].remove_species('CO2')
 
 
 def add_heat_exchanger_flows_final(system: System):
@@ -1301,8 +1311,10 @@ def add_condenser_and_scrubber_flows_final(system: System):
     condenser_device_name: str = 'condenser and scrubber'
     condenser = system.devices[condenser_device_name]
 
-    system.devices[condenser_device_name].outputs['recycled h2 rich gas'].set(system.devices[condenser_device_name].inputs['recycled h2 rich gas'].species('H2'))
-
+    condenser.outputs['recycled h2 rich gas'].set(condenser.inputs['recycled h2 rich gas'])
+    condenser.outputs['recycled h2 rich gas'].remove_species('H2O')
+    condenser.outputs['recycled h2 rich gas'].remove_species('CO')
+    condenser.outputs['recycled h2 rich gas'].remove_species('CO2')
 
     condenser_in_gas = system.devices[condenser_device_name].inputs['recycled h2 rich gas']
     condenser_temp = celsius_to_kelvin(70)

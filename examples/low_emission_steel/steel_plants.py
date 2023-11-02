@@ -64,6 +64,7 @@ def create_plasma_system(system_name='plasma steelmaking', h2_storage_method: Op
     plasma_system.system_vars['steelmaking device name'] = plasma_smelter.name
     plasma_system.system_vars['feo soluble in slag percent'] = 27.0
     plasma_system.system_vars['plasma temp K'] = 3000 # TODO Should be able to increase the plasma temp and reduce excess h2 ratio if I have higher temp thermo data
+    plasma_system.system_vars['argon molar percent in h2 plasma'] = 0.0
     plasma_system.system_vars['plasma reduction percent'] = 95.0
     plasma_system.system_vars['final reduction percent'] = plasma_system.system_vars['plasma reduction percent']
     plasma_system.system_vars['plasma h2 excess ratio'] = 1.5
@@ -110,14 +111,14 @@ def create_plasma_system(system_name='plasma steelmaking', h2_storage_method: Op
     plasma_system.add_flow(h2_heat_exchanger.name, condenser.name, create_dummy_mixture('recycled h2 rich gas'))
 
     # join
-    plasma_system.add_flow(condenser.name, join_1.name, create_dummy_species('recycled h2 rich gas'))
+    plasma_system.add_flow(condenser.name, join_1.name, create_dummy_mixture('recycled h2 rich gas'))
     if h2_storage_method is not None:
         plasma_system.add_flow(h2_storage.name, join_1.name, create_dummy_species('h2 rich gas'))
     else:
         plasma_system.add_flow(water_electrolysis.name, join_1.name, create_dummy_species('h2 rich gas'))
 
     # heat exchanger
-    plasma_system.add_flow(join_1.name, h2_heat_exchanger.name, create_dummy_species('h2 rich gas'))
+    plasma_system.add_flow(join_1.name, h2_heat_exchanger.name, create_dummy_mixture('h2 rich gas'))
     plasma_system.add_flow(plasma_smelter.name, h2_heat_exchanger.name, create_dummy_mixture('recycled h2 rich gas'))
     plasma_system.add_output(h2_heat_exchanger.name, EnergyFlow('losses'))
 
@@ -127,13 +128,13 @@ def create_plasma_system(system_name='plasma steelmaking', h2_storage_method: Op
     plasma_system.add_output(ore_heater.name, EnergyFlow('losses'))
 
     # plasma torch
-    plasma_system.add_flow(h2_heat_exchanger.name, plasma_torch.name, create_dummy_species('h2 rich gas'))
+    plasma_system.add_flow(h2_heat_exchanger.name, plasma_torch.name, create_dummy_mixture('h2 rich gas'))
     plasma_system.add_input(plasma_torch.name, EnergyFlow('base electricity'))
     plasma_system.add_output(plasma_torch.name, EnergyFlow('losses'))
 
     # plasma smelter
     plasma_system.add_flow(ore_heater.name, plasma_smelter.name, create_dummy_mixture('ore'))
-    plasma_system.add_flow(plasma_torch.name, plasma_smelter.name, create_dummy_species('plasma h2 rich gas'))
+    plasma_system.add_flow(plasma_torch.name, plasma_smelter.name, create_dummy_mixture('plasma h2 rich gas'))
     plasma_system.add_output(plasma_smelter.name, EnergyFlow('losses'))
     plasma_system.add_input(plasma_smelter.name, EnergyFlow('chemical'))
     plasma_system.add_input(plasma_smelter.name, create_dummy_species('carbon'))
@@ -145,7 +146,7 @@ def create_plasma_system(system_name='plasma steelmaking', h2_storage_method: Op
 
     return plasma_system
 
-def create_plasma_bof_system(system_name='plasma steelmaking', h2_storage_method: Optional[str] = 'salt caverns',
+def create_plasma_bof_system(system_name='plasma BOF steelmaking', h2_storage_method: Optional[str] = 'salt caverns',
                          annual_capacity_tls=1.5e6, plant_lifetime_years=20.0) -> System:
     """
     TODO: Remove repetition with the create_plasma_system function. Need to add functionality
@@ -180,6 +181,7 @@ def create_plasma_bof_system(system_name='plasma steelmaking', h2_storage_method
     plasma_bof_system.system_vars['ironmaking device name'] = plasma_smelter.name
     plasma_bof_system.system_vars['feo soluble in slag percent'] = 1.0
     plasma_bof_system.system_vars['plasma temp K'] = 3000 # TODO Should be able to increase the plasma temp and reduce excess h2 ratio if I have higher temp thermo data
+    plasma_bof_system.system_vars['argon molar percent in h2 plasma'] = 0.0
     plasma_bof_system.system_vars['plasma reduction percent'] = 95.0
     plasma_bof_system.system_vars['final reduction percent'] = plasma_bof_system.system_vars['plasma reduction percent']
     plasma_bof_system.system_vars['plasma h2 excess ratio'] = 1.5
@@ -232,14 +234,14 @@ def create_plasma_bof_system(system_name='plasma steelmaking', h2_storage_method
     plasma_bof_system.add_flow(h2_heat_exchanger.name, condenser.name, create_dummy_mixture('recycled h2 rich gas'))
 
     # join
-    plasma_bof_system.add_flow(condenser.name, join_1.name, create_dummy_species('recycled h2 rich gas'))
+    plasma_bof_system.add_flow(condenser.name, join_1.name, create_dummy_mixture('recycled h2 rich gas'))
     if h2_storage_method is not None:
         plasma_bof_system.add_flow(h2_storage.name, join_1.name, create_dummy_species('h2 rich gas'))
     else:
         plasma_bof_system.add_flow(water_electrolysis.name, join_1.name, create_dummy_species('h2 rich gas'))
 
     # heat exchanger
-    plasma_bof_system.add_flow(join_1.name, h2_heat_exchanger.name, create_dummy_species('h2 rich gas'))
+    plasma_bof_system.add_flow(join_1.name, h2_heat_exchanger.name, create_dummy_mixture('h2 rich gas'))
     plasma_bof_system.add_flow(plasma_smelter.name, h2_heat_exchanger.name, create_dummy_mixture('recycled h2 rich gas'))
     plasma_bof_system.add_output(h2_heat_exchanger.name, EnergyFlow('losses'))
 
@@ -249,13 +251,13 @@ def create_plasma_bof_system(system_name='plasma steelmaking', h2_storage_method
     plasma_bof_system.add_output(ore_heater.name, EnergyFlow('losses'))
 
     # plasma torch
-    plasma_bof_system.add_flow(h2_heat_exchanger.name, plasma_torch.name, create_dummy_species('h2 rich gas'))
+    plasma_bof_system.add_flow(h2_heat_exchanger.name, plasma_torch.name, create_dummy_mixture('h2 rich gas'))
     plasma_bof_system.add_input(plasma_torch.name, EnergyFlow('base electricity'))
     plasma_bof_system.add_output(plasma_torch.name, EnergyFlow('losses'))
 
     # plasma smelter
     plasma_bof_system.add_flow(ore_heater.name, plasma_smelter.name, create_dummy_mixture('ore'))
-    plasma_bof_system.add_flow(plasma_torch.name, plasma_smelter.name, create_dummy_species('plasma h2 rich gas'))
+    plasma_bof_system.add_flow(plasma_torch.name, plasma_smelter.name, create_dummy_mixture('plasma h2 rich gas'))
     plasma_bof_system.add_output(plasma_smelter.name, EnergyFlow('losses'))
     plasma_bof_system.add_input(plasma_smelter.name, EnergyFlow('chemical'))
     plasma_bof_system.add_input(plasma_smelter.name, create_dummy_species('carbon'))
@@ -263,6 +265,7 @@ def create_plasma_bof_system(system_name='plasma steelmaking', h2_storage_method
     plasma_bof_system.add_input(plasma_smelter.name, create_dummy_species('O2'))
     plasma_bof_system.add_input(plasma_smelter.name, create_dummy_species('scrap'))
     plasma_bof_system.add_output(plasma_smelter.name, create_dummy_mixture('slag'))
+    
     # bof
     plasma_bof_system.add_flow(plasma_smelter.name, bof.name, create_dummy_mixture('steel'))
     plasma_bof_system.add_output(bof.name, EnergyFlow('losses'))
@@ -357,14 +360,14 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking', h2_storage_method: 
     dri_eaf_system.add_flow(h2_heat_exchanger.name, condenser.name, create_dummy_mixture('recycled h2 rich gas'))
 
     # join
-    dri_eaf_system.add_flow(condenser.name, join_1.name, create_dummy_species('recycled h2 rich gas'))
+    dri_eaf_system.add_flow(condenser.name, join_1.name, create_dummy_mixture('recycled h2 rich gas'))
     if h2_storage_method is not None:
         dri_eaf_system.add_flow(h2_storage.name, join_1.name, create_dummy_species('h2 rich gas'))
     else:
         dri_eaf_system.add_flow(water_electrolysis.name, join_1.name, create_dummy_species('h2 rich gas'))
 
     # heat exchanger
-    dri_eaf_system.add_flow(join_1.name, h2_heat_exchanger.name, create_dummy_species('h2 rich gas'))
+    dri_eaf_system.add_flow(join_1.name, h2_heat_exchanger.name, create_dummy_mixture('h2 rich gas'))
     dri_eaf_system.add_flow(fluidized_bed_1.name, h2_heat_exchanger.name, create_dummy_mixture('recycled h2 rich gas'))
     dri_eaf_system.add_output(h2_heat_exchanger.name, EnergyFlow('losses'))
 
@@ -397,7 +400,7 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking', h2_storage_method: 
     dri_eaf_system.add_output(fluidized_bed_3.name, EnergyFlow('losses'))
 
     # heater 2
-    dri_eaf_system.add_flow(h2_heat_exchanger.name, h2_heater_2.name, create_dummy_species('h2 rich gas'))
+    dri_eaf_system.add_flow(h2_heat_exchanger.name, h2_heater_2.name, create_dummy_mixture('h2 rich gas'))
     dri_eaf_system.add_input(h2_heater_2.name, EnergyFlow('base electricity'))
     dri_eaf_system.add_output(h2_heater_2.name, EnergyFlow('losses'))
 
@@ -522,14 +525,14 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
     hybrid_system.add_flow(h2_heat_exchanger.name, condenser.name, create_dummy_mixture('recycled h2 rich gas'))
 
     # join 1
-    hybrid_system.add_flow(condenser.name, join_1.name, create_dummy_species('recycled h2 rich gas'))
+    hybrid_system.add_flow(condenser.name, join_1.name, create_dummy_mixture('recycled h2 rich gas'))
     if h2_storage_method is not None:
         hybrid_system.add_flow(h2_storage.name, join_1.name, create_dummy_species('h2 rich gas'))
     else:
         hybrid_system.add_flow(water_electrolysis.name, join_1.name, create_dummy_species('h2 rich gas'))
 
     # heat exchanger
-    hybrid_system.add_flow(join_1.name, h2_heat_exchanger.name, create_dummy_species('h2 rich gas'))
+    hybrid_system.add_flow(join_1.name, h2_heat_exchanger.name, create_dummy_mixture('h2 rich gas'))
     hybrid_system.add_flow(join_3.name, h2_heat_exchanger.name, create_dummy_mixture('recycled h2 rich gas'))
     hybrid_system.add_output(h2_heat_exchanger.name, EnergyFlow('losses'))
 
@@ -566,7 +569,7 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
         hybrid_system.add_output(fluidized_bed_3.name, EnergyFlow('losses'))
 
         # heater 2
-        hybrid_system.add_flow(join_2.name, h2_heater_2.name, create_dummy_species('h2 rich gas'))
+        hybrid_system.add_flow(join_2.name, h2_heater_2.name, create_dummy_mixture('h2 rich gas'))
         hybrid_system.add_input(h2_heater_2.name, EnergyFlow('base electricity'))
         hybrid_system.add_output(h2_heater_2.name, EnergyFlow('losses'))
 
@@ -574,22 +577,22 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
         hybrid_system.add_flow(fluidized_bed_3.name, h2_heater_1.name, create_dummy_mixture('h2 rich gas'))
     else:
         # heater 1
-        hybrid_system.add_flow(join_2.name, h2_heater_1.name, create_dummy_species('h2 rich gas'))
+        hybrid_system.add_flow(join_2.name, h2_heater_1.name, create_dummy_mixture('h2 rich gas'))
 
     # join 2
-    hybrid_system.add_flow(h2_heat_exchanger.name, join_2.name, create_dummy_species('h2 rich gas'))
+    hybrid_system.add_flow(h2_heat_exchanger.name, join_2.name, create_dummy_mixture('h2 rich gas'))
 
     # briquetting
     hybrid_system.add_flow(ironmaking_device_names[-1], briquetting.name, create_dummy_mixture('dri'))
 
     # plasma torch
-    hybrid_system.add_flow(join_2.name, plasma_torch.name, create_dummy_species('pre plasma h2 rich gas'))
+    hybrid_system.add_flow(join_2.name, plasma_torch.name, create_dummy_mixture('pre plasma h2 rich gas'))
     hybrid_system.add_input(plasma_torch.name, EnergyFlow('base electricity'))
     hybrid_system.add_output(plasma_torch.name, EnergyFlow('losses'))
 
     # plasma smelter
     hybrid_system.add_flow(briquetting.name, plasma_smelter.name, create_dummy_mixture('hbi'))
-    hybrid_system.add_flow(plasma_torch.name, plasma_smelter.name, create_dummy_species('plasma h2 rich gas'))
+    hybrid_system.add_flow(plasma_torch.name, plasma_smelter.name, create_dummy_mixture('plasma h2 rich gas'))
     hybrid_system.add_input(plasma_smelter.name, EnergyFlow('chemical'))
     hybrid_system.add_output(plasma_smelter.name, EnergyFlow('losses'))
     hybrid_system.add_input(plasma_smelter.name, create_dummy_species('carbon'))

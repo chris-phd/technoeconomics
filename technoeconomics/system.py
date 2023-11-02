@@ -29,7 +29,8 @@ class EnergyFlow:
 
     @energy.setter
     def energy(self, value):
-        if value < 0.0:
+        if value < 0.0 and 'chemical' not in self.name:
+            # Bit of a hack, but some reactions can be endothermic
             raise ValueError("Energy cannot be negative")
         self._energy = value
 
