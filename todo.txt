@@ -44,6 +44,9 @@
 - report costs of the inputs in absolute terms.
 - Move all the capex functions to the plant_costs.py file
 
+- Reduce the amount of carbon injected in the plasma during plasma-BOF, 
+  can then dynamically solve the amount of carbon needed to converge 
+
 ## Bugs
 - Energy to create the thermal plasma very inaccurate above 3000K.
   - Might be another good argument to try and incorporate cantera???
@@ -85,6 +88,7 @@
 - WHy does using Argon improve the economics of the process??
 
 - Will there be Si in the hot metal in the plasma BOF scenario given that H2 does not reduce SiO2??
+  - Need to understand the slag metal reactions in the precense of H 
 
 - TBH the whole thing needs to be rewritten to use Cantera Solutions and Quantities
   - https://cantera.org/documentation/dev/sphinx/html/cython/importing.html#cantera.Solution

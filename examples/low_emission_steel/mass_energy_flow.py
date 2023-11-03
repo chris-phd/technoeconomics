@@ -51,7 +51,7 @@ def main():
         system.system_vars['scrap perc'] = 0.0
         system.system_vars['ore name'] = 'IOA'
     # dri_eaf_system.system_vars['h2 storage method'] = 'compressed gas vessels'
-    plasma_ar_h2_system.system_vars['argon molar percent in h2 plasma'] = 50.0
+    plasma_ar_h2_system.system_vars['argon molar percent in h2 plasma'] = 10.0
 
 
     # For systems where hydrogen is the carrier of thermal energy as well as the reducing
