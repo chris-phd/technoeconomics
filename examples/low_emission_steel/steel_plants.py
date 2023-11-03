@@ -23,15 +23,15 @@ except ImportError:
 def main():
     plasma_system = create_plasma_system()
     dri_eaf_system = create_dri_eaf_system()
-    hybrid33_system = create_hybrid_system("hybrid33 steelmaking", 33.33)
-    hybrid95_system = create_hybrid_system("hybrid95 steelmaking", 95.0)
+    hybrid33_system = create_hybrid_system("hybrid33 steelmaking", prereduction_perc=33.33)
+    hybrid95_system = create_hybrid_system("hybrid95 steelmaking", prereduction_perc=95.0)
     plasma_bof_system = create_plasma_bof_system()
 
-    plasma_system.render(output_directory="/home/chris/Desktop/")
-    dri_eaf_system.render(output_directory="/home/chris/Desktop/")
-    hybrid33_system.render(output_directory="/home/chris/Desktop/")
+    # plasma_system.render(output_directory="/home/chris/Desktop/")
+    # dri_eaf_system.render(output_directory="/home/chris/Desktop/")
+    # hybrid33_system.render(output_directory="/home/chris/Desktop/")
     hybrid95_system.render(output_directory="/home/chris/Desktop/")
-    plasma_bof_system.render(output_directory="/home/chris/Desktop/")
+    # plasma_bof_system.render(output_directory="/home/chris/Desktop/")
 
 
 # System Creators
@@ -434,12 +434,16 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
     if h2_storage_method is not None:
         h2_storage = Device('h2 storage')
         hybrid_system.add_device(h2_storage)
-    h2_heat_exchanger = Device('h2 heat exchanger', 112439.95)
-    hybrid_system.add_device(h2_heat_exchanger)
+    h2_heat_exchanger_1 = Device('h2 heat exchanger 1', 112439.95)
+    hybrid_system.add_device(h2_heat_exchanger_1)
+    h2_heat_exchanger_2 = Device('h2 heat exchanger 2', 112439.95)
+    hybrid_system.add_device(h2_heat_exchanger_2)
     h2_heater_1 = Device('h2 heater 1')
     hybrid_system.add_device(h2_heater_1)
-    condenser = Device('condenser and scrubber')
-    hybrid_system.add_device(condenser)
+    condenser_1 = Device('condenser and scrubber 1')
+    hybrid_system.add_device(condenser_1)
+    condenser_2 = Device('condenser and scrubber 2')
+    hybrid_system.add_device(condenser_2)
     ore_heater = Device('ore heater', 6425140.11)
     hybrid_system.add_device(ore_heater)
     fluidized_bed_1 = Device('fluidized bed 1', 309.52 * annual_capacity_tls / 3) #, dri_capex_wortler2013() / 3 * annual_capacity_tls)
@@ -517,27 +521,41 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
         hybrid_system.add_input(h2_storage.name, EnergyFlow('cheap electricity'))
         hybrid_system.add_output(h2_storage.name, EnergyFlow('losses'))
 
-    # condenser
-    hybrid_system.add_output(condenser.name, create_dummy_species('H2O'))
-    hybrid_system.add_output(condenser.name, EnergyFlow('losses'))
-    hybrid_system.add_output(condenser.name, create_dummy_mixture('carbon gas'))
-    hybrid_system.add_flow(h2_heat_exchanger.name, condenser.name, create_dummy_mixture('recycled h2 rich gas'))
+    # join 3
+    if h2_storage_method is not None:
+        hybrid_system.add_flow(h2_storage.name, join_3.name, create_dummy_mixture('h2 rich gas'))
+    else:
+        hybrid_system.add_flow(water_electrolysis.name, join_3.name, create_dummy_species('h2 rich gas'))
+
+    # join 2
+    hybrid_system.add_flow(condenser_2.name, join_2.name, create_dummy_mixture('recycled h2 rich gas'))
+    hybrid_system.add_flow(join_3.name, join_2.name, create_dummy_mixture('h2 rich gas 2'))
 
     # join 1
-    hybrid_system.add_flow(condenser.name, join_1.name, create_dummy_mixture('recycled h2 rich gas'))
-    if h2_storage_method is not None:
-        hybrid_system.add_flow(h2_storage.name, join_1.name, create_dummy_species('h2 rich gas'))
-    else:
-        hybrid_system.add_flow(water_electrolysis.name, join_1.name, create_dummy_species('h2 rich gas'))
+    hybrid_system.add_flow(condenser_1.name, join_1.name, create_dummy_mixture('recycled h2 rich gas'))
+    hybrid_system.add_flow(join_3.name, join_1.name, create_dummy_mixture('h2 rich gas 1'))
 
-    # heat exchanger
-    hybrid_system.add_flow(join_1.name, h2_heat_exchanger.name, create_dummy_mixture('h2 rich gas'))
-    hybrid_system.add_flow(join_3.name, h2_heat_exchanger.name, create_dummy_mixture('recycled h2 rich gas'))
-    hybrid_system.add_output(h2_heat_exchanger.name, EnergyFlow('losses'))
+    # condenser 2   
+    hybrid_system.add_output(condenser_2.name, create_dummy_species('H2O'))
+    hybrid_system.add_output(condenser_2.name, EnergyFlow('losses'))
+    hybrid_system.add_output(condenser_2.name, create_dummy_mixture('carbon gas'))
+    hybrid_system.add_flow(h2_heat_exchanger_2.name, condenser_2.name, create_dummy_mixture('recycled h2 rich gas'))
 
-    # join 3
-    hybrid_system.add_flow(plasma_smelter.name, join_3.name, create_dummy_mixture('waste plasma h2 rich gas'))
-    hybrid_system.add_flow(fluidized_bed_1.name, join_3.name, create_dummy_mixture('waste dri h2 rich gas'))
+    # condenser 1
+    hybrid_system.add_output(condenser_1.name, create_dummy_species('H2O'))
+    hybrid_system.add_output(condenser_1.name, EnergyFlow('losses'))
+    hybrid_system.add_output(condenser_1.name, create_dummy_mixture('carbon gas'))
+    hybrid_system.add_flow(h2_heat_exchanger_1.name, condenser_1.name, create_dummy_mixture('recycled h2 rich gas'))
+
+    # heat exchanger 2
+    hybrid_system.add_flow(join_2.name, h2_heat_exchanger_2.name, create_dummy_mixture('h2 rich gas'))
+    hybrid_system.add_flow(plasma_smelter.name, h2_heat_exchanger_2.name, create_dummy_mixture('recycled h2 rich gas'))
+    hybrid_system.add_output(h2_heat_exchanger_2.name, EnergyFlow('losses'))
+
+    # heat exchanger 1
+    hybrid_system.add_flow(join_1.name, h2_heat_exchanger_1.name, create_dummy_mixture('h2 rich gas'))
+    hybrid_system.add_flow(fluidized_bed_1.name, h2_heat_exchanger_1.name, create_dummy_mixture('recycled h2 rich gas'))
+    hybrid_system.add_output(h2_heat_exchanger_1.name, EnergyFlow('losses'))
 
     # ore heater
     hybrid_system.add_input(ore_heater.name, create_dummy_mixture('ore'))
@@ -568,7 +586,7 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
         hybrid_system.add_output(fluidized_bed_3.name, EnergyFlow('losses'))
 
         # heater 2
-        hybrid_system.add_flow(join_2.name, h2_heater_2.name, create_dummy_mixture('h2 rich gas'))
+        hybrid_system.add_flow(h2_heat_exchanger_1.name, h2_heater_2.name, create_dummy_mixture('h2 rich gas'))
         hybrid_system.add_input(h2_heater_2.name, EnergyFlow('base electricity'))
         hybrid_system.add_output(h2_heater_2.name, EnergyFlow('losses'))
 
@@ -576,16 +594,13 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
         hybrid_system.add_flow(fluidized_bed_3.name, h2_heater_1.name, create_dummy_mixture('h2 rich gas'))
     else:
         # heater 1
-        hybrid_system.add_flow(join_2.name, h2_heater_1.name, create_dummy_mixture('h2 rich gas'))
-
-    # join 2
-    hybrid_system.add_flow(h2_heat_exchanger.name, join_2.name, create_dummy_mixture('h2 rich gas'))
+        hybrid_system.add_flow(h2_heat_exchanger_1.name, h2_heater_1.name, create_dummy_mixture('h2 rich gas'))
 
     # briquetting
     hybrid_system.add_flow(ironmaking_device_names[-1], briquetting.name, create_dummy_mixture('dri'))
 
     # plasma torch
-    hybrid_system.add_flow(join_2.name, plasma_torch.name, create_dummy_mixture('pre plasma h2 rich gas'))
+    hybrid_system.add_flow(h2_heat_exchanger_2.name, plasma_torch.name, create_dummy_mixture('pre plasma h2 rich gas'))
     hybrid_system.add_input(plasma_torch.name, EnergyFlow('base electricity'))
     hybrid_system.add_output(plasma_torch.name, EnergyFlow('losses'))
 
