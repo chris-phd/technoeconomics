@@ -21,7 +21,6 @@ except ImportError:
 
 
 def main():
-    # TODO: Add transferred and non-transferred arc system.
     plasma_system = create_plasma_system()
     dri_eaf_system = create_dri_eaf_system()
     hybrid33_system = create_hybrid_system("hybrid33 steelmaking", 33.33)

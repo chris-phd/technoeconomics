@@ -11,6 +11,8 @@
   - how much gas do we need per kg of ore / dri?
   - break total plasma efficiency up into two numbers
   - total efficiency to the ore will be electrical-thermal efficiency + heat transfer efficiency.
+- Add efficiency numbers that represent different plasma sources (transferred arc vs 
+  non transferred arc etc.)
 - Plasma furnace should be able to operate with a mixture of Argon and H2...
 - Add scrap pre-heating to the mass energy flow.
 - Need to add in Argon as an option. It may be better suited as a carrier of thermal heat
