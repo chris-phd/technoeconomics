@@ -600,7 +600,7 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
     hybrid_system.add_flow(ironmaking_device_names[-1], briquetting.name, create_dummy_mixture('dri'))
 
     # plasma torch
-    hybrid_system.add_flow(h2_heat_exchanger_2.name, plasma_torch.name, create_dummy_mixture('pre plasma h2 rich gas'))
+    hybrid_system.add_flow(h2_heat_exchanger_2.name, plasma_torch.name, create_dummy_mixture('h2 rich gas'))
     hybrid_system.add_input(plasma_torch.name, EnergyFlow('base electricity'))
     hybrid_system.add_output(plasma_torch.name, EnergyFlow('losses'))
 

@@ -44,8 +44,8 @@ def main():
             #    plasma_bof_system, 
             #    dri_eaf_system, 
                hybrid33_system, 
-            #    hybrid55_system, 
-            #    hybrid95_system
+               hybrid55_system, 
+               hybrid95_system
                ]
 
     # Overwrite system vars here to modify behaviour
@@ -72,8 +72,8 @@ def main():
     # solve_mass_energy_flow(plasma_bof_system, add_plasma_bof_mass_and_energy)
     # solve_mass_energy_flow(dri_eaf_system, add_dri_eaf_mass_and_energy)
     solve_mass_energy_flow(hybrid33_system, add_hybrid_mass_and_energy)
-    # solve_mass_energy_flow(hybrid55_system, add_hybrid_mass_and_energy)
-    # solve_mass_energy_flow(hybrid95_system, add_hybrid_mass_and_energy)
+    solve_mass_energy_flow(hybrid55_system, add_hybrid_mass_and_energy)
+    solve_mass_energy_flow(hybrid95_system, add_hybrid_mass_and_energy)
 
     ##
     # add_steel_plant_capex(plasma_system)
@@ -81,8 +81,8 @@ def main():
     # add_steel_plant_capex(plasma_bof_system)
     # add_steel_plant_capex(dri_eaf_system)
     add_steel_plant_capex(hybrid33_system)
-    # add_steel_plant_capex(hybrid55_system)
-    # add_steel_plant_capex(hybrid95_system)
+    add_steel_plant_capex(hybrid55_system)
+    add_steel_plant_capex(hybrid95_system)
 
     ## Energy and Mass Flow Plots
     system_names = [s.name for s in systems]
@@ -238,19 +238,20 @@ def add_hybrid_mass_and_energy(system: System):
     add_electrolysis_flows(system)
     add_h2_storage_flows(system)
     balance_join3_flows(system)
-
-    # old code...
     merge_join_flows(system, 'join 1')
-    merge_join_flows(system, 'join 3')
-    add_heat_exchanger_flows_initial(system)
-    add_condenser_and_scrubber_flows_initial(system)
+    merge_join_flows(system, 'join 2')
+    add_heat_exchanger_flows_initial(system, 'h2 heat exchanger 1')
+    add_condenser_and_scrubber_flows_initial(system, 'condenser and scrubber 1')
+    add_heat_exchanger_flows_initial(system, 'h2 heat exchanger 2')
+    add_condenser_and_scrubber_flows_initial(system, 'condenser and scrubber 2')
     merge_join_flows(system, 'join 1')
-    merge_join_flows(system, 'join 3')
-    add_heat_exchanger_flows_final(system)
-    add_condenser_and_scrubber_flows_final(system)
+    merge_join_flows(system, 'join 2')
+    add_heat_exchanger_flows_final(system, 'h2 heat exchanger 1')
+    add_condenser_and_scrubber_flows_final(system, 'condenser and scrubber 1')
+    add_heat_exchanger_flows_final(system, 'h2 heat exchanger 2')
+    add_condenser_and_scrubber_flows_final(system, 'condenser and scrubber 2')
     merge_join_flows(system, 'join 1')
-    merge_join_flows(system, 'join 3')
-    balance_join2_flows(system)
+    merge_join_flows(system, 'join 2')
     adjust_plasma_torch_electricity(system)
     add_h2_heater_flows(system)
 
@@ -1217,33 +1218,18 @@ def balance_join3_flows(system: System):
         raise Exception("Error: Join 3 mass or energy balance not zero")
 
 
-def balance_join2_flows(system: System):
-    """
-    Function specific to the join 2 device in the hybrid system. Not ideal
-    """
-    device = system.devices['join 2']
-
-    plasma_mass = device.outputs['pre plasma h2 rich gas'].mass
-    device.outputs['h2 rich gas'].set(device.inputs['h2 rich gas'])
-    device.outputs['h2 rich gas'].species('H2').mass -= plasma_mass
-
-    device.outputs['pre plasma h2 rich gas'].temp_kelvin = device.inputs['h2 rich gas'].temp_kelvin
-    device.outputs['h2 rich gas'].temp_kelvin = device.inputs['h2 rich gas'].temp_kelvin
-
-def add_heat_exchanger_flows_initial(system: System):
+def add_heat_exchanger_flows_initial(system: System, heat_exchanger_device_name: str = 'h2 heat exchanger'):
     """
     Adds the mass flows so that the correct masses are ready for condenser and scrubber intial
     """
-    heat_exchanger_device_name = 'h2 heat exchanger'
     system.devices[heat_exchanger_device_name].outputs['recycled h2 rich gas'].set(system.devices[heat_exchanger_device_name].inputs['recycled h2 rich gas'])
     system.devices[heat_exchanger_device_name].inputs['h2 rich gas'].set(system.devices[heat_exchanger_device_name].inputs['h2 rich gas'])
 
 
-def add_condenser_and_scrubber_flows_initial(system: System):
+def add_condenser_and_scrubber_flows_initial(system: System, condenser_device_name: str = 'condenser and scrubber'):
     """
     Add the mass flows so that the correct masses are ready for the heat exchanger energy balance
     """
-    condenser_device_name = 'condenser and scrubber'
     condenser = system.devices[condenser_device_name]
     condenser.outputs['recycled h2 rich gas'].set(condenser.inputs['recycled h2 rich gas'])
     condenser.outputs['recycled h2 rich gas'].remove_species('H2O')
@@ -1251,7 +1237,7 @@ def add_condenser_and_scrubber_flows_initial(system: System):
     condenser.outputs['recycled h2 rich gas'].remove_species('CO2')
 
 
-def add_heat_exchanger_flows_final(system: System):
+def add_heat_exchanger_flows_final(system: System, heat_exchanger_device_name: str = 'h2 heat exchanger'):
     """
     TODO: Should be able to simplify this function alot.
           start by using the .cp() built in method. 
@@ -1264,7 +1250,6 @@ def add_heat_exchanger_flows_final(system: System):
     The same goes for the top has of the EAF in the fluidized bed, but this
     is not assumed to be the case. (so a bit of asymmetry here)
     """
-    heat_exchanger_device_name = 'h2 heat exchanger'
     heat_exchanger = system.devices[heat_exchanger_device_name]
 
     # The maximum possible efficiency. Actual efficiency can be lower,
@@ -1341,8 +1326,7 @@ def add_heat_exchanger_flows_final(system: System):
     heat_exchanger.outputs['losses'].set(thermal_losses)
 
 
-def add_condenser_and_scrubber_flows_final(system: System):
-    condenser_device_name: str = 'condenser and scrubber'
+def add_condenser_and_scrubber_flows_final(system: System,     condenser_device_name: str = 'condenser and scrubber'):
     condenser = system.devices[condenser_device_name]
 
     condenser.outputs['recycled h2 rich gas'].set(condenser.inputs['recycled h2 rich gas'])
