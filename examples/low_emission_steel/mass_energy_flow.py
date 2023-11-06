@@ -36,14 +36,16 @@ def main():
     plasma_bof_system = create_plasma_bof_system("Plasma BOF", 'salt caverns', annual_steel_production_tonnes, plant_lifetime_years)
     dri_eaf_system = create_dri_eaf_system("DRI-EAF", 'salt caverns', annual_steel_production_tonnes, plant_lifetime_years)
     hybrid33_system = create_hybrid_system("Hybrid 33", 'salt caverns', 33.33, annual_steel_production_tonnes, plant_lifetime_years)
+    hybrid33_ar_h2_system = create_hybrid_system("Hybrid 33 Ar-H2", 'salt caverns', 33.33, annual_steel_production_tonnes, plant_lifetime_years)
     hybrid55_system = create_hybrid_system("Hybrid 55", 'salt caverns', 55.0, annual_steel_production_tonnes, plant_lifetime_years)
     hybrid95_system = create_hybrid_system("Hybrid 90", 'salt caverns', 90.0, annual_steel_production_tonnes, plant_lifetime_years)
     systems = [
-            #    plasma_system,
-            #    plasma_ar_h2_system, 
-            #    plasma_bof_system, 
-            #    dri_eaf_system, 
+               plasma_system,
+               plasma_ar_h2_system, 
+               plasma_bof_system, 
+               dri_eaf_system, 
                hybrid33_system, 
+               hybrid33_ar_h2_system, 
                hybrid55_system, 
                hybrid95_system
                ]
@@ -54,7 +56,7 @@ def main():
         system.system_vars['ore name'] = 'IOA'
     # dri_eaf_system.system_vars['h2 storage method'] = 'compressed gas vessels'
     plasma_ar_h2_system.system_vars['argon molar percent in h2 plasma'] = 10.0
-
+    hybrid33_ar_h2_system.system_vars['argon molar percent in h2 plasma'] = 10.0
 
     # For systems where hydrogen is the carrier of thermal energy as well as the reducing
     # agent, you excess h2 ratio may need to be adjusted to ensure there is anough thermal
@@ -63,24 +65,27 @@ def main():
     plasma_ar_h2_system.system_vars['plasma h2 excess ratio'] = 1.0
     plasma_bof_system.system_vars['plasma h2 excess ratio'] = 2.5 # 1.75 too low, as above
     hybrid33_system.system_vars['plasma h2 excess ratio'] = 4.0
+    hybrid33_ar_h2_system.system_vars['plasma h2 excess ratio'] = 3.5
     hybrid55_system.system_vars['plasma h2 excess ratio'] = 5.5
     hybrid95_system.system_vars['plasma h2 excess ratio'] = 30.0
 
     ## Calculate The Mass and Energy Flow
-    # solve_mass_energy_flow(plasma_system, add_plasma_mass_and_energy)
-    # solve_mass_energy_flow(plasma_ar_h2_system, add_plasma_mass_and_energy)
-    # solve_mass_energy_flow(plasma_bof_system, add_plasma_bof_mass_and_energy)
-    # solve_mass_energy_flow(dri_eaf_system, add_dri_eaf_mass_and_energy)
+    solve_mass_energy_flow(plasma_system, add_plasma_mass_and_energy)
+    solve_mass_energy_flow(plasma_ar_h2_system, add_plasma_mass_and_energy)
+    solve_mass_energy_flow(plasma_bof_system, add_plasma_bof_mass_and_energy)
+    solve_mass_energy_flow(dri_eaf_system, add_dri_eaf_mass_and_energy)
     solve_mass_energy_flow(hybrid33_system, add_hybrid_mass_and_energy)
+    solve_mass_energy_flow(hybrid33_ar_h2_system, add_hybrid_mass_and_energy)
     solve_mass_energy_flow(hybrid55_system, add_hybrid_mass_and_energy)
     solve_mass_energy_flow(hybrid95_system, add_hybrid_mass_and_energy)
 
     ##
-    # add_steel_plant_capex(plasma_system)
-    # add_steel_plant_capex(plasma_ar_h2_system)
-    # add_steel_plant_capex(plasma_bof_system)
-    # add_steel_plant_capex(dri_eaf_system)
+    add_steel_plant_capex(plasma_system)
+    add_steel_plant_capex(plasma_ar_h2_system)
+    add_steel_plant_capex(plasma_bof_system)
+    add_steel_plant_capex(dri_eaf_system)
     add_steel_plant_capex(hybrid33_system)
+    add_steel_plant_capex(hybrid33_ar_h2_system)
     add_steel_plant_capex(hybrid55_system)
     add_steel_plant_capex(hybrid95_system)
 

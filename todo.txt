@@ -85,9 +85,12 @@
   using multiple devices with the same inputs or outputs or concepts.
 
 - SHOULD BE USING WAY MORE CAO AND MUCH LESS MGO. expect ~8:1 in the BOF
-  - MgO is input in as doloma, which is ~60% CaO and ~40% MgO
+  - ==MgO is input in as doloma, which is ~60% CaO and ~40% MgO==
+  - MgO is a major cost currently and is exagerating the performance of the plasma-BOF process.
 
 - WHy does using Argon improve the economics of the process??
+  - Check the enthalpy in the delta T of the plasma smelter. of Argon vs H2
+  - Would depend how efficiently the off gas temp is utilised..
 
 - Will there be Si in the hot metal in the plasma BOF scenario given that H2 does not reduce SiO2??
   - Need to understand the slag metal reactions in the precense of H 
