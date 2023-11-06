@@ -29,8 +29,8 @@ def main():
 
     # plasma_system.render(output_directory="/home/chris/Desktop/")
     # dri_eaf_system.render(output_directory="/home/chris/Desktop/")
-    # hybrid33_system.render(output_directory="/home/chris/Desktop/")
-    hybrid95_system.render(output_directory="/home/chris/Desktop/")
+    hybrid33_system.render(output_directory="/home/chris/Desktop/")
+    # hybrid95_system.render(output_directory="/home/chris/Desktop/")
     # plasma_bof_system.render(output_directory="/home/chris/Desktop/")
 
 
@@ -523,7 +523,7 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
 
     # join 3
     if h2_storage_method is not None:
-        hybrid_system.add_flow(h2_storage.name, join_3.name, create_dummy_mixture('h2 rich gas'))
+        hybrid_system.add_flow(h2_storage.name, join_3.name, create_dummy_species('h2 rich gas'))
     else:
         hybrid_system.add_flow(water_electrolysis.name, join_3.name, create_dummy_species('h2 rich gas'))
 

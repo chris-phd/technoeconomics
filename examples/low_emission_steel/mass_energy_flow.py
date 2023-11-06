@@ -38,13 +38,15 @@ def main():
     hybrid33_system = create_hybrid_system("Hybrid 33", 'salt caverns', 33.33, annual_steel_production_tonnes, plant_lifetime_years)
     hybrid55_system = create_hybrid_system("Hybrid 55", 'salt caverns', 55.0, annual_steel_production_tonnes, plant_lifetime_years)
     hybrid95_system = create_hybrid_system("Hybrid 90", 'salt caverns', 90.0, annual_steel_production_tonnes, plant_lifetime_years)
-    systems = [plasma_system,
-               plasma_ar_h2_system, 
-               plasma_bof_system, 
-               dri_eaf_system, 
+    systems = [
+            #    plasma_system,
+            #    plasma_ar_h2_system, 
+            #    plasma_bof_system, 
+            #    dri_eaf_system, 
                hybrid33_system, 
-               hybrid55_system, 
-               hybrid95_system]
+            #    hybrid55_system, 
+            #    hybrid95_system
+               ]
 
     # Overwrite system vars here to modify behaviour
     for system in systems:
@@ -65,29 +67,22 @@ def main():
     hybrid95_system.system_vars['plasma h2 excess ratio'] = 30.0
 
     ## Calculate The Mass and Energy Flow
-    # plasma_system = solve_mass_energy_flow(plasma_system, add_plasma_mass_and_energy)
-    # plasma_bof_system = solve_mass_energy_flow(plasma_bof_system, add_plasma_bof_mass_and_energy)
-    # dri_eaf_system = solve_mass_energy_flow(dri_eaf_system, add_dri_eaf_mass_and_energy)
-    # hybrid33_system = solve_mass_energy_flow(hybrid33_system, add_hybrid_mass_and_energy)
-    # hybrid55_system = solve_mass_energy_flow(hybrid55_system, add_hybrid_mass_and_energy)
-    # hybrid95_system = solve_mass_energy_flow(hybrid95_system, add_hybrid_mass_and_energy)
-
-    solve_mass_energy_flow(plasma_system, add_plasma_mass_and_energy)
-    solve_mass_energy_flow(plasma_ar_h2_system, add_plasma_mass_and_energy)
-    solve_mass_energy_flow(plasma_bof_system, add_plasma_bof_mass_and_energy)
-    solve_mass_energy_flow(dri_eaf_system, add_dri_eaf_mass_and_energy)
+    # solve_mass_energy_flow(plasma_system, add_plasma_mass_and_energy)
+    # solve_mass_energy_flow(plasma_ar_h2_system, add_plasma_mass_and_energy)
+    # solve_mass_energy_flow(plasma_bof_system, add_plasma_bof_mass_and_energy)
+    # solve_mass_energy_flow(dri_eaf_system, add_dri_eaf_mass_and_energy)
     solve_mass_energy_flow(hybrid33_system, add_hybrid_mass_and_energy)
-    solve_mass_energy_flow(hybrid55_system, add_hybrid_mass_and_energy)
-    solve_mass_energy_flow(hybrid95_system, add_hybrid_mass_and_energy)
+    # solve_mass_energy_flow(hybrid55_system, add_hybrid_mass_and_energy)
+    # solve_mass_energy_flow(hybrid95_system, add_hybrid_mass_and_energy)
 
     ##
-    add_steel_plant_capex(plasma_system)
-    add_steel_plant_capex(plasma_ar_h2_system)
-    add_steel_plant_capex(plasma_bof_system)
-    add_steel_plant_capex(dri_eaf_system)
+    # add_steel_plant_capex(plasma_system)
+    # add_steel_plant_capex(plasma_ar_h2_system)
+    # add_steel_plant_capex(plasma_bof_system)
+    # add_steel_plant_capex(dri_eaf_system)
     add_steel_plant_capex(hybrid33_system)
-    add_steel_plant_capex(hybrid55_system)
-    add_steel_plant_capex(hybrid95_system)
+    # add_steel_plant_capex(hybrid55_system)
+    # add_steel_plant_capex(hybrid95_system)
 
     ## Energy and Mass Flow Plots
     system_names = [s.name for s in systems]
@@ -242,6 +237,9 @@ def add_hybrid_mass_and_energy(system: System):
     add_plasma_flows_final(system)
     add_electrolysis_flows(system)
     add_h2_storage_flows(system)
+    balance_join3_flows(system)
+
+    # old code...
     merge_join_flows(system, 'join 1')
     merge_join_flows(system, 'join 3')
     add_heat_exchanger_flows_initial(system)
@@ -616,7 +614,7 @@ def add_fluidized_bed_flows(system: System):
                                 copy.deepcopy(ore.species('MgO')),
                                 copy.deepcopy(ore.species('SiO2')),
                                 copy.deepcopy(ore.species('Al2O3'))])
-    dri.temp_kelvin = in_gas_temp - 50 # Assumption
+    dri.temp_kelvin = in_gas_temp - 50 # Assumption, TODO understand what the basis of this assumption is.
     ironmaking_device.outputs['dri'].set(dri)
 
     # TODO: Reduce repeition with the same logic in the plasma smelter. 
@@ -1188,6 +1186,35 @@ def merge_join_flows(system: System, join_device_name: str):
             device.outputs[output_flow_name].merge(flow)
     else:
         raise Exception(f"unsupported type {type(device.outputs[0])}")
+
+
+def balance_join3_flows(system: System):
+    """
+    Function specific to the join 3 device in the hybrid system. Not ideal!
+    Works out how much H2 to distribute to the plasma smelter and the fluidized beds.
+    """
+    join_3 = system.devices['join 3']
+    ironmaking_device_names = system.system_vars['ironmaking device names']
+    steelmaking_device_name = system.system_vars['steelmaking device name']
+
+    h2_loop_2 = species.create_h2_species()
+    h2_loop_2.temp_kelvin = join_3.first_input_containing_name('h2 rich gas').temp_kelvin
+    steelmaking_device = system.devices[steelmaking_device_name]
+    h2_loop_2.mols = steelmaking_device.first_input_containing_name('h2 rich gas').species('H2').mols \
+                     - steelmaking_device.first_output_containing_name('h2 rich gas').species('H2').mols
+
+    h2_loop_1 = species.create_h2_species()
+    h2_loop_1.temp_kelvin = join_3.first_input_containing_name('h2 rich gas').temp_kelvin
+    for device_name in ironmaking_device_names:
+        device = system.devices[device_name]
+        h2_loop_1.mols += device.first_input_containing_name('h2 rich gas').species('H2').mols \
+                        - device.first_output_containing_name('h2 rich gas').species('H2').mols
+    
+    join_3.outputs['h2 rich gas 1'].set(species.Mixture('h2 rich gas 1', [h2_loop_1]))
+    join_3.outputs['h2 rich gas 2'].set(species.Mixture('h2 rich gas 2', [h2_loop_2]))
+    
+    if abs(join_3.mass_balance()) > 1e-8 or abs(join_3.energy_balance()) > 1e-8:
+        raise Exception("Error: Join 3 mass or energy balance not zero")
 
 
 def balance_join2_flows(system: System):
