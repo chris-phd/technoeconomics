@@ -22,28 +22,34 @@ except ImportError:
 
 def main():
     plasma_system = create_plasma_system()
-    dri_eaf_system = create_dri_eaf_system()
+    plasma_system_2 = create_plasma_system("plasma no h2 production", on_premises_h2_production=False)
+    dri_eaf_system = create_dri_eaf_system(on_premises_h2_production=False)
     hybrid33_system = create_hybrid_system("hybrid33 steelmaking", prereduction_perc=33.33)
     hybrid95_system = create_hybrid_system("hybrid95 steelmaking", prereduction_perc=95.0)
     plasma_bof_system = create_plasma_bof_system()
 
-    # plasma_system.render(output_directory="/home/chris/Desktop/")
-    # dri_eaf_system.render(output_directory="/home/chris/Desktop/")
+    plasma_system.render(output_directory="/home/chris/Desktop/")
+    plasma_system_2.render(output_directory="/home/chris/Desktop/")
+    dri_eaf_system.render(output_directory="/home/chris/Desktop/")
     hybrid33_system.render(output_directory="/home/chris/Desktop/")
-    # hybrid95_system.render(output_directory="/home/chris/Desktop/")
-    # plasma_bof_system.render(output_directory="/home/chris/Desktop/")
+    hybrid95_system.render(output_directory="/home/chris/Desktop/")
+    plasma_bof_system.render(output_directory="/home/chris/Desktop/")
 
 
 # System Creators
-def create_plasma_system(system_name='plasma steelmaking', h2_storage_method: Optional[str] = 'salt caverns',
-                         annual_capacity_tls=1.5e6, plant_lifetime_years=20.0) -> System:
+def create_plasma_system(system_name: str ='plasma steelmaking',
+                         on_premises_h2_production: bool = True,
+                         h2_storage_method: Optional[str] = 'salt caverns',
+                         annual_capacity_tls: float=1.5e6, 
+                         plant_lifetime_years: float=20.0) -> System:
     plasma_system = System(system_name, annual_capacity_tls, plant_lifetime_years)
 
-    water_electrolysis = Device('water electrolysis', electrolyser_capex_desantis2021() * annual_capacity_tls)
-    plasma_system.add_device(water_electrolysis)
-    if h2_storage_method is not None:
-        h2_storage = Device('h2 storage')
-        plasma_system.add_device(h2_storage)
+    if on_premises_h2_production:
+        water_electrolysis = Device('water electrolysis', electrolyser_capex_desantis2021() * annual_capacity_tls)
+        plasma_system.add_device(water_electrolysis)
+        if h2_storage_method is not None:
+            h2_storage = Device('h2 storage')
+            plasma_system.add_device(h2_storage)
     h2_heat_exchanger = Device('h2 heat exchanger', 112439.95)
     plasma_system.add_device(h2_heat_exchanger)
     condenser = Device('condenser and scrubber')
@@ -58,6 +64,7 @@ def create_plasma_system(system_name='plasma steelmaking', h2_storage_method: Op
     plasma_system.add_device(join_1)
 
     # System variables defaults. Can be overwritten by user before mass and energy flows.
+    plasma_system.system_vars['on premises h2 production'] = on_premises_h2_production
     plasma_system.system_vars['cheap electricity hours'] = 8.0
     plasma_system.system_vars['h2 storage hours of operation'] = 24.0 - plasma_system.system_vars['cheap electricity hours']
     plasma_system.system_vars['steelmaking device name'] = plasma_smelter.name
@@ -86,22 +93,23 @@ def create_plasma_system(system_name='plasma steelmaking', h2_storage_method: Op
     if h2_storage_method is not None:
         plasma_system.system_vars['h2 storage method'] = h2_storage_method
 
-    # electrolysis flows
-    plasma_system.add_input(water_electrolysis.name, create_dummy_species('H2O'))
-    plasma_system.add_output(water_electrolysis.name, create_dummy_species('O2'))
-    if h2_storage_method is not None:
-        electricity_type = 'cheap electricity'
-    else:
-        electricity_type = 'base electricity'
-    plasma_system.add_input(water_electrolysis.name, EnergyFlow(electricity_type))
-    plasma_system.add_output(water_electrolysis.name, EnergyFlow('losses'))
-    plasma_system.add_output(water_electrolysis.name, EnergyFlow('chemical'))
+    if on_premises_h2_production:
+        # electrolysis flows
+        plasma_system.add_input(water_electrolysis.name, create_dummy_species('H2O'))
+        plasma_system.add_output(water_electrolysis.name, create_dummy_species('O2'))
+        if h2_storage_method is not None:
+            electricity_type = 'cheap electricity'
+        else:
+            electricity_type = 'base electricity'
+        plasma_system.add_input(water_electrolysis.name, EnergyFlow(electricity_type))
+        plasma_system.add_output(water_electrolysis.name, EnergyFlow('losses'))
+        plasma_system.add_output(water_electrolysis.name, EnergyFlow('chemical'))
 
-    # h2 storage
-    if h2_storage_method is not None:
-        plasma_system.add_flow(water_electrolysis.name, h2_storage.name, create_dummy_species('h2 rich gas'))
-        plasma_system.add_input(h2_storage.name, EnergyFlow('cheap electricity'))
-        plasma_system.add_output(h2_storage.name, EnergyFlow('losses'))
+        # h2 storage
+        if h2_storage_method is not None:
+            plasma_system.add_flow(water_electrolysis.name, h2_storage.name, create_dummy_species('h2 rich gas'))
+            plasma_system.add_input(h2_storage.name, EnergyFlow('cheap electricity'))
+            plasma_system.add_output(h2_storage.name, EnergyFlow('losses'))
 
     # condenser
     plasma_system.add_output(condenser.name, create_dummy_species('H2O'))
@@ -111,10 +119,13 @@ def create_plasma_system(system_name='plasma steelmaking', h2_storage_method: Op
 
     # join
     plasma_system.add_flow(condenser.name, join_1.name, create_dummy_mixture('recycled h2 rich gas'))
-    if h2_storage_method is not None:
-        plasma_system.add_flow(h2_storage.name, join_1.name, create_dummy_species('h2 rich gas'))
+    if on_premises_h2_production:
+        if h2_storage_method is not None:
+            plasma_system.add_flow(h2_storage.name, join_1.name, create_dummy_species('h2 rich gas'))
+        else:
+            plasma_system.add_flow(water_electrolysis.name, join_1.name, create_dummy_species('h2 rich gas'))
     else:
-        plasma_system.add_flow(water_electrolysis.name, join_1.name, create_dummy_species('h2 rich gas'))
+        plasma_system.add_input(join_1.name, create_dummy_mixture('h2 rich gas'))
 
     # heat exchanger
     plasma_system.add_flow(join_1.name, h2_heat_exchanger.name, create_dummy_mixture('h2 rich gas'))
@@ -145,19 +156,23 @@ def create_plasma_system(system_name='plasma steelmaking', h2_storage_method: Op
 
     return plasma_system
 
-def create_plasma_bof_system(system_name='plasma BOF steelmaking', h2_storage_method: Optional[str] = 'salt caverns',
-                         annual_capacity_tls=1.5e6, plant_lifetime_years=20.0) -> System:
+def create_plasma_bof_system(system_name='plasma BOF steelmaking', 
+                             h2_storage_method: Optional[str] = 'salt caverns',
+                             on_premises_h2_production: bool = True,
+                             annual_capacity_tls: float=1.5e6, 
+                             plant_lifetime_years: float=20.0) -> System:
     """
     TODO: Remove repetition with the create_plasma_system function. Need to add functionality
     to remove devices and remove flows. 
     """
     plasma_bof_system = System(system_name, annual_capacity_tls, plant_lifetime_years)
 
-    water_electrolysis = Device('water electrolysis', electrolyser_capex_desantis2021() * annual_capacity_tls)
-    plasma_bof_system.add_device(water_electrolysis)
-    if h2_storage_method is not None:
-        h2_storage = Device('h2 storage')
-        plasma_bof_system.add_device(h2_storage)
+    if on_premises_h2_production:
+        water_electrolysis = Device('water electrolysis', electrolyser_capex_desantis2021() * annual_capacity_tls)
+        plasma_bof_system.add_device(water_electrolysis)
+        if h2_storage_method is not None:
+            h2_storage = Device('h2 storage')
+            plasma_bof_system.add_device(h2_storage)
     h2_heat_exchanger = Device('h2 heat exchanger', 112439.95)
     plasma_bof_system.add_device(h2_heat_exchanger)
     condenser = Device('condenser and scrubber')
@@ -174,6 +189,7 @@ def create_plasma_bof_system(system_name='plasma BOF steelmaking', h2_storage_me
     plasma_bof_system.add_device(bof)
 
     # System variables defaults. Can be overwritten by user before mass and energy flows.
+    plasma_bof_system.system_vars['on premises h2 production'] = on_premises_h2_production
     plasma_bof_system.system_vars['cheap electricity hours'] = 8.0
     plasma_bof_system.system_vars['h2 storage hours of operation'] = 24.0 - plasma_bof_system.system_vars['cheap electricity hours']
     plasma_bof_system.system_vars['steelmaking device name'] = bof.name
@@ -209,22 +225,23 @@ def create_plasma_bof_system(system_name='plasma BOF steelmaking', h2_storage_me
     plasma_bof_system.system_vars['bof hot metal Si perc'] = 0.4 # turkdogan1996 8.2
     plasma_bof_system.system_vars['bof hot metal C perc'] = 4.5 # perc C from the ironmaking step
 
-    # electrolysis flows
-    plasma_bof_system.add_input(water_electrolysis.name, create_dummy_species('H2O'))
-    plasma_bof_system.add_output(water_electrolysis.name, create_dummy_species('O2'))
-    if h2_storage_method is not None:
-        electricity_type = 'cheap electricity'
-    else:
-        electricity_type = 'base electricity'
-    plasma_bof_system.add_input(water_electrolysis.name, EnergyFlow(electricity_type))
-    plasma_bof_system.add_output(water_electrolysis.name, EnergyFlow('losses'))
-    plasma_bof_system.add_output(water_electrolysis.name, EnergyFlow('chemical'))
+    if on_premises_h2_production:
+        # electrolysis flows
+        plasma_bof_system.add_input(water_electrolysis.name, create_dummy_species('H2O'))
+        plasma_bof_system.add_output(water_electrolysis.name, create_dummy_species('O2'))
+        if h2_storage_method is not None:
+            electricity_type = 'cheap electricity'
+        else:
+            electricity_type = 'base electricity'
+        plasma_bof_system.add_input(water_electrolysis.name, EnergyFlow(electricity_type))
+        plasma_bof_system.add_output(water_electrolysis.name, EnergyFlow('losses'))
+        plasma_bof_system.add_output(water_electrolysis.name, EnergyFlow('chemical'))
 
-    # h2 storage
-    if h2_storage_method is not None:
-        plasma_bof_system.add_flow(water_electrolysis.name, h2_storage.name, create_dummy_species('h2 rich gas'))
-        plasma_bof_system.add_input(h2_storage.name, EnergyFlow('cheap electricity'))
-        plasma_bof_system.add_output(h2_storage.name, EnergyFlow('losses'))
+        # h2 storage
+        if h2_storage_method is not None:
+            plasma_bof_system.add_flow(water_electrolysis.name, h2_storage.name, create_dummy_species('h2 rich gas'))
+            plasma_bof_system.add_input(h2_storage.name, EnergyFlow('cheap electricity'))
+            plasma_bof_system.add_output(h2_storage.name, EnergyFlow('losses'))
 
     # condenser
     plasma_bof_system.add_output(condenser.name, create_dummy_species('H2O'))
@@ -234,10 +251,13 @@ def create_plasma_bof_system(system_name='plasma BOF steelmaking', h2_storage_me
 
     # join
     plasma_bof_system.add_flow(condenser.name, join_1.name, create_dummy_mixture('recycled h2 rich gas'))
-    if h2_storage_method is not None:
-        plasma_bof_system.add_flow(h2_storage.name, join_1.name, create_dummy_species('h2 rich gas'))
+    if on_premises_h2_production:
+        if h2_storage_method is not None:
+            plasma_bof_system.add_flow(h2_storage.name, join_1.name, create_dummy_species('h2 rich gas'))
+        else:
+            plasma_bof_system.add_flow(water_electrolysis.name, join_1.name, create_dummy_species('h2 rich gas'))
     else:
-        plasma_bof_system.add_flow(water_electrolysis.name, join_1.name, create_dummy_species('h2 rich gas'))
+        plasma_bof_system.add_input(join_1.name, create_dummy_mixture('h2 rich gas'))
 
     # heat exchanger
     plasma_bof_system.add_flow(join_1.name, h2_heat_exchanger.name, create_dummy_mixture('h2 rich gas'))
@@ -279,15 +299,19 @@ def create_plasma_bof_system(system_name='plasma BOF steelmaking', h2_storage_me
     return plasma_bof_system
 
 
-def create_dri_eaf_system(system_name='dri eaf steelmaking', h2_storage_method: Optional[str] = 'salt caverns',
-                          annual_capacity_tls=1.5e6, plant_lifetime_years=20.0) -> System:
+def create_dri_eaf_system(system_name='dri eaf steelmaking', 
+                          h2_storage_method: Optional[str] = 'salt caverns',
+                          on_premises_h2_production: bool = True,
+                          annual_capacity_tls: float=1.5e6, 
+                          plant_lifetime_years: float=20.0) -> System:
     dri_eaf_system = System(system_name, annual_capacity_tls, plant_lifetime_years)
 
-    water_electrolysis = Device('water electrolysis', electrolyser_capex_desantis2021() * annual_capacity_tls)
-    dri_eaf_system.add_device(water_electrolysis)
-    if h2_storage_method is not None:
-        h2_storage = Device('h2 storage')
-        dri_eaf_system.add_device(h2_storage)
+    if on_premises_h2_production:
+        water_electrolysis = Device('water electrolysis', electrolyser_capex_desantis2021() * annual_capacity_tls)
+        dri_eaf_system.add_device(water_electrolysis)
+        if h2_storage_method is not None:
+            h2_storage = Device('h2 storage')
+            dri_eaf_system.add_device(h2_storage)
     h2_heat_exchanger = Device('h2 heat exchanger', 112439.95)
     dri_eaf_system.add_device(h2_heat_exchanger)
     join_1 = Device('join 1')
@@ -312,6 +336,7 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking', h2_storage_method: 
     dri_eaf_system.add_device(eaf)
 
     # System variables defaults. Can be overwritten by user before mass and energy flows.
+    dri_eaf_system.system_vars['on premises h2 production'] = on_premises_h2_production
     dri_eaf_system.system_vars['cheap electricity hours'] = 8.0
     dri_eaf_system.system_vars['h2 storage hours of operation'] = 24.0 - dri_eaf_system.system_vars['cheap electricity hours']
     dri_eaf_system.system_vars['fluidized beds reduction percent'] = 95
@@ -336,22 +361,23 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking', h2_storage_method: 
     if h2_storage_method is not None:
         dri_eaf_system.system_vars['h2 storage method'] = h2_storage_method
 
-    # electrolysis flows
-    dri_eaf_system.add_input(water_electrolysis.name, create_dummy_species('H2O'))
-    dri_eaf_system.add_output(water_electrolysis.name, create_dummy_species('O2'))
-    if h2_storage_method is not None:
-        electricity_type = 'cheap electricity'
-    else:
-        electricity_type = 'base electricity'
-    dri_eaf_system.add_input(water_electrolysis.name, EnergyFlow(electricity_type))
-    dri_eaf_system.add_output(water_electrolysis.name, EnergyFlow('losses'))
-    dri_eaf_system.add_output(water_electrolysis.name, EnergyFlow('chemical'))
+    if on_premises_h2_production:
+        # electrolysis flows
+        dri_eaf_system.add_input(water_electrolysis.name, create_dummy_species('H2O'))
+        dri_eaf_system.add_output(water_electrolysis.name, create_dummy_species('O2'))
+        if h2_storage_method is not None:
+            electricity_type = 'cheap electricity'
+        else:
+            electricity_type = 'base electricity'
+        dri_eaf_system.add_input(water_electrolysis.name, EnergyFlow(electricity_type))
+        dri_eaf_system.add_output(water_electrolysis.name, EnergyFlow('losses'))
+        dri_eaf_system.add_output(water_electrolysis.name, EnergyFlow('chemical'))
 
-    # h2 storage
-    if h2_storage_method is not None:
-        dri_eaf_system.add_flow(water_electrolysis.name, h2_storage.name, create_dummy_species('h2 rich gas'))
-        dri_eaf_system.add_input(h2_storage.name, EnergyFlow('cheap electricity'))
-        dri_eaf_system.add_output(h2_storage.name, EnergyFlow('losses'))
+        # h2 storage
+        if h2_storage_method is not None:
+            dri_eaf_system.add_flow(water_electrolysis.name, h2_storage.name, create_dummy_species('h2 rich gas'))
+            dri_eaf_system.add_input(h2_storage.name, EnergyFlow('cheap electricity'))
+            dri_eaf_system.add_output(h2_storage.name, EnergyFlow('losses'))
 
     # condenser
     dri_eaf_system.add_output(condenser.name, create_dummy_species('H2O'))
@@ -360,10 +386,13 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking', h2_storage_method: 
 
     # join
     dri_eaf_system.add_flow(condenser.name, join_1.name, create_dummy_mixture('recycled h2 rich gas'))
-    if h2_storage_method is not None:
-        dri_eaf_system.add_flow(h2_storage.name, join_1.name, create_dummy_species('h2 rich gas'))
+    if on_premises_h2_production:
+        if h2_storage_method is not None:
+            dri_eaf_system.add_flow(h2_storage.name, join_1.name, create_dummy_species('h2 rich gas'))
+        else:
+            dri_eaf_system.add_flow(water_electrolysis.name, join_1.name, create_dummy_species('h2 rich gas'))
     else:
-        dri_eaf_system.add_flow(water_electrolysis.name, join_1.name, create_dummy_species('h2 rich gas'))
+        dri_eaf_system.add_input(join_1.name, create_dummy_mixture('h2 rich gas'))
 
     # heat exchanger
     dri_eaf_system.add_flow(join_1.name, h2_heat_exchanger.name, create_dummy_mixture('h2 rich gas'))
@@ -425,15 +454,20 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking', h2_storage_method: 
     return dri_eaf_system
 
 
-def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: Optional[str] = 'salt caverns', 
-                         prereduction_perc=33.33, annual_capacity_tls=1.5e6, plant_lifetime_years=20.0) -> System:
+def create_hybrid_system(system_name='hybrid steelmaking',  
+                         h2_storage_method: Optional[str] = 'salt caverns', 
+                         on_premises_h2_production: bool = True,
+                         prereduction_perc: float = 33.33, 
+                         annual_capacity_tls: float = 1.5e6, 
+                         plant_lifetime_years: float = 20.0) -> System:
     hybrid_system = System(system_name, annual_capacity_tls, plant_lifetime_years)
 
-    water_electrolysis = Device('water electrolysis', electrolyser_capex_desantis2021() * annual_capacity_tls)
-    hybrid_system.add_device(water_electrolysis)
-    if h2_storage_method is not None:
-        h2_storage = Device('h2 storage')
-        hybrid_system.add_device(h2_storage)
+    if on_premises_h2_production:
+        water_electrolysis = Device('water electrolysis', electrolyser_capex_desantis2021() * annual_capacity_tls)
+        hybrid_system.add_device(water_electrolysis)
+        if h2_storage_method is not None:
+            h2_storage = Device('h2 storage')
+            hybrid_system.add_device(h2_storage)
     h2_heat_exchanger_1 = Device('h2 heat exchanger 1', 112439.95)
     hybrid_system.add_device(h2_heat_exchanger_1)
     h2_heat_exchanger_2 = Device('h2 heat exchanger 2', 112439.95)
@@ -475,6 +509,7 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
         ironmaking_device_names += [fluidized_bed_3.name]
 
     # System variables defaults. Can be overwritten by user before mass and energy flows.
+    hybrid_system.system_vars['on premises h2 production'] = on_premises_h2_production
     hybrid_system.system_vars['cheap electricity hours'] = 8.0
     hybrid_system.system_vars['h2 storage hours of operation'] = 24.0 - hybrid_system.system_vars['cheap electricity hours']
     hybrid_system.system_vars['fluidized beds reduction percent'] = prereduction_perc
@@ -505,27 +540,31 @@ def create_hybrid_system(system_name='hybrid steelmaking',  h2_storage_method: O
         hybrid_system.system_vars['h2 storage method'] = h2_storage_method
 
     # electrolysis flows
-    hybrid_system.add_input(water_electrolysis.name, create_dummy_species('H2O'))
-    hybrid_system.add_output(water_electrolysis.name, create_dummy_species('O2'))
-    if h2_storage_method is not None:
-        electricity_type = 'cheap electricity'
-    else:
-        electricity_type = 'base electricity'
-    hybrid_system.add_input(water_electrolysis.name, EnergyFlow(electricity_type))
-    hybrid_system.add_output(water_electrolysis.name, EnergyFlow('losses'))
-    hybrid_system.add_output(water_electrolysis.name, EnergyFlow('chemical'))
+    if on_premises_h2_production:
+        hybrid_system.add_input(water_electrolysis.name, create_dummy_species('H2O'))
+        hybrid_system.add_output(water_electrolysis.name, create_dummy_species('O2'))
+        if h2_storage_method is not None:
+            electricity_type = 'cheap electricity'
+        else:
+            electricity_type = 'base electricity'
+        hybrid_system.add_input(water_electrolysis.name, EnergyFlow(electricity_type))
+        hybrid_system.add_output(water_electrolysis.name, EnergyFlow('losses'))
+        hybrid_system.add_output(water_electrolysis.name, EnergyFlow('chemical'))
 
-    # h2 storage
-    if h2_storage_method is not None:
-        hybrid_system.add_flow(water_electrolysis.name, h2_storage.name, create_dummy_species('h2 rich gas'))
-        hybrid_system.add_input(h2_storage.name, EnergyFlow('cheap electricity'))
-        hybrid_system.add_output(h2_storage.name, EnergyFlow('losses'))
+        # h2 storage
+        if h2_storage_method is not None:
+            hybrid_system.add_flow(water_electrolysis.name, h2_storage.name, create_dummy_species('h2 rich gas'))
+            hybrid_system.add_input(h2_storage.name, EnergyFlow('cheap electricity'))
+            hybrid_system.add_output(h2_storage.name, EnergyFlow('losses'))
 
     # join 3
-    if h2_storage_method is not None:
-        hybrid_system.add_flow(h2_storage.name, join_3.name, create_dummy_species('h2 rich gas'))
+    if on_premises_h2_production:
+        if h2_storage_method is not None:
+            hybrid_system.add_flow(h2_storage.name, join_3.name, create_dummy_species('h2 rich gas'))
+        else:
+            hybrid_system.add_flow(water_electrolysis.name, join_3.name, create_dummy_species('h2 rich gas'))
     else:
-        hybrid_system.add_flow(water_electrolysis.name, join_3.name, create_dummy_species('h2 rich gas'))
+        hybrid_system.add_input(join_3.name, create_dummy_mixture('h2 rich gas'))
 
     # join 2
     hybrid_system.add_flow(condenser_2.name, join_2.name, create_dummy_mixture('recycled h2 rich gas'))
