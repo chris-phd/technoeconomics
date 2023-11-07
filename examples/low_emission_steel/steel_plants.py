@@ -126,6 +126,7 @@ def create_plasma_system(system_name: str ='plasma steelmaking',
             plasma_system.add_flow(water_electrolysis.name, join_1.name, create_dummy_species('h2 rich gas'))
     else:
         plasma_system.add_input(join_1.name, create_dummy_mixture('h2 rich gas'))
+        plasma_system.system_vars['input h2 device name'] = join_1.name
 
     # heat exchanger
     plasma_system.add_flow(join_1.name, h2_heat_exchanger.name, create_dummy_mixture('h2 rich gas'))
@@ -157,8 +158,8 @@ def create_plasma_system(system_name: str ='plasma steelmaking',
     return plasma_system
 
 def create_plasma_bof_system(system_name='plasma BOF steelmaking', 
-                             h2_storage_method: Optional[str] = 'salt caverns',
                              on_premises_h2_production: bool = True,
+                             h2_storage_method: Optional[str] = 'salt caverns',
                              annual_capacity_tls: float=1.5e6, 
                              plant_lifetime_years: float=20.0) -> System:
     """
@@ -258,6 +259,7 @@ def create_plasma_bof_system(system_name='plasma BOF steelmaking',
             plasma_bof_system.add_flow(water_electrolysis.name, join_1.name, create_dummy_species('h2 rich gas'))
     else:
         plasma_bof_system.add_input(join_1.name, create_dummy_mixture('h2 rich gas'))
+        plasma_bof_system.system_vars['input h2 device name'] = join_1.name
 
     # heat exchanger
     plasma_bof_system.add_flow(join_1.name, h2_heat_exchanger.name, create_dummy_mixture('h2 rich gas'))
@@ -300,8 +302,8 @@ def create_plasma_bof_system(system_name='plasma BOF steelmaking',
 
 
 def create_dri_eaf_system(system_name='dri eaf steelmaking', 
-                          h2_storage_method: Optional[str] = 'salt caverns',
                           on_premises_h2_production: bool = True,
+                          h2_storage_method: Optional[str] = 'salt caverns',
                           annual_capacity_tls: float=1.5e6, 
                           plant_lifetime_years: float=20.0) -> System:
     dri_eaf_system = System(system_name, annual_capacity_tls, plant_lifetime_years)
@@ -393,6 +395,7 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking',
             dri_eaf_system.add_flow(water_electrolysis.name, join_1.name, create_dummy_species('h2 rich gas'))
     else:
         dri_eaf_system.add_input(join_1.name, create_dummy_mixture('h2 rich gas'))
+        dri_eaf_system.system_vars['input h2 device name'] = join_1.name
 
     # heat exchanger
     dri_eaf_system.add_flow(join_1.name, h2_heat_exchanger.name, create_dummy_mixture('h2 rich gas'))
@@ -455,8 +458,8 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking',
 
 
 def create_hybrid_system(system_name='hybrid steelmaking',  
-                         h2_storage_method: Optional[str] = 'salt caverns', 
                          on_premises_h2_production: bool = True,
+                         h2_storage_method: Optional[str] = 'salt caverns', 
                          prereduction_perc: float = 33.33, 
                          annual_capacity_tls: float = 1.5e6, 
                          plant_lifetime_years: float = 20.0) -> System:
@@ -565,6 +568,8 @@ def create_hybrid_system(system_name='hybrid steelmaking',
             hybrid_system.add_flow(water_electrolysis.name, join_3.name, create_dummy_species('h2 rich gas'))
     else:
         hybrid_system.add_input(join_3.name, create_dummy_mixture('h2 rich gas'))
+        hybrid_system.system_vars['input h2 device name'] = join_3.name
+
 
     # join 2
     hybrid_system.add_flow(condenser_2.name, join_2.name, create_dummy_mixture('recycled h2 rich gas'))

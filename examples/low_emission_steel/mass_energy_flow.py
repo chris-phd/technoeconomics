@@ -29,16 +29,18 @@ except ImportError:
 
 def main():
     # TODO: Add transferred and non-transferred arc system.
+    on_premises_h2_production = False
+    h2_storage_type = "salt caverns"
     annual_steel_production_tonnes = 1.5e6 # tonnes / year
     plant_lifetime_years = 20.0
-    plasma_system = create_plasma_system("Plasma", 'salt caverns', annual_steel_production_tonnes, plant_lifetime_years)
-    plasma_ar_h2_system = create_plasma_system("Plasma Ar-H2", 'salt caverns', annual_steel_production_tonnes, plant_lifetime_years)
-    plasma_bof_system = create_plasma_bof_system("Plasma BOF", 'salt caverns', annual_steel_production_tonnes, plant_lifetime_years)
-    dri_eaf_system = create_dri_eaf_system("DRI-EAF", 'salt caverns', annual_steel_production_tonnes, plant_lifetime_years)
-    hybrid33_system = create_hybrid_system("Hybrid 33", 'salt caverns', 33.33, annual_steel_production_tonnes, plant_lifetime_years)
-    hybrid33_ar_h2_system = create_hybrid_system("Hybrid 33 Ar-H2", 'salt caverns', 33.33, annual_steel_production_tonnes, plant_lifetime_years)
-    hybrid55_system = create_hybrid_system("Hybrid 55", 'salt caverns', 55.0, annual_steel_production_tonnes, plant_lifetime_years)
-    hybrid95_system = create_hybrid_system("Hybrid 90", 'salt caverns', 90.0, annual_steel_production_tonnes, plant_lifetime_years)
+    plasma_system = create_plasma_system("Plasma", on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years)
+    plasma_ar_h2_system = create_plasma_system("Plasma Ar-H2", on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years)
+    plasma_bof_system = create_plasma_bof_system("Plasma BOF", on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years)
+    dri_eaf_system = create_dri_eaf_system("DRI-EAF", on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years)
+    hybrid33_system = create_hybrid_system("Hybrid 33", on_premises_h2_production, h2_storage_type, 33.33, annual_steel_production_tonnes, plant_lifetime_years)
+    hybrid33_ar_h2_system = create_hybrid_system("Hybrid 33 Ar-H2", on_premises_h2_production, h2_storage_type, 33.33, annual_steel_production_tonnes, plant_lifetime_years)
+    hybrid55_system = create_hybrid_system("Hybrid 55", on_premises_h2_production, h2_storage_type, 55.0, annual_steel_production_tonnes, plant_lifetime_years)
+    hybrid95_system = create_hybrid_system("Hybrid 90", on_premises_h2_production, h2_storage_type, 90.0, annual_steel_production_tonnes, plant_lifetime_years)
     systems = [
                plasma_system,
                plasma_ar_h2_system, 
@@ -100,7 +102,7 @@ def main():
     add_titles_to_axis(energy_ax, 'Electricity Demand / Tonne Liquid Steel', 'Energy (GJ)')
 
     # Plot the mass flows
-    inputs_per_tonne_for_systems = [s.system_inputs(ignore_flows_named=['infiltrated air'], mass_flow_only=True) for s in systems]
+    inputs_per_tonne_for_systems = [s.system_inputs(ignore_flows_named=['infiltrated air'], separate_mixtures_named=['h2 rich gas'], mass_flow_only=True) for s in systems]
     input_mass_labels = histogram_labels_from_datasets(inputs_per_tonne_for_systems)
     _, input_mass_ax = plt.subplots()
     add_stacked_histogram_data_to_axis(input_mass_ax, system_names, input_mass_labels, inputs_per_tonne_for_systems)
@@ -113,7 +115,7 @@ def main():
     add_titles_to_axis(output_mass_ax, 'Output Mass Flow / Tonne Liquid Steel', 'Mass (kg)')
 
     ## Calculate the levelised cost of production
-    inputs_per_tonne_for_systems = [s.system_inputs(separate_mixtures_named=['flux'], mass_flow_only=False) for s in systems]
+    inputs_per_tonne_for_systems = [s.system_inputs(ignore_flows_named=['infiltrated air'], separate_mixtures_named=['flux', 'h2 rich gas'], mass_flow_only=False) for s in systems]
 
     total_direct_indirect_capex = [capex_direct_and_indirect(s.capex()) for s in systems]
     operating_costs_per_tonne_itemised = [operating_cost_per_tonne(inputs, s.system_vars['cheap electricity hours']) \
@@ -176,8 +178,11 @@ def add_plasma_mass_and_energy(system: System):
     add_plasma_flows_initial(system)
     add_ore(system)
     add_plasma_flows_final(system)
-    add_electrolysis_flows(system)
-    add_h2_storage_flows(system)
+    if system.system_vars.get('on premises h2 production', True):
+        add_electrolysis_flows(system)
+        add_h2_storage_flows(system)
+    else:
+        add_input_h2_flows(system)
     merge_join_flows(system, 'join 1')
     add_heat_exchanger_flows_initial(system)
     add_condenser_and_scrubber_flows_initial(system)
@@ -198,8 +203,11 @@ def add_plasma_bof_mass_and_energy(system: System):
     add_plasma_flows_initial(system)
     add_ore(system)
     add_plasma_flows_final(system)
-    add_electrolysis_flows(system)
-    add_h2_storage_flows(system)
+    if system.system_vars.get('on premises h2 production', True):
+        add_electrolysis_flows(system)
+        add_h2_storage_flows(system)
+    else:
+        add_input_h2_flows(system)        
     merge_join_flows(system, 'join 1')
     add_heat_exchanger_flows_initial(system)
     add_condenser_and_scrubber_flows_initial(system)
@@ -220,8 +228,11 @@ def add_dri_eaf_mass_and_energy(system: System):
     add_fluidized_bed_flows(system)
     add_briquetting_flows(system)
     add_eaf_flows_final(system)
-    add_electrolysis_flows(system)
-    add_h2_storage_flows(system)
+    if system.system_vars.get('on premises h2 production', True):
+        add_electrolysis_flows(system)
+        add_h2_storage_flows(system)
+    else:
+        add_input_h2_flows(system)
     merge_join_flows(system, 'join 1')
     add_heat_exchanger_flows_initial(system)
     add_condenser_and_scrubber_flows_initial(system)
@@ -240,8 +251,11 @@ def add_hybrid_mass_and_energy(system: System):
     add_fluidized_bed_flows(system)
     add_briquetting_flows(system)
     add_plasma_flows_final(system)
-    add_electrolysis_flows(system)
-    add_h2_storage_flows(system)
+    if system.system_vars.get('on premises h2 production', True):
+        add_electrolysis_flows(system)
+        add_h2_storage_flows(system)
+    else:
+        add_input_h2_flows(system)
     balance_join3_flows(system)
     merge_join_flows(system, 'join 1')
     merge_join_flows(system, 'join 2')
@@ -1059,15 +1073,8 @@ def add_plasma_flows_final(system: System):
     # print(f"  Total energy = {plasma_torch.inputs['base electricity'].energy*2.77778e-7:.2e} kWh")
 
 
-def add_electrolysis_flows(system: System):
-    water_input_temp = celsius_to_kelvin(25)
-    gas_output_temp = celsius_to_kelvin(70)
-    hydrogen_consuming_device_names = system.system_vars['h2 consuming device names']
-
-    electrolyser = system.devices['water electrolysis']
-
-    h2 = species.create_h2_species()
-    h2.temp_kelvin = gas_output_temp
+def find_consumed_h2_moles(system: System, hydrogen_consuming_device_names: List[str]) -> float:
+    h2_mols = 0.0
     for device_name in hydrogen_consuming_device_names:
         device = system.devices[device_name]
         if isinstance(device.first_input_containing_name('h2 rich gas'), species.Species):
@@ -1086,7 +1093,32 @@ def add_electrolysis_flows(system: System):
         
         h2_consumed = input_h2_mols - output_h2_mols
         assert h2_consumed >= 0
-        h2.mols += h2_consumed
+        h2_mols += h2_consumed
+    return h2_mols
+
+
+def add_input_h2_flows(system: System):
+    # Find the amount of h2 needed
+    h2 = species.create_h2_species()
+    h2.temp_kelvin = celsius_to_kelvin(25)
+    hydrogen_consuming_device_names = system.system_vars['h2 consuming device names']
+    h2.mols = find_consumed_h2_moles(system, hydrogen_consuming_device_names)
+
+    # add in the h2 input to the system
+    device_name = system.system_vars['input h2 device name']
+    system.devices[device_name].inputs['h2 rich gas'].set(species.Mixture('h2 rich gas', [h2]))
+
+
+def add_electrolysis_flows(system: System):
+    water_input_temp = celsius_to_kelvin(25)
+    gas_output_temp = celsius_to_kelvin(70)
+    hydrogen_consuming_device_names = system.system_vars['h2 consuming device names']
+
+    electrolyser = system.devices['water electrolysis']
+
+    h2 = species.create_h2_species()
+    h2.temp_kelvin = gas_output_temp
+    h2.mols = find_consumed_h2_moles(system, hydrogen_consuming_device_names)
     electrolyser.outputs['h2 rich gas'].set(h2)
     assert 20.0 < h2.mass < 60.0, "Expect around 55kg of H2, but can be lower if scrap is used."
     
@@ -1145,7 +1177,10 @@ def add_h2_storage_flows(system: System):
     stored_h2_mass = stored_h2_frac * system.devices['h2 storage'].inputs['h2 rich gas'].mass
     h2_hhv = 142.0e6 # J/kg
 
-    if system.system_vars['h2 storage method'].lower() == 'salt caverns':
+    # PICK UP FROM HERE... Currently seeing if I can get the system to run when I
+    # just buy the H2. Then need to work on the costs. The precense of the h2 storage 
+    # should be based on the device list. But this system_var will usually exist anyway.
+    if system.system_vars['h2 storage method'].lower() == "salt caverns":
         # Pressure around ~100 bar (but could be in range of 50-160). 
         # Assume mixed isothermal, adiabatic compression. Figure 6 in elberry2021
         # Compress requires 6% of HHV energy
@@ -1491,28 +1526,29 @@ def add_bof_flows(system: System):
 # Plot Helpers
 def electricity_demand_per_major_device(system: System) -> Dict[str, float]:
     electricity = {
-        '1. water electrolysis': 0.0,
-        '2. h2 storage': 0.0,
-        '3. h2 heater': 0.0,
-        '4. ore heater': system.devices['ore heater'].inputs.get('base electricity', EnergyFlow(0.0)).energy,
-        '5. plasma or eaf': 0.0,
+        'water electrolysis': 0.0,
+        'h2 storage': 0.0,
+        'h2 heater': 0.0,
+        'ore heater': system.devices['ore heater'].inputs.get('base electricity', EnergyFlow(0.0)).energy,
+        'plasma or eaf': 0.0,
     }
 
-    electricity['1. water electrolysis'] += system.devices['water electrolysis'].inputs.get('cheap electricity', EnergyFlow(0.0)).energy
-    electricity['1. water electrolysis'] += system.devices['water electrolysis'].inputs.get('base electricity', EnergyFlow(0.0)).energy
+    if 'water electrolysis' in system.devices:
+        electricity['water electrolysis'] += system.devices['water electrolysis'].inputs.get('cheap electricity', EnergyFlow(0.0)).energy
+        electricity['water electrolysis'] += system.devices['water electrolysis'].inputs.get('base electricity', EnergyFlow(0.0)).energy
 
     if 'h2 storage' in system.devices:
-        electricity['2. h2 storage'] += system.devices['h2 storage'].inputs.get('cheap electricity', EnergyFlow(0.0)).energy
+        electricity['h2 storage'] += system.devices['h2 storage'].inputs.get('cheap electricity', EnergyFlow(0.0)).energy
 
     h2_heaters = system.devices_containing_name('h2 heater')
     for device_name in h2_heaters:
-        electricity['3. h2 heater'] += system.devices[device_name].inputs.get('base electricity', EnergyFlow(0.0)).energy
+        electricity['h2 heater'] += system.devices[device_name].inputs.get('base electricity', EnergyFlow(0.0)).energy
 
     if 'plasma smelter' in system.devices:
-        electricity['5. plasma or eaf'] += system.devices['plasma smelter'].inputs.get('base electricity', EnergyFlow(0.0)).energy \
+        electricity['plasma or eaf'] += system.devices['plasma smelter'].inputs.get('base electricity', EnergyFlow(0.0)).energy \
                                         +  system.devices['plasma torch'].inputs.get('base electricity', EnergyFlow(0.0)).energy
     elif 'eaf' in system.devices:
-        electricity['5. plasma or eaf'] += system.devices['eaf'].inputs.get('base electricity', EnergyFlow(0.0)).energy
+        electricity['plasma or eaf'] += system.devices['eaf'].inputs.get('base electricity', EnergyFlow(0.0)).energy
     else:
         raise Exception("Expected a device called 'plasma smelter' or 'eaf' in the steel making system")
 

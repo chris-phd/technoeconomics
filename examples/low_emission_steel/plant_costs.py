@@ -31,6 +31,7 @@ def operating_cost_per_tonne(inputs: Dict[str, float], spot_electricity_hours: f
     scrap_cpt = 250.0 # check this
     cao_cpk = 0.08 
     mgo_cpk = 0.49 
+    h2_cpk = 3.0 # should be adjutable based on an input file
     o2_cpk = 0.0 # free, since it's a byproduct of electrolysis
     h2o_cpk = 0.0 # assumption that water should be close to zero cost, especially since it's a byproduct of reduction?
     carbon_cpt = 130.0
@@ -47,8 +48,9 @@ def operating_cost_per_tonne(inputs: Dict[str, float], spot_electricity_hours: f
         'CaO' : inputs['CaO'] * cao_cpk,
         'MgO' : inputs['MgO'] * mgo_cpk,
         'Carbon' : inputs['C'] * carbon_cpt / 1000,
+        'H2' : inputs.get('H2', 0.0) * h2_cpk,
         'Oxygen' : inputs['O2'] * o2_cpk,
-        'Water' : inputs['H2O'] * h2o_cpk,
+        'Water' : inputs.get('H2O', 0.0) * h2o_cpk,
         'Labour' : 1.5 * labour_cph,
     }
 
