@@ -169,12 +169,20 @@ def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable) -> Sy
         except IncreaseExcessHydrogenPlasma:
             system_vars_solved['plasma h2 excess ratio'] *= 1.1
             print(f"System {system.name} did not converge. Increasing excess h2 ratio to {system_vars_solved['plasma h2 excess ratio']}")
-
+        
     # copy the result to the master copy of the system
     # TODO: THIS IS SERIOUSLY INEFFICIENCT should just be able to copy over the result, 
     # but quick hack to avoid a mistake, just resolve
     system.system_vars = copy.deepcopy(system_solved.system_vars)
     mass_and_energy_func(system)
+
+    # Mass and energy flow for each device should be zero.
+    for name, device in system.devices.items():
+        if abs(device.mass_balance()) > 1e-6:
+            raise Exception(f"Mass balance not satisfied for device '{name}' in system '{system.name}'")
+
+        if abs(device.energy_balance()) > 1e-6:
+            raise Exception(f"Energy balance not satisfied for device '{name}' in system '{system.name}'")
 
 def add_plasma_mass_and_energy(system: System):
     add_ore_composition(system)
@@ -1357,6 +1365,7 @@ def add_heat_exchanger_flows_final(system: System, heat_exchanger_device_name: s
 
     thermal_losses = EnergyFlow('losses', -heat_exchanger.thermal_energy_balance())
     heat_exchanger.outputs['losses'].set(thermal_losses)
+    pass
 
 
 def add_condenser_and_scrubber_flows_final(system: System,     condenser_device_name: str = 'condenser and scrubber'):
