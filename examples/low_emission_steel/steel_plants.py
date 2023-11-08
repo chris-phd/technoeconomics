@@ -24,8 +24,9 @@ def main():
     plasma_system = create_plasma_system("Plasma new")
     plasma_system_2 = create_plasma_system("plasma no h2 production", on_premises_h2_production=False)
     dri_eaf_system = create_dri_eaf_system(on_premises_h2_production=False)
-    hybrid33_system = create_hybrid_system("hybrid33 steelmaking", prereduction_perc=33.33)
+    hybrid33_system = create_hybrid_system("hybrid33 steelmaking new", prereduction_perc=33.33)
     hybrid95_system = create_hybrid_system("hybrid95 steelmaking", prereduction_perc=95.0)
+    hybrid33_bof_system = create_hybrid_system("hybrid33-BOF", prereduction_perc=33.33, bof_steelmaking=True)
     plasma_bof_system = create_plasma_system("Plasma-BOF", bof_steelmaking=True)
 
     plasma_system.render(output_directory="/home/chris/Desktop/")
@@ -33,6 +34,7 @@ def main():
     dri_eaf_system.render(output_directory="/home/chris/Desktop/")
     hybrid33_system.render(output_directory="/home/chris/Desktop/")
     hybrid95_system.render(output_directory="/home/chris/Desktop/")
+    hybrid33_bof_system.render(output_directory="/home/chris/Desktop/")
     plasma_bof_system.render(output_directory="/home/chris/Desktop/")
 
 
@@ -330,7 +332,8 @@ def create_hybrid_system(system_name='hybrid steelmaking',
                          h2_storage_method: Optional[str] = 'salt caverns', 
                          prereduction_perc: float = 33.33, 
                          annual_capacity_tls: float = 1.5e6, 
-                         plant_lifetime_years: float = 20.0) -> System:
+                         plant_lifetime_years: float = 20.0,
+                         bof_steelmaking: bool = False) -> System:
     hybrid_system = System(system_name, annual_capacity_tls, plant_lifetime_years)
 
     if on_premises_h2_production:
@@ -367,6 +370,9 @@ def create_hybrid_system(system_name='hybrid steelmaking',
     hybrid_system.add_device(join_2)
     join_3 = Device('join 3')
     hybrid_system.add_device(join_3)
+    if bof_steelmaking:
+        bof = Device('bof', (bof_capex_zang2023() + bof_capex_wortler2013())*0.5*annual_capacity_tls)
+        hybrid_system.add_device(bof)
 
     ironmaking_device_names = [fluidized_bed_1.name, fluidized_bed_2.name]
     if prereduction_perc > 33.3333334:
@@ -381,10 +387,10 @@ def create_hybrid_system(system_name='hybrid steelmaking',
 
     # System variables defaults. Can be overwritten by user before mass and energy flows.
     hybrid_system.system_vars['on premises h2 production'] = on_premises_h2_production
+    hybrid_system.system_vars['bof steelmaking'] = bof_steelmaking
     hybrid_system.system_vars['cheap electricity hours'] = 8.0
     hybrid_system.system_vars['h2 storage hours of operation'] = 24.0 - hybrid_system.system_vars['cheap electricity hours']
     hybrid_system.system_vars['fluidized beds reduction percent'] = prereduction_perc
-    hybrid_system.system_vars['steelmaking device name'] = plasma_smelter.name
     hybrid_system.system_vars['feo soluble in slag percent'] = 27.0
     hybrid_system.system_vars['plasma temp K'] = 3000 
     hybrid_system.system_vars['plasma reduction percent'] = 95.0
@@ -409,6 +415,10 @@ def create_hybrid_system(system_name='hybrid steelmaking',
     hybrid_system.system_vars['max heat exchanger temp K'] = celsius_to_kelvin(1400)
     if h2_storage_method is not None:
         hybrid_system.system_vars['h2 storage method'] = h2_storage_method
+    if bof_steelmaking:
+        add_bof_system_vars(hybrid_system.system_vars, plasma_smelter.name, bof.name)
+    else:
+        hybrid_system.system_vars['steelmaking device name'] = plasma_smelter.name
 
     # electrolysis flows
     if on_premises_h2_production:
@@ -526,7 +536,10 @@ def create_hybrid_system(system_name='hybrid steelmaking',
     hybrid_system.add_input(plasma_smelter.name, create_dummy_species('O2'))
     hybrid_system.add_input(plasma_smelter.name, create_dummy_species('scrap'))
     hybrid_system.add_output(plasma_smelter.name, create_dummy_mixture('slag'))
-    hybrid_system.add_output(plasma_smelter.name, create_dummy_mixture('steel'))
+    if bof_steelmaking:
+        add_bof_flows(hybrid_system, plasma_smelter.name, bof.name)
+    else:
+        hybrid_system.add_output(plasma_smelter.name, create_dummy_mixture('steel'))
 
     return hybrid_system
 

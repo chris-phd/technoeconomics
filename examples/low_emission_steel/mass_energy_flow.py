@@ -39,16 +39,18 @@ def main():
     dri_eaf_system = create_dri_eaf_system("DRI-EAF", on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years)
     hybrid33_system = create_hybrid_system("Hybrid 33", on_premises_h2_production, h2_storage_type, 33.33, annual_steel_production_tonnes, plant_lifetime_years)
     hybrid33_ar_h2_system = create_hybrid_system("Hybrid 33 Ar-H2", on_premises_h2_production, h2_storage_type, 33.33, annual_steel_production_tonnes, plant_lifetime_years)
+    hybrid33_bof_system = create_hybrid_system("Hybrid 33 BOF", on_premises_h2_production, h2_storage_type, 33.33, annual_steel_production_tonnes, plant_lifetime_years, bof_steelmaking=True)
     hybrid55_system = create_hybrid_system("Hybrid 55", on_premises_h2_production, h2_storage_type, 55.0, annual_steel_production_tonnes, plant_lifetime_years)
     hybrid95_system = create_hybrid_system("Hybrid 90", on_premises_h2_production, h2_storage_type, 90.0, annual_steel_production_tonnes, plant_lifetime_years)
     systems = [
                plasma_system,
-               plasma_ar_h2_system, 
-               plasma_bof_system, 
-               dri_eaf_system, 
-               hybrid33_system, 
-               hybrid33_ar_h2_system, 
-               hybrid55_system, 
+               plasma_ar_h2_system,
+               plasma_bof_system,
+               dri_eaf_system,
+               hybrid33_system,
+               hybrid33_ar_h2_system,
+               hybrid33_bof_system,
+               hybrid55_system,
                hybrid95_system
                ]
 
@@ -78,6 +80,7 @@ def main():
     solve_mass_energy_flow(dri_eaf_system, add_dri_eaf_mass_and_energy)
     solve_mass_energy_flow(hybrid33_system, add_hybrid_mass_and_energy)
     solve_mass_energy_flow(hybrid33_ar_h2_system, add_hybrid_mass_and_energy)
+    solve_mass_energy_flow(hybrid33_bof_system, add_hybrid_mass_and_energy)
     solve_mass_energy_flow(hybrid55_system, add_hybrid_mass_and_energy)
     solve_mass_energy_flow(hybrid95_system, add_hybrid_mass_and_energy)
 
@@ -88,6 +91,7 @@ def main():
     add_steel_plant_capex(dri_eaf_system)
     add_steel_plant_capex(hybrid33_system)
     add_steel_plant_capex(hybrid33_ar_h2_system)
+    add_steel_plant_capex(hybrid33_bof_system)
     add_steel_plant_capex(hybrid55_system)
     add_steel_plant_capex(hybrid95_system)
 
@@ -227,6 +231,11 @@ def add_dri_eaf_mass_and_energy(system: System):
 def add_hybrid_mass_and_energy(system: System):
     add_ore_composition(system)
     add_steel_out(system)
+    if system.system_vars.get('bof steelmaking', False):
+        add_bof_flows(system)
+        # HACK. Change the steelmaking device to the plasma smelter so the 
+        # rest of the code is the same as the pure plasma smelte 
+        system.system_vars['steelmaking device name'] = 'plasma smelter'
     add_plasma_flows_initial(system)
     add_ore(system)
     add_fluidized_bed_flows(system)
@@ -254,6 +263,9 @@ def add_hybrid_mass_and_energy(system: System):
     merge_join_flows(system, 'join 2')
     adjust_plasma_torch_electricity(system)
     add_h2_heater_flows(system)
+    if system.system_vars.get('bof steelmaking', False):
+        # END HACK. Change steelmaking device back to correct device
+        system.system_vars['steelmaking device name'] = 'bof'
 
 
 # Mass and Energy Flows - Device Level
