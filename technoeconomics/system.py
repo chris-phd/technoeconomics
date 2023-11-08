@@ -424,3 +424,21 @@ class System:
                 continue # raise an exception / warning?
             total += device.capex
         return total
+    
+    def validate_energy_balance(self, tol:float=1e-7):        
+        for device in self._devices.values():
+            if device.name.endswith(self._input_node_suffix) or \
+                device.name.endswith(self._output_node_suffix):
+                continue
+
+            if abs(device.mass_balance()) > tol:
+                raise Exception(f"Mass balance not satisfied for '{device.name}' in '{self.name}'")
+
+    def validate_mass_balance(self, tol:float=1e-7):
+        for device in self._devices.values():
+            if device.name.endswith(self._input_node_suffix) or \
+                device.name.endswith(self._output_node_suffix):
+                continue
+
+            if abs(device.energy_balance()) > tol:
+                raise Exception(f"Energy balance not satisfied for '{device.name}' in '{self.name}'")

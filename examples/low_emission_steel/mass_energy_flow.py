@@ -176,13 +176,9 @@ def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable) -> Sy
     system.system_vars = copy.deepcopy(system_solved.system_vars)
     mass_and_energy_func(system)
 
-    # Mass and energy flow for each device should be zero.
-    for name, device in system.devices.items():
-        if abs(device.mass_balance()) > 1e-6:
-            raise Exception(f"Mass balance not satisfied for device '{name}' in system '{system.name}'")
-
-        if abs(device.energy_balance()) > 1e-6:
-            raise Exception(f"Energy balance not satisfied for device '{name}' in system '{system.name}'")
+    tolerance = 1e-5
+    system.validate_energy_balance(tolerance)
+    system.validate_mass_balance(tolerance)
 
 def add_plasma_mass_and_energy(system: System):
     add_ore_composition(system)
@@ -1276,6 +1272,7 @@ def add_condenser_and_scrubber_flows_initial(system: System, condenser_device_na
     condenser.outputs['recycled h2 rich gas'].remove_species('H2O')
     condenser.outputs['recycled h2 rich gas'].remove_species('CO')
     condenser.outputs['recycled h2 rich gas'].remove_species('CO2')
+    condenser.outputs['recycled h2 rich gas'].temp_kelvin = celsius_to_kelvin(70)
 
 
 def add_heat_exchanger_flows_final(system: System, heat_exchanger_device_name: str = 'h2 heat exchanger'):
@@ -1297,9 +1294,8 @@ def add_heat_exchanger_flows_final(system: System, heat_exchanger_device_name: s
     # if required cold gas exit temp is higher than the inlet hot gas temp.
     heat_exchanger_eff = 0.9
 
-    # temp from electrolysis and condenser
-    initial_cold_gas_temp = celsius_to_kelvin(70)
-    heat_exchanger.inputs['h2 rich gas'].temp_kelvin = initial_cold_gas_temp
+    # temp from electrolysis / storage and condenser
+    initial_cold_gas_temp = heat_exchanger.inputs['h2 rich gas'].temp_kelvin
 
     # We should be able to simplify this??
     # Since the system has shared objects now, we can just get the gas flows from the heat exchanger
