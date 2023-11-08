@@ -2,7 +2,7 @@
 
 import sys
 import os
-from typing import Optional
+from typing import Optional, Dict, Any
 
 try:
     from technoeconomics.species import create_dummy_species, create_dummy_mixture
@@ -21,12 +21,12 @@ except ImportError:
 
 
 def main():
-    plasma_system = create_plasma_system()
+    plasma_system = create_plasma_system("Plasma new")
     plasma_system_2 = create_plasma_system("plasma no h2 production", on_premises_h2_production=False)
     dri_eaf_system = create_dri_eaf_system(on_premises_h2_production=False)
     hybrid33_system = create_hybrid_system("hybrid33 steelmaking", prereduction_perc=33.33)
     hybrid95_system = create_hybrid_system("hybrid95 steelmaking", prereduction_perc=95.0)
-    plasma_bof_system = create_plasma_bof_system()
+    plasma_bof_system = create_plasma_system("Plasma-BOF", bof=True)
 
     plasma_system.render(output_directory="/home/chris/Desktop/")
     plasma_system_2.render(output_directory="/home/chris/Desktop/")
@@ -41,7 +41,8 @@ def create_plasma_system(system_name: str ='plasma steelmaking',
                          on_premises_h2_production: bool = True,
                          h2_storage_method: Optional[str] = 'salt caverns',
                          annual_capacity_tls: float=1.5e6, 
-                         plant_lifetime_years: float=20.0) -> System:
+                         plant_lifetime_years: float=20.0,
+                         bof: bool = False) -> System:
     plasma_system = System(system_name, annual_capacity_tls, plant_lifetime_years)
 
     if on_premises_h2_production:
@@ -62,12 +63,14 @@ def create_plasma_system(system_name: str ='plasma steelmaking',
     plasma_system.add_device(plasma_smelter)
     join_1 = Device('join 1')
     plasma_system.add_device(join_1)
+    if bof:
+        bof = Device('bof', (bof_capex_zang2023() + bof_capex_wortler2013())*0.5*annual_capacity_tls)
+        plasma_system.add_device(bof)
 
     # System variables defaults. Can be overwritten by user before mass and energy flows.
     plasma_system.system_vars['on premises h2 production'] = on_premises_h2_production
     plasma_system.system_vars['cheap electricity hours'] = 8.0
     plasma_system.system_vars['h2 storage hours of operation'] = 24.0 - plasma_system.system_vars['cheap electricity hours']
-    plasma_system.system_vars['steelmaking device name'] = plasma_smelter.name
     plasma_system.system_vars['feo soluble in slag percent'] = 27.0
     plasma_system.system_vars['plasma temp K'] = 3000 # TODO Should be able to increase the plasma temp and reduce excess h2 ratio if I have higher temp thermo data
     plasma_system.system_vars['argon molar percent in h2 plasma'] = 0.0
@@ -92,6 +95,10 @@ def create_plasma_system(system_name: str ='plasma steelmaking',
     plasma_system.system_vars['max heat exchanger temp K'] = celsius_to_kelvin(1400)
     if h2_storage_method is not None:
         plasma_system.system_vars['h2 storage method'] = h2_storage_method
+    if bof:
+        add_bof_system_vars(plasma_system.system_vars, plasma_smelter.name, bof.name)
+    else:
+        plasma_system.system_vars['steelmaking device name'] = plasma_smelter.name
 
     if on_premises_h2_production:
         # electrolysis flows
@@ -153,152 +160,12 @@ def create_plasma_system(system_name: str ='plasma steelmaking',
     plasma_system.add_input(plasma_smelter.name, create_dummy_species('O2'))
     plasma_system.add_input(plasma_smelter.name, create_dummy_species('scrap'))
     plasma_system.add_output(plasma_smelter.name, create_dummy_mixture('slag'))
-    plasma_system.add_output(plasma_smelter.name, create_dummy_mixture('steel'))
+    if bof:
+        add_bof_flows(plasma_system, plasma_smelter.name, bof.name)
+    else:
+        plasma_system.add_output(plasma_smelter.name, create_dummy_mixture('steel'))
 
     return plasma_system
-
-def create_plasma_bof_system(system_name='plasma BOF steelmaking', 
-                             on_premises_h2_production: bool = True,
-                             h2_storage_method: Optional[str] = 'salt caverns',
-                             annual_capacity_tls: float=1.5e6, 
-                             plant_lifetime_years: float=20.0) -> System:
-    """
-    TODO: Remove repetition with the create_plasma_system function. Need to add functionality
-    to remove devices and remove flows. 
-    """
-    plasma_bof_system = System(system_name, annual_capacity_tls, plant_lifetime_years)
-
-    if on_premises_h2_production:
-        water_electrolysis = Device('water electrolysis', electrolyser_capex_desantis2021() * annual_capacity_tls)
-        plasma_bof_system.add_device(water_electrolysis)
-        if h2_storage_method is not None:
-            h2_storage = Device('h2 storage')
-            plasma_bof_system.add_device(h2_storage)
-    h2_heat_exchanger = Device('h2 heat exchanger', 112439.95)
-    plasma_bof_system.add_device(h2_heat_exchanger)
-    condenser = Device('condenser and scrubber')
-    plasma_bof_system.add_device(condenser)
-    ore_heater = Device('ore heater', 6425140.11)
-    plasma_bof_system.add_device(ore_heater)
-    plasma_torch = Device('plasma torch')
-    plasma_bof_system.add_device(plasma_torch)
-    plasma_smelter = Device('plasma smelter', 269.82 * annual_capacity_tls) # plasma_capex_desantis2021() * annual_capacity_tls)
-    plasma_bof_system.add_device(plasma_smelter)
-    join_1 = Device('join 1')
-    plasma_bof_system.add_device(join_1)
-    bof = Device('bof', (bof_capex_zang2023() + bof_capex_wortler2013())*0.5*annual_capacity_tls)
-    plasma_bof_system.add_device(bof)
-
-    # System variables defaults. Can be overwritten by user before mass and energy flows.
-    plasma_bof_system.system_vars['on premises h2 production'] = on_premises_h2_production
-    plasma_bof_system.system_vars['cheap electricity hours'] = 8.0
-    plasma_bof_system.system_vars['h2 storage hours of operation'] = 24.0 - plasma_bof_system.system_vars['cheap electricity hours']
-    plasma_bof_system.system_vars['steelmaking device name'] = bof.name
-    plasma_bof_system.system_vars['ironmaking device name'] = plasma_smelter.name
-    plasma_bof_system.system_vars['feo soluble in slag percent'] = 1.0
-    plasma_bof_system.system_vars['plasma temp K'] = 3000 # TODO Should be able to increase the plasma temp and reduce excess h2 ratio if I have higher temp thermo data
-    plasma_bof_system.system_vars['argon molar percent in h2 plasma'] = 0.0
-    plasma_bof_system.system_vars['plasma reduction percent'] = 95.0
-    plasma_bof_system.system_vars['final reduction percent'] = plasma_bof_system.system_vars['plasma reduction percent']
-    plasma_bof_system.system_vars['plasma h2 excess ratio'] = 1.5
-    plasma_bof_system.system_vars['o2 injection kg'] = 0.0
-    plasma_bof_system.system_vars['plasma torch electro-thermal eff pecent'] = 80.0 # 55.0
-    plasma_bof_system.system_vars['plasma energy to melt eff percent'] = 72.0 # badr2007, fig 21, 
-    plasma_bof_system.system_vars['steel exit temp K'] = celsius_to_kelvin(1600)
-    plasma_bof_system.system_vars['steelmaking bath temp K'] = plasma_bof_system.system_vars['steel exit temp K']
-    plasma_bof_system.system_vars['b2 basicity'] = 1.0
-    plasma_bof_system.system_vars['b4 basicity'] = 1.1
-    plasma_bof_system.system_vars['ore heater device name'] = ore_heater.name
-    plasma_bof_system.system_vars['ore heater temp K'] = celsius_to_kelvin(1450)
-    plasma_bof_system.system_vars['ironmaking device names'] = [plasma_smelter.name]
-    plasma_bof_system.system_vars['electrolysis lhv efficiency percent'] = 70.0
-    plasma_bof_system.system_vars['hydrogen loops'] = [plasma_bof_system.system_vars['ironmaking device names']]
-    plasma_bof_system.system_vars['h2 consuming device names'] = plasma_bof_system.system_vars['ironmaking device names']
-    plasma_bof_system.system_vars['scrap perc'] = 0.0
-    plasma_bof_system.system_vars['steel carbon perc'] = 1.0
-    plasma_bof_system.system_vars['max heat exchanger temp K'] = celsius_to_kelvin(1400)
-    if h2_storage_method is not None:
-        plasma_bof_system.system_vars['h2 storage method'] = h2_storage_method
-    plasma_bof_system.system_vars['bof o2 injection kg'] = 0.0
-    plasma_bof_system.system_vars['bof b2 basicity'] = 2.0
-    plasma_bof_system.system_vars['bof b4 basicity'] = 2.1
-    plasma_bof_system.system_vars['bof feo in slag perc'] = 11.5 # turkdogan1996 8.2.1a
-    plasma_bof_system.system_vars['bof hot metal Si perc'] = 0.4 # turkdogan1996 8.2
-    plasma_bof_system.system_vars['bof hot metal C perc'] = 4.5 # perc C from the ironmaking step
-
-    if on_premises_h2_production:
-        # electrolysis flows
-        plasma_bof_system.add_input(water_electrolysis.name, create_dummy_species('H2O'))
-        plasma_bof_system.add_output(water_electrolysis.name, create_dummy_species('O2'))
-        if h2_storage_method is not None:
-            electricity_type = 'cheap electricity'
-        else:
-            electricity_type = 'base electricity'
-        plasma_bof_system.add_input(water_electrolysis.name, EnergyFlow(electricity_type))
-        plasma_bof_system.add_output(water_electrolysis.name, EnergyFlow('losses'))
-        plasma_bof_system.add_output(water_electrolysis.name, EnergyFlow('chemical'))
-
-        # h2 storage
-        if h2_storage_method is not None:
-            plasma_bof_system.add_flow(water_electrolysis.name, h2_storage.name, create_dummy_species('h2 rich gas'))
-            plasma_bof_system.add_input(h2_storage.name, EnergyFlow('cheap electricity'))
-            plasma_bof_system.add_output(h2_storage.name, EnergyFlow('losses'))
-
-    # condenser
-    plasma_bof_system.add_output(condenser.name, create_dummy_species('H2O'))
-    plasma_bof_system.add_output(condenser.name, EnergyFlow('losses'))
-    plasma_bof_system.add_output(condenser.name, create_dummy_mixture('carbon gas'))
-    plasma_bof_system.add_flow(h2_heat_exchanger.name, condenser.name, create_dummy_mixture('recycled h2 rich gas'))
-
-    # join
-    plasma_bof_system.add_flow(condenser.name, join_1.name, create_dummy_mixture('recycled h2 rich gas'))
-    if on_premises_h2_production:
-        if h2_storage_method is not None:
-            plasma_bof_system.add_flow(h2_storage.name, join_1.name, create_dummy_species('h2 rich gas'))
-        else:
-            plasma_bof_system.add_flow(water_electrolysis.name, join_1.name, create_dummy_species('h2 rich gas'))
-    else:
-        plasma_bof_system.add_input(join_1.name, create_dummy_mixture('h2 rich gas'))
-        plasma_bof_system.system_vars['input h2 device name'] = join_1.name
-
-    # heat exchanger
-    plasma_bof_system.add_flow(join_1.name, h2_heat_exchanger.name, create_dummy_mixture('h2 rich gas'))
-    plasma_bof_system.add_flow(plasma_smelter.name, h2_heat_exchanger.name, create_dummy_mixture('recycled h2 rich gas'))
-    plasma_bof_system.add_output(h2_heat_exchanger.name, EnergyFlow('losses'))
-
-    # ore heater
-    plasma_bof_system.add_input(ore_heater.name, create_dummy_mixture('ore'))
-    plasma_bof_system.add_input(ore_heater.name, EnergyFlow('base electricity'))
-    plasma_bof_system.add_output(ore_heater.name, EnergyFlow('losses'))
-
-    # plasma torch
-    plasma_bof_system.add_flow(h2_heat_exchanger.name, plasma_torch.name, create_dummy_mixture('h2 rich gas'))
-    plasma_bof_system.add_input(plasma_torch.name, EnergyFlow('base electricity'))
-    plasma_bof_system.add_output(plasma_torch.name, EnergyFlow('losses'))
-
-    # plasma smelter
-    plasma_bof_system.add_flow(ore_heater.name, plasma_smelter.name, create_dummy_mixture('ore'))
-    plasma_bof_system.add_flow(plasma_torch.name, plasma_smelter.name, create_dummy_mixture('plasma h2 rich gas'))
-    plasma_bof_system.add_output(plasma_smelter.name, EnergyFlow('losses'))
-    plasma_bof_system.add_input(plasma_smelter.name, EnergyFlow('chemical'))
-    plasma_bof_system.add_input(plasma_smelter.name, create_dummy_species('carbon'))
-    plasma_bof_system.add_input(plasma_smelter.name, create_dummy_mixture('flux'))
-    plasma_bof_system.add_input(plasma_smelter.name, create_dummy_species('O2'))
-    plasma_bof_system.add_input(plasma_smelter.name, create_dummy_species('scrap'))
-    plasma_bof_system.add_output(plasma_smelter.name, create_dummy_mixture('slag'))
-    
-    # bof
-    plasma_bof_system.add_flow(plasma_smelter.name, bof.name, create_dummy_mixture('steel'))
-    plasma_bof_system.add_output(bof.name, EnergyFlow('losses'))
-    plasma_bof_system.add_input(bof.name, EnergyFlow('chemical'))
-    plasma_bof_system.add_input(bof.name, create_dummy_mixture('flux'))
-    plasma_bof_system.add_input(bof.name, create_dummy_species('O2'))
-    plasma_bof_system.add_input(bof.name, create_dummy_species('scrap'))
-    plasma_bof_system.add_output(bof.name, create_dummy_mixture('slag'))
-    plasma_bof_system.add_output(bof.name, create_dummy_mixture('steel'))
-    plasma_bof_system.add_output(bof.name, create_dummy_mixture('carbon gas'))
-
-    return plasma_bof_system
 
 
 def create_dri_eaf_system(system_name='dri eaf steelmaking', 
@@ -661,6 +528,35 @@ def create_hybrid_system(system_name='hybrid steelmaking',
     hybrid_system.add_output(plasma_smelter.name, create_dummy_mixture('steel'))
 
     return hybrid_system
+
+
+# system creator helpers
+def add_bof_system_vars(system_vars: Dict[str, Any], ironmaking_device_name: str, bof_name: str):
+    system_vars['feo soluble in slag percent'] = 1.0
+    system_vars['b2 basicity'] = 1.0
+    system_vars['b4 basicity'] = 1.1
+    system_vars['bof steelmaking'] = True
+    system_vars['steelmaking device name'] = bof_name
+    system_vars['ironmaking device name'] = ironmaking_device_name
+    system_vars['bof o2 injection kg'] = 0.0
+    system_vars['bof b2 basicity'] = 2.0
+    system_vars['bof b4 basicity'] = 2.1
+    system_vars['bof feo in slag perc'] = 11.5 # turkdogan1996 8.2.1a
+    system_vars['bof hot metal Si perc'] = 0.4 # turkdogan1996 8.2
+    system_vars['bof hot metal C perc'] = 4.5 # perc C from the ironmaking step TODO could redue this to min for heat balance
+
+
+def add_bof_flows(system: System, plasma_smelter_name: str, bof_name: str):
+    system.add_flow(plasma_smelter_name, bof_name, create_dummy_mixture('steel'))
+    system.add_output(bof_name, EnergyFlow('losses'))
+    system.add_input(bof_name, EnergyFlow('chemical'))
+    system.add_input(bof_name, create_dummy_mixture('flux'))
+    system.add_input(bof_name, create_dummy_species('O2'))
+    system.add_input(bof_name, create_dummy_species('scrap'))
+    system.add_output(bof_name, create_dummy_mixture('slag'))
+    system.add_output(bof_name, create_dummy_mixture('steel'))
+    system.add_output(bof_name, create_dummy_mixture('carbon gas'))
+
 
 # Capex helpers
 # Capex data is derived form the literature

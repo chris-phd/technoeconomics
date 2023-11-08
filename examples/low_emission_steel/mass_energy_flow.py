@@ -7,7 +7,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from typing import Dict, List, Callable
-from steel_plants import create_plasma_system, create_plasma_bof_system, create_dri_eaf_system, create_hybrid_system
+from steel_plants import create_plasma_system, create_dri_eaf_system, create_hybrid_system
 from plant_costs import capex_direct_and_indirect, operating_cost_per_tonne, lcop_total, lcop_capex_only, lcop_opex_only
 from examples.low_emission_steel.plant_costs import add_steel_plant_capex
 
@@ -35,7 +35,7 @@ def main():
     plant_lifetime_years = 20.0
     plasma_system = create_plasma_system("Plasma", on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years)
     plasma_ar_h2_system = create_plasma_system("Plasma Ar-H2", on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years)
-    plasma_bof_system = create_plasma_bof_system("Plasma BOF", on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years)
+    plasma_bof_system = create_plasma_system("Plasma BOF", on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years, bof=True)
     dri_eaf_system = create_dri_eaf_system("DRI-EAF", on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years)
     hybrid33_system = create_hybrid_system("Hybrid 33", on_premises_h2_production, h2_storage_type, 33.33, annual_steel_production_tonnes, plant_lifetime_years)
     hybrid33_ar_h2_system = create_hybrid_system("Hybrid 33 Ar-H2", on_premises_h2_production, h2_storage_type, 33.33, annual_steel_production_tonnes, plant_lifetime_years)
