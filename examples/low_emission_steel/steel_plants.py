@@ -26,7 +26,7 @@ def main():
     dri_eaf_system = create_dri_eaf_system(on_premises_h2_production=False)
     hybrid33_system = create_hybrid_system("hybrid33 steelmaking", prereduction_perc=33.33)
     hybrid95_system = create_hybrid_system("hybrid95 steelmaking", prereduction_perc=95.0)
-    plasma_bof_system = create_plasma_system("Plasma-BOF", bof=True)
+    plasma_bof_system = create_plasma_system("Plasma-BOF", bof_steelmaking=True)
 
     plasma_system.render(output_directory="/home/chris/Desktop/")
     plasma_system_2.render(output_directory="/home/chris/Desktop/")
@@ -42,7 +42,7 @@ def create_plasma_system(system_name: str ='plasma steelmaking',
                          h2_storage_method: Optional[str] = 'salt caverns',
                          annual_capacity_tls: float=1.5e6, 
                          plant_lifetime_years: float=20.0,
-                         bof: bool = False) -> System:
+                         bof_steelmaking: bool = False) -> System:
     plasma_system = System(system_name, annual_capacity_tls, plant_lifetime_years)
 
     if on_premises_h2_production:
@@ -63,12 +63,13 @@ def create_plasma_system(system_name: str ='plasma steelmaking',
     plasma_system.add_device(plasma_smelter)
     join_1 = Device('join 1')
     plasma_system.add_device(join_1)
-    if bof:
+    if bof_steelmaking:
         bof = Device('bof', (bof_capex_zang2023() + bof_capex_wortler2013())*0.5*annual_capacity_tls)
         plasma_system.add_device(bof)
 
     # System variables defaults. Can be overwritten by user before mass and energy flows.
     plasma_system.system_vars['on premises h2 production'] = on_premises_h2_production
+    plasma_system.system_vars['bof steelmaking'] = bof_steelmaking
     plasma_system.system_vars['cheap electricity hours'] = 8.0
     plasma_system.system_vars['h2 storage hours of operation'] = 24.0 - plasma_system.system_vars['cheap electricity hours']
     plasma_system.system_vars['feo soluble in slag percent'] = 27.0
@@ -95,7 +96,7 @@ def create_plasma_system(system_name: str ='plasma steelmaking',
     plasma_system.system_vars['max heat exchanger temp K'] = celsius_to_kelvin(1400)
     if h2_storage_method is not None:
         plasma_system.system_vars['h2 storage method'] = h2_storage_method
-    if bof:
+    if bof_steelmaking:
         add_bof_system_vars(plasma_system.system_vars, plasma_smelter.name, bof.name)
     else:
         plasma_system.system_vars['steelmaking device name'] = plasma_smelter.name
@@ -160,7 +161,7 @@ def create_plasma_system(system_name: str ='plasma steelmaking',
     plasma_system.add_input(plasma_smelter.name, create_dummy_species('O2'))
     plasma_system.add_input(plasma_smelter.name, create_dummy_species('scrap'))
     plasma_system.add_output(plasma_smelter.name, create_dummy_mixture('slag'))
-    if bof:
+    if bof_steelmaking:
         add_bof_flows(plasma_system, plasma_smelter.name, bof.name)
     else:
         plasma_system.add_output(plasma_smelter.name, create_dummy_mixture('steel'))
@@ -535,7 +536,6 @@ def add_bof_system_vars(system_vars: Dict[str, Any], ironmaking_device_name: str
     system_vars['feo soluble in slag percent'] = 1.0
     system_vars['b2 basicity'] = 1.0
     system_vars['b4 basicity'] = 1.1
-    system_vars['bof steelmaking'] = True
     system_vars['steelmaking device name'] = bof_name
     system_vars['ironmaking device name'] = ironmaking_device_name
     system_vars['bof o2 injection kg'] = 0.0

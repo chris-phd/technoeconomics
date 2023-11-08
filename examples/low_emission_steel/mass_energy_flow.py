@@ -35,7 +35,7 @@ def main():
     plant_lifetime_years = 20.0
     plasma_system = create_plasma_system("Plasma", on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years)
     plasma_ar_h2_system = create_plasma_system("Plasma Ar-H2", on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years)
-    plasma_bof_system = create_plasma_system("Plasma BOF", on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years, bof=True)
+    plasma_bof_system = create_plasma_system("Plasma BOF", on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years, bof_steelmaking=True)
     dri_eaf_system = create_dri_eaf_system("DRI-EAF", on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years)
     hybrid33_system = create_hybrid_system("Hybrid 33", on_premises_h2_production, h2_storage_type, 33.33, annual_steel_production_tonnes, plant_lifetime_years)
     hybrid33_ar_h2_system = create_hybrid_system("Hybrid 33 Ar-H2", on_premises_h2_production, h2_storage_type, 33.33, annual_steel_production_tonnes, plant_lifetime_years)
@@ -74,7 +74,7 @@ def main():
     ## Calculate The Mass and Energy Flow
     solve_mass_energy_flow(plasma_system, add_plasma_mass_and_energy)
     solve_mass_energy_flow(plasma_ar_h2_system, add_plasma_mass_and_energy)
-    solve_mass_energy_flow(plasma_bof_system, add_plasma_bof_mass_and_energy)
+    solve_mass_energy_flow(plasma_bof_system, add_plasma_mass_and_energy)
     solve_mass_energy_flow(dri_eaf_system, add_dri_eaf_mass_and_energy)
     solve_mass_energy_flow(hybrid33_system, add_hybrid_mass_and_energy)
     solve_mass_energy_flow(hybrid33_ar_h2_system, add_hybrid_mass_and_energy)
@@ -175,6 +175,11 @@ def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable) -> Sy
 def add_plasma_mass_and_energy(system: System):
     add_ore_composition(system)
     add_steel_out(system)
+    if system.system_vars.get('bof steelmaking', False):
+        add_bof_flows(system)
+        # HACK. Change the steelmaking device to the plasma smelter so the 
+        # rest of the code is the same as the pure plasma smelte 
+        system.system_vars['steelmaking device name'] = 'plasma smelter'
     add_plasma_flows_initial(system)
     add_ore(system)
     add_plasma_flows_final(system)
@@ -191,33 +196,9 @@ def add_plasma_mass_and_energy(system: System):
     add_condenser_and_scrubber_flows_final(system)
     merge_join_flows(system, 'join 1')
     adjust_plasma_torch_electricity(system)
-
-
-def add_plasma_bof_mass_and_energy(system: System):
-    add_ore_composition(system)
-    add_steel_out(system)
-    add_bof_flows(system)
-    # HACK. Change the steelmaking device to the plasma smelter so the 
-    # rest of the code is the same as the pure plasma smelte 
-    system.system_vars['steelmaking device name'] = 'plasma smelter'
-    add_plasma_flows_initial(system)
-    add_ore(system)
-    add_plasma_flows_final(system)
-    if system.system_vars.get('on premises h2 production', True):
-        add_electrolysis_flows(system)
-        add_h2_storage_flows(system)
-    else:
-        add_input_h2_flows(system)        
-    merge_join_flows(system, 'join 1')
-    add_heat_exchanger_flows_initial(system)
-    add_condenser_and_scrubber_flows_initial(system)
-    merge_join_flows(system, 'join 1')
-    add_heat_exchanger_flows_final(system)
-    add_condenser_and_scrubber_flows_final(system)
-    merge_join_flows(system, 'join 1')
-    adjust_plasma_torch_electricity(system)
-    # END HACK. Change steelmaking device back to correct device
-    system.system_vars['steelmaking device name'] = 'bof'
+    if system.system_vars.get('bof steelmaking', False):
+        # END HACK. Change steelmaking device back to correct device
+        system.system_vars['steelmaking device name'] = 'bof'
 
 
 def add_dri_eaf_mass_and_energy(system: System):
