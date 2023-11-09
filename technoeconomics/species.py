@@ -659,7 +659,7 @@ def compute_reaction_enthalpy(reactants, products, temp_kelvin):
         product_enthalpy += product.heat_energy(temp_kelvin)
     return product_enthalpy - reactant_enthalpy
 
-def delta_h_2fe_o2_2feo(temp_kelvin = 298.15):
+def delta_h_2fe_o2_2feo(temp_kelvin: float = 298.15) -> float:
     """
     2Fe + O2 -> 2FeO
     """
@@ -673,7 +673,7 @@ def delta_h_2fe_o2_2feo(temp_kelvin = 298.15):
     products = [feo]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
-def delta_h_c_o2_co2(temp_kelvin = 298.15):
+def delta_h_c_o2_co2(temp_kelvin: float = 298.15) -> float:
     """
     C + O2 -> CO2
     """
@@ -687,7 +687,7 @@ def delta_h_c_o2_co2(temp_kelvin = 298.15):
     products = [co2]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
-def delta_h_2c_o2_2co(temp_kelvin = 298.15):
+def delta_h_2c_o2_2co(temp_kelvin: float = 298.15) -> float:
     """
     2C + O2 -> 2CO
     """
@@ -701,7 +701,7 @@ def delta_h_2c_o2_2co(temp_kelvin = 298.15):
     products = [co]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
-def delta_h_c_2h2_ch4(temp_kelvin = 298.15):
+def delta_h_c_2h2_ch4(temp_kelvin: float = 298.15) -> float:
     """
     C + 2H2 -> CH4
     """
@@ -715,7 +715,7 @@ def delta_h_c_2h2_ch4(temp_kelvin = 298.15):
     products = [ch4]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
-def delta_h_si_o2_sio2(temp_kelvin = 298.15):
+def delta_h_si_o2_sio2(temp_kelvin: float = 298.15) -> float:
     """
     Si + O2 -> SiO2
     """
@@ -729,7 +729,23 @@ def delta_h_si_o2_sio2(temp_kelvin = 298.15):
     products = [sio2]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
-def delta_h_2fe_o2_2feo(temp_kelvin = 298.15):
+def delta_h_sio2_h2_si_h2o(temp_kelvin: float = 298.15) -> float:
+    """
+    SiO2 + 2H2 -> Si + 2H2O
+    """
+    sio2 = create_sio2_species()
+    sio2.mols = 1
+    h2 = create_h2_species()
+    h2.mols = 2
+    reactants = [sio2, h2]
+    si = create_si_species()
+    si.mols = 1
+    h2o = create_h2o_species()
+    h2o.mols = 2
+    products = [si, h2o]
+    return compute_reaction_enthalpy(reactants, products, temp_kelvin)
+
+def delta_h_2fe_o2_2feo(temp_kelvin: float = 298.15) -> float:
     """
     2Fe + O2 -> 2FeO
     """
@@ -743,7 +759,7 @@ def delta_h_2fe_o2_2feo(temp_kelvin = 298.15):
     products = [feo]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
-def delta_h_feo_c_fe_co(temp_kelvin = 298.15): # Check delta h this gives to a source
+def delta_h_feo_c_fe_co(temp_kelvin: float = 298.15) -> float: # Check delta h this gives to a source
     """
     FeO + C -> Fe + CO
     """
@@ -759,7 +775,7 @@ def delta_h_feo_c_fe_co(temp_kelvin = 298.15): # Check delta h this gives to a s
     products = [fe, co]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
-def delta_h_3fe2o3_h2_2fe3o4_h2o(temp_kelvin = 298.15): # TODO! Check with another source. Seems wrong
+def delta_h_3fe2o3_h2_2fe3o4_h2o(temp_kelvin: float = 298.15) -> float: # TODO! Check with another source. Seems wrong
     """
     3 Fe2O3 + H2 -> 2 Fe3O4 + H2O
     """
@@ -775,7 +791,7 @@ def delta_h_3fe2o3_h2_2fe3o4_h2o(temp_kelvin = 298.15): # TODO! Check with anoth
     products = [fe3o4, h2o]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
-def delta_h_fe3o4_h2_3feo_h2o(temp_kelvin = 298.15): # TODO! Check with another source. Seems wrong
+def delta_h_fe3o4_h2_3feo_h2o(temp_kelvin: float = 298.15) -> float: # TODO! Check with another source. Seems wrong
     """
     Fe3O4 + H2 -> 3 FeO + H2O
     """
@@ -791,7 +807,7 @@ def delta_h_fe3o4_h2_3feo_h2o(temp_kelvin = 298.15): # TODO! Check with another 
     products = [feo, h2o]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
-def delta_h_feo_h2_fe_h2o(temp_kelvin = 298.15): # TODO! Check with another source. Seems wrong
+def delta_h_feo_h2_fe_h2o(temp_kelvin: float = 298.15) -> float: # TODO! Check with another source. Seems wrong
     """
     FeO + H2 -> Fe + H2O
     """
@@ -807,7 +823,7 @@ def delta_h_feo_h2_fe_h2o(temp_kelvin = 298.15): # TODO! Check with another sour
     products = [fe, h2o]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
-def delta_h_fe2o3_3h2_3fe_3h2o(temp_kelvin: float = 298.15):
+def delta_h_fe2o3_3h2_3fe_3h2o(temp_kelvin: float = 298.15) -> float:
     """
     Fe2O3 + 3 H2 -> 2 Fe + 3 H2O
     """
@@ -823,7 +839,7 @@ def delta_h_fe2o3_3h2_3fe_3h2o(temp_kelvin: float = 298.15):
     products = [fe, h2o]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
-def delta_h_2h2o_2h2_o2(temp_kelvin: float = 298.15):
+def delta_h_2h2o_2h2_o2(temp_kelvin: float = 298.15) -> float:
     """
     2 H2O + 474.2 kJ/mol electricity + 97.2 kJ/mol heat -> 2 H2 + O2
     """

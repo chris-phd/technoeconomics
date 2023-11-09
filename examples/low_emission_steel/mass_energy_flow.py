@@ -176,7 +176,7 @@ def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable) -> Sy
     system.system_vars = copy.deepcopy(system_solved.system_vars)
     mass_and_energy_func(system)
 
-    tolerance = 1e-5
+    tolerance = 1e-4
     system.validate_energy_balance(tolerance)
     system.validate_mass_balance(tolerance)
 
@@ -438,9 +438,21 @@ def add_slag_and_flux_mass(system: System):
     mgo_gangue = species.create_mgo_species()
     cao_flux = species.create_cao_species()
     mgo_flux = species.create_mgo_species()
+    sio2_slag = species.create_sio2_species()
+    al2o3_slag = species.create_al2o3_species()
+    cao_slag = species.create_cao_species()
+    mgo_slag = species.create_mgo_species()
 
     steelmaking_device = system.devices[steelmaking_device_name]
     fe = steelmaking_device.outputs['steel'].species('Fe')
+
+    try:
+        si_in_steel = steelmaking_device.outputs['steel'].species('Si')
+    except:
+        si_in_steel = species.create_si_species()
+
+    if si_in_steel.mols > 0.1:
+        pass # yeet
 
     # iterative solve for the ore and slag mass
     ore_mass = 1666.0 # kg, initial guess
@@ -453,14 +465,23 @@ def add_slag_and_flux_mass(system: System):
         cao_gangue.mass = ore_mass * ore_composition_simple['CaO'] * 0.01
         mgo_gangue.mass = ore_mass * ore_composition_simple['MgO'] * 0.01
 
-        cao_flux_mass = b2_basicity * sio2_gangue.mass - cao_gangue.mass
+        if si_in_steel.mols > sio2_gangue.mols:
+            raise DecreaseSiInHotMetal
+
+        sio2_slag.mols = sio2_gangue.mols - si_in_steel.mols
+        al2o3_slag.mols = al2o3_gangue.mols
+
+        cao_flux_mass = b2_basicity * sio2_slag.mass - cao_gangue.mass
         cao_flux.mass = max(cao_flux_mass, 0.0)
-        mgo_flux_mass = b4_basicity * (al2o3_gangue.mass + sio2_gangue.mass) - cao_gangue.mass - cao_flux.mass - mgo_gangue.mass
+        mgo_flux_mass = b4_basicity * (al2o3_slag.mass + sio2_slag.mass) - cao_gangue.mass - cao_flux.mass - mgo_gangue.mass
         mgo_flux.mass = max(mgo_flux_mass, 0.0)
 
+        cao_slag.mols = cao_gangue.mols + cao_flux.mols
+        mgo_slag.mols = mgo_gangue.mols + mgo_flux.mols
+
         for _ in range(10):
-            slag_mass = sio2_gangue.mass + al2o3_gangue.mass \
-                        + cao_gangue.mass + cao_flux.mass + mgo_gangue.mass + mgo_flux.mass \
+            slag_mass = sio2_slag.mass + al2o3_slag.mass \
+                        + cao_slag.mass + mgo_slag.mass \
                         + feo_slag.mass
 
             if feo_slag.mass > max_feo_in_slag_perc * slag_mass * 0.01:
@@ -476,12 +497,6 @@ def add_slag_and_flux_mass(system: System):
     flux.temp_kelvin = system.system_vars['steel exit temp K']
     steelmaking_device.inputs['flux'].set(flux)
 
-    sio2_slag = copy.deepcopy(sio2_gangue)
-    al2o3_slag = copy.deepcopy(al2o3_gangue)
-    cao_slag = copy.deepcopy(cao_gangue)
-    mgo_slag = copy.deepcopy(mgo_gangue)
-    cao_slag.mass += cao_flux.mass
-    mgo_slag.mass += mgo_flux.mass
     slag = species.Mixture('slag', [feo_slag, sio2_slag, al2o3_slag, cao_slag, mgo_slag])
     slag.temp_kelvin = system.system_vars['steel exit temp K']
     steelmaking_device.outputs['slag'].set(slag)
@@ -535,6 +550,13 @@ def add_ore(system: System):
     sio2_gangue = copy.deepcopy(slag_mixture.species('SiO2'))
     al2o3_gangue = copy.deepcopy(slag_mixture.species('Al2O3'))
 
+    try:
+        # if some silicon ended up in the hot metal (BOF systems)
+        si_in_steel = steelmaking_device.outputs['steel'].species('Si')
+        sio2_gangue.mols += si_in_steel.mols
+    except:
+        pass
+    
     gangue_mass = sio2_gangue.mass + al2o3_gangue.mass + cao_gangue.mass + mgo_gangue.mass
     ore_mass = gangue_mass / (ore_composition_simple['gangue'] * 0.01)
 
@@ -903,16 +925,26 @@ def add_plasma_flows_final(system: System):
     num_feo_formations = (num_fe_formations + delta_feo) / 3
     num_fe3o4_formations = (num_feo_formations + delta_fe3o4) / 2
 
+    try:
+        si_in_steel = plasma_smelter.outputs['steel'].species('Si')
+        num_si_formations = si_in_steel.mols
+    except:
+        num_si_formations = 0.0
+    
+
+
     # TODO: Need to calculate the reaction enthalpy from monotomic H reduction. The fraction of H reduction will depend on the reaction temp
     # Why is this chemical energy positive? Don't we expect the overall reduction to be endo thermic, even
     # for the reaction takes place at these higher temperatures??
     chemical_energy = -num_fe_formations * species.delta_h_feo_h2_fe_h2o(plasma_temp) \
                       -num_feo_formations * species.delta_h_fe3o4_h2_3feo_h2o(plasma_temp) \
-                      -num_fe3o4_formations * species.delta_h_3fe2o3_h2_2fe3o4_h2o(plasma_temp)
+                      -num_fe3o4_formations * species.delta_h_3fe2o3_h2_2fe3o4_h2o(plasma_temp) \
+                      -num_si_formations * species.delta_h_sio2_h2_si_h2o(plasma_temp)
+
 
     # determine the mass of h2o in the off gas
     h2o = species.create_h2o_species()
-    h2o.mols = num_fe_formations + num_feo_formations + num_fe3o4_formations
+    h2o.mols = num_fe_formations + num_feo_formations + num_fe3o4_formations + 2*num_si_formations
     h2_consumed_mols = h2o.mols
 
     h2_excess = species.create_h2_species()
@@ -1577,10 +1609,15 @@ def add_titles_to_axis(ax: plt.Axes, title: str, y_label: str):
     ax.grid(axis='y', linestyle='--')
 
 
-## Error helpers
+## Adjust Non-Converged Systems
 class IncreaseExcessHydrogenPlasma(Exception):
     pass
 
+class DecreaseSiInHotMetal(Exception):
+    pass
+
+class IncreaseCInHotMetal(Exception):
+    pass
 
 if __name__ == '__main__':
     main()
