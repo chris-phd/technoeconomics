@@ -30,7 +30,8 @@ def operating_cost_per_tonne(inputs: Dict[str, float], spot_electricity_hours: f
     ore_cpt = 100.0 # big difference between my price and the slides
     scrap_cpt = 250.0 # check this
     cao_cpk = 0.08 
-    mgo_cpk = 0.49 
+    mgco3_cpk = 0.49 
+    mgo_cpk = mgco3_cpk * 2.092 # same price per mol as MgCO3, but adjusted by mass difference
     h2_cpk = 3.0 # should be adjutable based on an input file
     o2_cpk = 0.0 # free, since it's a byproduct of electrolysis
     h2o_cpk = 0.0 # assumption that water should be close to zero cost, especially since it's a byproduct of reduction?
