@@ -6,7 +6,7 @@ import os
 import numpy as np
 import math
 import matplotlib.pyplot as plt
-from typing import Dict, List, Callable
+from typing import Dict, List, Callable, Optional
 from steel_plants import create_plasma_system, create_dri_eaf_system, create_hybrid_system
 from plant_costs import capex_direct_and_indirect, operating_cost_per_tonne, lcop_total, lcop_capex_only, lcop_opex_only
 from examples.low_emission_steel.plant_costs import add_steel_plant_capex
@@ -86,7 +86,7 @@ def main():
     solve_mass_energy_flow(hybrid55_system, add_hybrid_mass_and_energy)
     solve_mass_energy_flow(hybrid95_system, add_hybrid_mass_and_energy)
 
-    ##
+    ## Add the capital costs to the system
     add_steel_plant_capex(plasma_system)
     add_steel_plant_capex(plasma_ar_h2_system)
     add_steel_plant_capex(plasma_bof_system)
@@ -96,6 +96,10 @@ def main():
     add_steel_plant_capex(hybrid33_bof_system)
     add_steel_plant_capex(hybrid55_system)
     add_steel_plant_capex(hybrid95_system)
+
+    ## Report slag composition
+    for s in systems:
+        report_slag_composition(s)
 
     ## Energy and Mass Flow Plots
     system_names = [s.name for s in systems]
@@ -1616,6 +1620,45 @@ def add_titles_to_axis(ax: plt.Axes, title: str, y_label: str):
     ax.legend(bbox_to_anchor = (1.0, 1.0), loc='upper left')
     plt.subplots_adjust(right=0.8)
     ax.grid(axis='y', linestyle='--')
+
+
+## Report helpers
+def report_slag_composition(system: System):
+    if 'ironmaking device name' in system.system_vars:
+        ironmaking_slag = get_slag_composition(system, system.system_vars['ironmaking device name'])
+    else:
+        ironmaking_slag = None
+    steelmaking_slag = get_slag_composition(system, system.system_vars['steelmaking device name'])
+    if not ironmaking_slag and not steelmaking_slag:
+        raise Exception("Cannot report slag composition. No slag in any devices")
+    print(f'System "{system.name}" slag composition')
+    if ironmaking_slag:
+        print(f'  ironmaking slag')
+        for k, v in sorted(ironmaking_slag.items()):
+            print(f'    {k}: {v*100:.2f}%')
+    if steelmaking_slag:
+        print(f'  steelmaking slag')
+        for k, v in sorted(steelmaking_slag.items()):
+            print(f'    {k}: {v*100:.2f}%')
+
+
+def get_slag_composition(system: System, device_name: str) -> Optional[Dict[str, float]]:
+    """
+    Returns the composition of the slag from the named device as a weight %
+    Returns None if the device does not have a Mixture named 'slag' at the output.
+    """
+    try:
+        device = system.devices[device_name]
+        slag = device.outputs['slag']
+    except:
+        return None
+    
+    composition = {}
+    for slag_species in slag._species:
+        composition[slag_species.name] = slag_species.mass / slag.mass
+    
+    return composition
+    
 
 
 ## Adjust Non-Converged Systems

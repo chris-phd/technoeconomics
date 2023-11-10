@@ -549,7 +549,6 @@ def add_bof_system_vars(system_vars: Dict[str, Any], ironmaking_device_name: str
     system_vars['feo soluble in slag percent'] = 1.0
     system_vars['b2 basicity'] = 1.0
     system_vars['b4 basicity'] = 1.1
-    system_vars['target mgo weight perc'] = 7.0
     system_vars['steelmaking device name'] = bof_name
     system_vars['ironmaking device name'] = ironmaking_device_name
     system_vars['bof o2 injection kg'] = 0.0
