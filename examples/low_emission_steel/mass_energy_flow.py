@@ -58,6 +58,8 @@ def main():
     for system in systems:
         system.system_vars['scrap perc'] = 0.0
         system.system_vars['ore name'] = 'IOA'
+        system.system_vars['report slag composition'] = True
+
     # dri_eaf_system.system_vars['h2 storage method'] = 'compressed gas vessels'
     plasma_ar_h2_system.system_vars['argon molar percent in h2 plasma'] = 10.0
     hybrid33_ar_h2_system.system_vars['argon molar percent in h2 plasma'] = 10.0
@@ -169,6 +171,13 @@ def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable) -> Sy
         except IncreaseExcessHydrogenPlasma:
             system_vars_solved['plasma h2 excess ratio'] *= 1.1
             print(f"System {system.name} did not converge. Increasing excess h2 ratio to {system_vars_solved['plasma h2 excess ratio']}")
+        except IncreaseCInHotMetal:
+            system_vars_solved['bof hot metal C perc'] *= 1.1
+            print(f"System {system.name} did not converge. Increasing hot metal C perc to {system_vars_solved['bof hot metal C perc']}")
+        except DecreaseSiInHotMetal:
+            system_vars_solved['bof hot metal Si perc'] *= 0.9
+            print(f"System {system.name} did not converge. Decreasing hot metal Si perc to {system_vars_solved['bof hot metal Si perc']}")
+        
         
     # copy the result to the master copy of the system
     # TODO: THIS IS SERIOUSLY INEFFICIENCT should just be able to copy over the result, 
@@ -1547,7 +1556,7 @@ def add_bof_flows(system: System):
     bof.inputs['chemical'].energy = chemical_energy
 
     if bof.energy_balance() > 0:
-        raise Exception("Error: Not enough energy from the oxidation reactions to heat the input flux and scrap")
+        raise IncreaseCInHotMetal("Error: Not enough energy from the oxidation reactions to heat the input flux and scrap")
     
     # All extra energy is set as losses
     bof.outputs['losses'].energy = -bof.energy_balance()
