@@ -59,6 +59,7 @@ def main():
         system.system_vars['scrap perc'] = 0.0
         system.system_vars['ore name'] = 'IOA'
         system.system_vars['report slag composition'] = True
+        system.system_vars['use mgo slag weight perc'] = True
 
     # dri_eaf_system.system_vars['h2 storage method'] = 'compressed gas vessels'
     plasma_ar_h2_system.system_vars['argon molar percent in h2 plasma'] = 10.0
@@ -439,6 +440,7 @@ def add_slag_and_flux_mass(system: System):
     steelmaking_device_name = system.system_vars['steelmaking device name']
     b2_basicity = system.system_vars['b2 basicity']
     b4_basicity = system.system_vars['b4 basicity']
+    mgo_in_slag_perc = system.system_vars['slag mgo weight perc']
     ore_composition_simple = system.system_vars['ore composition simple']
     final_reduction_degree = system.system_vars['final reduction percent'] * 0.01
     o2_injection_mols = system.system_vars['o2 injection kg'] / species.create_o2_species().mm
@@ -486,17 +488,26 @@ def add_slag_and_flux_mass(system: System):
 
         cao_flux_mass = b2_basicity * sio2_slag.mass - cao_gangue.mass
         cao_flux.mass = max(cao_flux_mass, 0.0)
-        mgo_flux_mass = b4_basicity * (al2o3_slag.mass + sio2_slag.mass) - cao_gangue.mass - cao_flux.mass - mgo_gangue.mass
-        mgo_flux.mass = max(mgo_flux_mass, 0.0)
-
         cao_slag.mols = cao_gangue.mols + cao_flux.mols
-        mgo_slag.mols = mgo_gangue.mols + mgo_flux.mols
+
+        if not system.system_vars.get('use mgo slag weight perc', False):
+            # Use B4 basicity to calculate the required MgO
+            mgo_flux_mass = b4_basicity * (al2o3_slag.mass + sio2_slag.mass) - cao_gangue.mass - cao_flux.mass - mgo_gangue.mass
+            mgo_flux.mass = max(mgo_flux_mass, 0.0)
+            mgo_slag.mols = mgo_gangue.mols + mgo_flux.mols
 
         for _ in range(10):
-            slag_mass = sio2_slag.mass + al2o3_slag.mass \
-                        + cao_slag.mass + mgo_slag.mass \
-                        + feo_slag.mass
-
+            if not system.system_vars.get('use mgo slag weight perc', False):
+                slag_mass = sio2_slag.mass + al2o3_slag.mass \
+                            + cao_slag.mass + mgo_slag.mass \
+                            + feo_slag.mass
+            else:
+                slag_mass = (sio2_slag.mass + al2o3_slag.mass \
+                            + cao_slag.mass + feo_slag.mass) / \
+                            (1.0 - mgo_in_slag_perc * 0.01)
+                mgo_slag.mass = slag_mass * mgo_in_slag_perc * 0.01
+                mgo_flux.mols = mgo_slag.mols - mgo_gangue.mols
+                
             if feo_slag.mass > max_feo_in_slag_perc * slag_mass * 0.01:
                 # Need another interation to get the correct slag mass, since feo saturates
                 feo_slag.mass = max_feo_in_slag_perc * slag_mass * 0.01
@@ -1490,6 +1501,7 @@ def add_bof_flows(system: System):
     feo_in_slag_perc = system.system_vars['bof feo in slag perc']
     b2 = system.system_vars['bof b2 basicity']
     b4 = system.system_vars['bof b4 basicity']
+    mgo_in_slag_perc = system.system_vars['bof slag mgo weight perc']
 
     bof = system.devices[system.system_vars['steelmaking device name']]
     steel = bof.outputs['steel']
@@ -1515,12 +1527,22 @@ def add_bof_flows(system: System):
     sio2_slag.mols = si_hot_metal.mols
     sio2_slag.temp_kelvin = hot_metal.temp_kelvin
     cao_flux.mols = b2*sio2_slag.mols
-    mgo_flux.mols = b4*sio2_slag.mols
-    cao_flux.temp_kelvin = mgo_flux.temp_kelvin = celsius_to_kelvin(25)
     cao_slag.mols = cao_flux.mols
-    mgo_slag.mols = mgo_flux.mols
+
+    if system.system_vars.get('use mgo slag weight perc', False):
+        # Use MgO% in slag to determine MgO flux.
+        total_slag_mass = (cao_slag.mass + sio2_slag.mass) / (1 - (feo_in_slag_perc + mgo_in_slag_perc) * 0.01)
+        mgo_slag.mass = mgo_in_slag_perc * 0.01 * total_slag_mass
+    else:
+        # use B4 basicity to determine MgO in slag 
+        mgo_slag.mols = b4*sio2_slag.mols
+        total_slag_mass = (cao_slag.mass + sio2_slag.mass) / (1 - feo_in_slag_perc * 0.01)
+
+    mgo_flux.mols = mgo_slag.mols
+
+    cao_flux.temp_kelvin = mgo_flux.temp_kelvin = celsius_to_kelvin(25)
     cao_slag.temp_kelvin = mgo_slag.temp_kelvin = hot_metal.temp_kelvin
-    total_slag_mass = (sio2_slag.mass + cao_slag.mass + mgo_slag.mass) / (1 - feo_in_slag_perc * 0.01)
+    
     feo_slag.mass = feo_in_slag_perc * 0.01 * total_slag_mass
     hot_metal.species('Fe').mols += feo_slag.mols
 
