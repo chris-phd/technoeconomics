@@ -1,0 +1,4 @@
+device or commodity name,price in 2023 usd,cost unit enum,sensitivity +/- %
+BOF,1000,PerTonneOfAnnualCapacity,1.2
+Ore,100,PerTonne,5
+H2,4.0,PerKilo,4
