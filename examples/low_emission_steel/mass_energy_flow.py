@@ -445,6 +445,8 @@ def add_slag_and_flux_mass(system: System):
     final_reduction_degree = system.system_vars['final reduction percent'] * 0.01
     o2_injection_mols = system.system_vars['o2 injection kg'] / species.create_o2_species().mm
     max_feo_in_slag_perc = system.system_vars['feo soluble in slag percent']
+    use_mgo_slag_weight_perc = system.system_vars.get('use mgo slag weight perc', False) # or \
+                               # 'plasma' in steelmaking_device_name or 'bof' in steelmaking_device_name
 
     feo_slag = species.create_feo_species()
     sio2_gangue = species.create_sio2_species()
@@ -490,14 +492,14 @@ def add_slag_and_flux_mass(system: System):
         cao_flux.mass = max(cao_flux_mass, 0.0)
         cao_slag.mols = cao_gangue.mols + cao_flux.mols
 
-        if not system.system_vars.get('use mgo slag weight perc', False):
+        if not use_mgo_slag_weight_perc:
             # Use B4 basicity to calculate the required MgO
             mgo_flux_mass = b4_basicity * (al2o3_slag.mass + sio2_slag.mass) - cao_gangue.mass - cao_flux.mass - mgo_gangue.mass
             mgo_flux.mass = max(mgo_flux_mass, 0.0)
             mgo_slag.mols = mgo_gangue.mols + mgo_flux.mols
 
         for _ in range(10):
-            if not system.system_vars.get('use mgo slag weight perc', False):
+            if not use_mgo_slag_weight_perc:
                 slag_mass = sio2_slag.mass + al2o3_slag.mass \
                             + cao_slag.mass + mgo_slag.mass \
                             + feo_slag.mass
@@ -1502,6 +1504,8 @@ def add_bof_flows(system: System):
     b2 = system.system_vars['bof b2 basicity']
     b4 = system.system_vars['bof b4 basicity']
     mgo_in_slag_perc = system.system_vars['bof slag mgo weight perc']
+    use_mgo_slag_weight_perc = system.system_vars.get('use mgo slag weight perc', False) # or \
+                            # 'plasma' in system.system_vars['steelmaking device name'] or 'bof' in system.system_vars['steelmaking device name']
 
     bof = system.devices[system.system_vars['steelmaking device name']]
     steel = bof.outputs['steel']
@@ -1529,7 +1533,7 @@ def add_bof_flows(system: System):
     cao_flux.mols = b2*sio2_slag.mols
     cao_slag.mols = cao_flux.mols
 
-    if system.system_vars.get('use mgo slag weight perc', False):
+    if use_mgo_slag_weight_perc:
         # Use MgO% in slag to determine MgO flux.
         total_slag_mass = (cao_slag.mass + sio2_slag.mass) / (1 - (feo_in_slag_perc + mgo_in_slag_perc) * 0.01)
         mgo_slag.mass = mgo_in_slag_perc * 0.01 * total_slag_mass
