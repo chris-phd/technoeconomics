@@ -7,7 +7,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from typing import Dict, List, Callable, Optional
-from steel_plants import create_plasma_system, create_dri_eaf_system, create_hybrid_system
+from create_plants import create_plasma_system, create_dri_eaf_system, create_hybrid_system
 from plant_costs import capex_direct_and_indirect, operating_cost_per_tonne, lcop_total, lcop_capex_only, lcop_opex_only, add_steel_plant_capex
 from plot_helpers import histogram_labels_from_datasets, add_stacked_histogram_data_to_axis, add_titles_to_axis
 
