@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
-import sys
-import os
+import csv
+from enum import Enum
 import math
+import os
+import sys
 from typing import Dict
 
 try:
@@ -15,6 +17,37 @@ except ImportError:
     sys.path.insert(0, package_dir)
 
     from technoeconomics.system import System
+
+
+class PriceUnits(Enum):
+    PerKilo = 1
+    PerTonne = 2
+    PerKiloWattHour = 3
+    PerDevice = 4
+    PerTonneOfAnnualCapacity = 5
+    
+
+class PriceEntry:
+    def __init__(self, name: str, price_usd: float, units: PriceUnits):
+        self.name: str = name
+        self.price_usd: float = price_usd
+        self.units: PriceUnits = units
+    
+    def __repr__(self):
+        return f'PriceEntry({self.name}: ${self.price_usd} {self.units})'
+
+
+def load_prices_from_csv(filename: str) -> Dict[str, PriceEntry]:
+    with open(filename, newline='') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)  # skip the title row
+        prices = {}
+        for row in reader:
+            name = row[0]
+            price_usd = float(row[1])
+            units = PriceUnits[row[2]]
+            prices[name] = PriceEntry(name, price_usd, units)
+        return prices
 
 
 # Levelised Cost of Production Helpers
