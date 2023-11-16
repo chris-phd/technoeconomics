@@ -22,9 +22,10 @@ except ImportError:
 class PriceUnits(Enum):
     PerKilo = 1
     PerTonne = 2
-    PerKiloWattHour = 3
+    PerMegaWattHour = 3
     PerDevice = 4
     PerTonneOfAnnualCapacity = 5
+    PerTonneOfProduct = 6
 
 
 class PriceEntry:
@@ -70,37 +71,35 @@ def operating_cost_per_tonne(inputs: Dict[str, float], prices: Dict[str, PriceEn
     expensive_spot_electricity_cpmwh = 93.1
     cheap_spot_electricity_cpmwh = 54.5
     base_electricity_cpmwh = (spot_electricity_hours * cheap_spot_electricity_cpmwh + (24.0-spot_electricity_hours) * expensive_spot_electricity_cpmwh) / 24.0
+    prices['Base Electricity'] = PriceEntry('Base Electricity', base_electricity_cpmwh, PriceUnits.PerMegaWattHour)
 
-    # cpt = cost per tonne (USD), cpk = cost per kg (USD)
-    ore_cpt = 100.0 # big difference between my price and the slides
-    scrap_cpt = 250.0 # check this
-    cao_cpk = 0.08 
-    mgco3_cpk = 0.49 
-    mgo_cpk = mgco3_cpk * 2.092 # same price per mol as MgCO3, but adjusted by mass difference
-    h2_cpk = 3.0 # should be adjutable based on an input file
-    o2_cpk = 0.1 # could we make this free for on prem h2 storage, since it's a byproduct of electrolysis?
-    h2o_cpk = 0.0 # assumption that water should be close to zero cost, especially since it's a byproduct of reduction?
-    carbon_cpt = 130.0
+    inputs_lower = {k.lower(): v for k, v in inputs.items()}
+    if len(inputs_lower) != len(inputs):
+        raise Exception("Key clash detected after converting keys to lower case.")
+    
+    prices_lower = {k.lower(): v for k, v in prices.items()}
+    if len(prices_lower) != len(prices):
+        raise Exception("Key clash detected after converting keys to lower case.")
 
-    # usd per hour. Kind of a guess so that it comes out 
-    # at 60 USD / tonne of steel. 
-    labour_cph = 40.0
+    operating_costs = {}
+    for input_name, input_amount in inputs_lower.items():
 
-    cost = {
-        'Base Electricity' : inputs['base electricity'] * base_electricity_cpmwh / 3.6e+9,
-        'Cheap Spot Electricity': inputs.get('cheap electricity', 0.0) * cheap_spot_electricity_cpmwh / 3.6e+9,
-        'Scrap' : inputs['scrap'] * scrap_cpt / 1000,
-        'Ore' : inputs['ore'] * ore_cpt / 1000,
-        'CaO' : inputs['CaO'] * cao_cpk,
-        'MgO' : inputs['MgO'] * mgo_cpk,
-        'Carbon' : inputs['C'] * carbon_cpt / 1000,
-        'H2' : inputs.get('H2', 0.0) * h2_cpk,
-        'Oxygen' : inputs['O2'] * o2_cpk,
-        'Water' : inputs.get('H2O', 0.0) * h2o_cpk,
-        'Labour' : 1.5 * labour_cph,
-    }
+        if input_name in prices_lower:
+            price = prices_lower[input_name]
+            if price.units == PriceUnits.PerKilo:
+                operating_costs[input_name] = input_amount * price.price_usd
+            elif price.units == PriceUnits.PerTonne:
+                operating_costs[input_name] = input_amount * price.price_usd / 1000.0
+            elif price.units == PriceUnits.PerMegaWattHour:
+                operating_costs[input_name] = input_amount * price.price_usd / 3.6e+9
+            elif price.units == PriceUnits.PerTonneOfProduct:
+                operating_costs[input_name] = input_amount * price.price_usd
+            else:
+                raise ValueError(f'Price units not recognised or invalid for consumables: {price.units}')
+        else:
+            print(f'Warning: Price not found for {input_name}')
 
-    return cost 
+    return operating_costs 
 
 
 def add_steel_plant_capex(system: System):

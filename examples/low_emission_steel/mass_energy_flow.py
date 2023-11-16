@@ -87,17 +87,6 @@ def main():
     solve_mass_energy_flow(hybrid55_system, add_hybrid_mass_and_energy)
     solve_mass_energy_flow(hybrid95_system, add_hybrid_mass_and_energy)
 
-    ## Add the capital costs to the system
-    add_steel_plant_capex(plasma_system)
-    add_steel_plant_capex(plasma_ar_h2_system)
-    add_steel_plant_capex(plasma_bof_system)
-    add_steel_plant_capex(dri_eaf_system)
-    add_steel_plant_capex(hybrid33_system)
-    add_steel_plant_capex(hybrid33_ar_h2_system)
-    add_steel_plant_capex(hybrid33_bof_system)
-    add_steel_plant_capex(hybrid55_system)
-    add_steel_plant_capex(hybrid95_system)
-
     ## Report slag composition
     for s in systems:
         report_slag_composition(s)
@@ -124,34 +113,6 @@ def main():
     _, output_mass_ax = plt.subplots()
     add_stacked_histogram_data_to_axis(output_mass_ax, system_names, output_mass_labels, outputs_for_systems)
     add_titles_to_axis(output_mass_ax, 'Output Mass Flow / Tonne Liquid Steel', 'Mass (kg)')
-
-    ## Calculate the levelised cost of production
-    inputs_per_tonne_for_systems = [s.system_inputs(ignore_flows_named=['infiltrated air'], separate_mixtures_named=['flux', 'h2 rich gas'], mass_flow_only=False) for s in systems]
-
-    total_direct_indirect_capex = [capex_direct_and_indirect(s.capex()) for s in systems]
-    operating_costs_per_tonne_itemised = [operating_cost_per_tonne(inputs, s.system_vars['cheap electricity hours']) \
-                                          for inputs, s in zip(inputs_per_tonne_for_systems, systems)]
-
-    lcop_itemised_for_systems = []
-    for system, capex, operating_costs in zip(systems, total_direct_indirect_capex, operating_costs_per_tonne_itemised):
-        lcop_itemised = {
-            'capex': lcop_capex_only(capex, system.annual_capacity, system.lifetime_years)
-        }
-
-        for opex_name, opex_per_tonne in operating_costs.items():
-            lcop_itemised[opex_name] = opex_per_tonne
-
-        lcop_itemised_for_systems.append(lcop_itemised)
-
-        print(f"{system.name} total lcop = {sum(lcop_itemised.values()):.2f}")
-        for k, v in lcop_itemised.items():
-            print(f"    {k} = {v:.2f}")
-
-    # Plot a breakdown of the LCOP
-    lcop_labels = histogram_labels_from_datasets(lcop_itemised_for_systems)
-    _, lcop_ax = plt.subplots()
-    add_stacked_histogram_data_to_axis(lcop_ax, system_names, lcop_labels, lcop_itemised_for_systems)
-    add_titles_to_axis(lcop_ax, 'Levelised Cost of Liquid Steel', '$USD / tonne liquid steel')
 
     plt.show()
 
@@ -1661,7 +1622,6 @@ def get_slag_composition(system: System, device_name: str) -> Optional[Dict[str,
     
     return composition
     
-
 
 ## Adjust Non-Converged Systems
 class IncreaseExcessHydrogenPlasma(Exception):

@@ -1,4 +1,11 @@
 device or commodity name,price in 2023 usd,cost unit enum,sensitivity +/- %
-BOF,1000,PerTonneOfAnnualCapacity,1.2
+Scrap,250,PerTonne,5
 Ore,100,PerTonne,5
-H2,4.0,PerKilo,4
+CaO,0.08,PerKilo,5
+MgO,1.02,PerKilo,5
+H2,3,PerKilo,5
+O2,0.1,PerKilo,5
+H2O,0,PerKilo,5
+C,0.13,PerKilo,5
+Labour,60,PerTonneOfProduct,5
+BOF,1000,PerTonneOfAnnualCapacity,5
