@@ -79,9 +79,9 @@ def operating_cost_per_tonne(inputs: Dict[str, float], prices: Dict[str, PriceEn
     if len(prices_lower) != len(prices):
         raise Exception("Key clash detected after converting keys to lower case.")
 
-    if 'cheap spot clectricity' in prices_lower and 'expensive spot electricity' in prices_lower:
-        expensive_spot_electricity_cpmwh = prices['expensive spot electricity']
-        cheap_spot_electricity_cpmwh = prices['cheat spot electricity']
+    if 'cheap spot electricity' in prices_lower and 'expensive spot electricity' in prices_lower:
+        expensive_spot_electricity_cpmwh = prices_lower['expensive spot electricity'].price_usd
+        cheap_spot_electricity_cpmwh = prices_lower['cheap spot electricity'].price_usd
         base_electricity_cpmwh = (spot_electricity_hours * cheap_spot_electricity_cpmwh + (24.0-spot_electricity_hours) * expensive_spot_electricity_cpmwh) / 24.0
         prices['Base Electricity'] = PriceEntry('Base Electricity', base_electricity_cpmwh, PriceUnits.PerMegaWattHour)
         prices_lower['base electricity'] = PriceEntry('base electricity', base_electricity_cpmwh, PriceUnits.PerMegaWattHour)
@@ -89,10 +89,15 @@ def operating_cost_per_tonne(inputs: Dict[str, float], prices: Dict[str, PriceEn
         prices['Cheap Spot Electricity'] = PriceEntry('Cheap Spot Electricity', base_electricity_cpmwh, PriceUnits.PerMegaWattHour)
         prices_lower['cheap spot clectricity'] = PriceEntry('cheap spot clectricity', base_electricity_cpmwh, PriceUnits.PerMegaWattHour)
     else:
-        Exception("No electricity prices set. Need either a 'Base Electricity' entry or both a 'Cheap Spot Electricity' and 'Expensive Spot Electricity' entry")
+        raise Exception("No electricity prices set. Need either a 'Base Electricity' entry or both a 'Cheap Spot Electricity' and 'Expensive Spot Electricity' entry")
 
 
     operating_costs = {}
+    for k, price in prices_lower.items():
+        # Primaily used for labour, which we have assumed to be constant.
+        if price.units == PriceUnits.PerTonneOfProduct:
+            operating_costs[k] = price.price_usd
+
     for input_name, input_amount in inputs_lower.items():
 
         if input_name in prices_lower:
