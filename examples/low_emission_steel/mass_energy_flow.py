@@ -118,7 +118,7 @@ def main():
 
 
 # Mass and Energy Flows - System Level
-def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable) -> System:
+def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable, print_debug_messages:bool=True) -> System:
     system_solved = copy.deepcopy(system)
     system_vars_solved = copy.deepcopy(system.system_vars)
 
@@ -136,13 +136,16 @@ def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable) -> Sy
             converged = True
         except IncreaseExcessHydrogenPlasma:
             system_vars_solved['plasma h2 excess ratio'] *= 1.1
-            print(f"System {system.name} did not converge. Increasing excess h2 ratio to {system_vars_solved['plasma h2 excess ratio']}")
+            if print_debug_messages:
+                print(f"System {system.name} did not converge. Increasing excess h2 ratio to {system_vars_solved['plasma h2 excess ratio']}")
         except IncreaseCInHotMetal:
             system_vars_solved['bof hot metal C perc'] *= 1.1
-            print(f"System {system.name} did not converge. Increasing hot metal C perc to {system_vars_solved['bof hot metal C perc']}")
+            if print_debug_messages:
+                print(f"System {system.name} did not converge. Increasing hot metal C perc to {system_vars_solved['bof hot metal C perc']}")
         except DecreaseSiInHotMetal:
             system_vars_solved['bof hot metal Si perc'] *= 0.9
-            print(f"System {system.name} did not converge. Decreasing hot metal Si perc to {system_vars_solved['bof hot metal Si perc']}")
+            if print_debug_messages:
+                print(f"System {system.name} did not converge. Decreasing hot metal Si perc to {system_vars_solved['bof hot metal Si perc']}")
         
         
     # copy the result to the master copy of the system

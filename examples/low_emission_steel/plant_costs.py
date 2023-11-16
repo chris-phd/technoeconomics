@@ -53,7 +53,7 @@ def load_prices_from_csv(filename: str) -> Dict[str, PriceEntry]:
         return prices
 
 
-def add_steel_plant_lcop(system: System, prices: Dict[str, PriceEntry]):
+def add_steel_plant_lcop(system: System, prices: Dict[str, PriceEntry], print_debug_messages=True):
     add_steel_plant_capex(system, prices)
 
     lcop_itemised = {
@@ -61,14 +61,15 @@ def add_steel_plant_lcop(system: System, prices: Dict[str, PriceEntry]):
     }
 
     inputs = system.system_inputs(ignore_flows_named=['infiltrated air'], separate_mixtures_named=['flux', 'h2 rich gas'], mass_flow_only=False)
-    operating_costs = operating_cost_per_tonne(inputs, prices, system.system_vars['cheap electricity hours'])
+    operating_costs = operating_cost_per_tonne(inputs, prices, system.system_vars['cheap electricity hours'], print_debug_messages)
     for opex_name, opex_per_tonne in operating_costs.items():
         lcop_itemised[opex_name] = opex_per_tonne
 
     system.lcop_breakdown = lcop_itemised
 
 
-def operating_cost_per_tonne(inputs: Dict[str, float], prices: Dict[str, PriceEntry], spot_electricity_hours: float = 8.0) -> Dict[str, float]:
+def operating_cost_per_tonne(inputs: Dict[str, float], prices: Dict[str, PriceEntry], 
+                             spot_electricity_hours: float = 8.0, print_debug_messages:bool=True) -> Dict[str, float]:
     # TODO! Update the electrcity prices based on the location of the plant
 
     inputs_lower = {k.lower(): v for k, v in inputs.items()}
@@ -113,7 +114,8 @@ def operating_cost_per_tonne(inputs: Dict[str, float], prices: Dict[str, PriceEn
             else:
                 raise ValueError(f'Price units not recognised or invalid for consumables: {price.units}')
         else:
-            print(f'Warning: Price not found for {input_name}')
+            if print_debug_messages:
+                print(f'Warning: Price not found for {input_name}')
 
     return operating_costs 
 

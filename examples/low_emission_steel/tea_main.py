@@ -32,17 +32,18 @@ def main():
         render_systems(systems, args.render)
 
     ## Solve
+    print("Solving mass and energy flow...")
     for s in systems:
-        solve_mass_energy_flow(s, s.add_mass_energy_flow_func)
+        solve_mass_energy_flow(s, s.add_mass_energy_flow_func, args.verbose)
         
-        if s.system_vars.get('report slag composiiton', False):
+        if args.verbose:
             report_slag_composition(s)
 
     ## Prices
     prices = load_prices_from_csv(args.price_file)
     
     for s in systems:
-        add_steel_plant_lcop(s, prices)
+        add_steel_plant_lcop(s, prices, args.verbose)
         print(f"{s.name} total lcop [USD] = {sum(s.lcop_breakdown.values()):.2f}")
         for k, v in s.lcop_breakdown.items():
             print(f"    {k} = {v:.2f}")
@@ -84,6 +85,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('-s', '--sensitivity_analysis', help='perform sensitivity analysis boolean flag.', required=False, action='store_true')
     parser.add_argument('-m', '--mass_flow', help='show the mass flow bar chart boolean flag.', required=False, action='store_true')
     parser.add_argument('-e', '--energy_flow', help='show the enery flow bar chart boolean flag.', required=False, action='store_true')
+    parser.add_argument('-v', '--verbose', help='when enabled, print / log debug messages.', required=False, action='store_true')
     args = parser.parse_args()
     return args
 
@@ -129,7 +131,6 @@ def create_systems() -> List[System]:
     for system in systems:
         system.system_vars['scrap perc'] = 0.0
         system.system_vars['ore name'] = 'IOC'
-        system.system_vars['report slag composition'] = True
         system.system_vars['use mgo slag weight perc'] = True
 
     plasma_ar_h2_system.system_vars['argon molar percent in h2 plasma'] = 10.0
