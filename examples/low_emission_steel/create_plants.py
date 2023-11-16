@@ -48,25 +48,25 @@ def create_plasma_system(system_name: str ='plasma steelmaking',
     plasma_system = System(system_name, annual_capacity_tls, plant_lifetime_years)
 
     if on_premises_h2_production:
-        water_electrolysis = Device('water electrolysis', electrolyser_capex_desantis2021() * annual_capacity_tls)
+        water_electrolysis = Device('water electrolysis', 'electrolyser')
         plasma_system.add_device(water_electrolysis)
         if h2_storage_method is not None:
-            h2_storage = Device('h2 storage')
+            h2_storage = Device('h2 storage', h2_storage_method)
             plasma_system.add_device(h2_storage)
-    h2_heat_exchanger = Device('h2 heat exchanger', 112439.95)
+    h2_heat_exchanger = Device('h2 heat exchanger', 'gas heat exchanger')
     plasma_system.add_device(h2_heat_exchanger)
-    condenser = Device('condenser and scrubber')
+    condenser = Device('condenser and scrubber', 'condenser and scrubber')
     plasma_system.add_device(condenser)
-    ore_heater = Device('ore heater', 6425140.11)
+    ore_heater = Device('ore heater', 'ore heater')
     plasma_system.add_device(ore_heater)
     plasma_torch = Device('plasma torch')
     plasma_system.add_device(plasma_torch)
-    plasma_smelter = Device('plasma smelter', 269.82 * annual_capacity_tls)# plasma_capex_desantis2021() * annual_capacity_tls)
+    plasma_smelter = Device('plasma smelter', 'plasma smelter')
     plasma_system.add_device(plasma_smelter)
     join_1 = Device('join 1')
     plasma_system.add_device(join_1)
     if bof_steelmaking:
-        bof = Device('bof', (bof_capex_zang2023() + bof_capex_wortler2013())*0.5*annual_capacity_tls)
+        bof = Device('bof', 'bof')
         plasma_system.add_device(bof)
 
     # System variables defaults. Can be overwritten by user before mass and energy flows.
@@ -180,12 +180,12 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking',
     dri_eaf_system = System(system_name, annual_capacity_tls, plant_lifetime_years)
 
     if on_premises_h2_production:
-        water_electrolysis = Device('water electrolysis', electrolyser_capex_desantis2021() * annual_capacity_tls)
+        water_electrolysis = Device('water electrolysis', 'electrolyser')
         dri_eaf_system.add_device(water_electrolysis)
         if h2_storage_method is not None:
-            h2_storage = Device('h2 storage')
+            h2_storage = Device('h2 storage', h2_storage_method)
             dri_eaf_system.add_device(h2_storage)
-    h2_heat_exchanger = Device('h2 heat exchanger', 112439.95)
+    h2_heat_exchanger = Device('h2 heat exchanger', 'gas heat exchanger')
     dri_eaf_system.add_device(h2_heat_exchanger)
     join_1 = Device('join 1')
     dri_eaf_system.add_device(join_1)
@@ -193,19 +193,19 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking',
     dri_eaf_system.add_device(h2_heater_1)
     h2_heater_2 = Device('h2 heater 2')
     dri_eaf_system.add_device(h2_heater_2)
-    condenser = Device('condenser and scrubber')
+    condenser = Device('condenser and scrubber', 'condenser and scrubber')
     dri_eaf_system.add_device(condenser)
-    ore_heater = Device('ore heater', 6425140.11)
+    ore_heater = Device('ore heater', 'ore heater')
     dri_eaf_system.add_device(ore_heater)
-    fluidized_bed_1 = Device('fluidized bed 1', 309.52 * annual_capacity_tls / 3) # dri_capex_wortler2013() / 3 * annual_capacity_tls)
+    fluidized_bed_1 = Device('fluidized bed 1', 'fluidized bed')
     dri_eaf_system.add_device(fluidized_bed_1)
-    fluidized_bed_2 = Device('fluidized bed 2', 309.52 * annual_capacity_tls / 3) #, dri_capex_wortler2013() / 3 * annual_capacity_tls)
+    fluidized_bed_2 = Device('fluidized bed 2', 'fluidized bed')
     dri_eaf_system.add_device(fluidized_bed_2)
-    fluidized_bed_3 = Device('fluidized bed 3', 309.52 * annual_capacity_tls / 3) #, dri_capex_wortler2013() / 3 * annual_capacity_tls)
+    fluidized_bed_3 = Device('fluidized bed 3', 'fluidized bed')
     dri_eaf_system.add_device(fluidized_bed_3)
-    briquetting = Device('briquetting')
+    briquetting = Device('briquetting','briquetting')
     dri_eaf_system.add_device(briquetting)
-    eaf = Device('eaf', eaf_capex_wortler2013() * annual_capacity_tls)
+    eaf = Device('eaf', 'eaf')
     dri_eaf_system.add_device(eaf)
 
     # System variables defaults. Can be overwritten by user before mass and energy flows.
@@ -339,32 +339,32 @@ def create_hybrid_system(system_name='hybrid steelmaking',
     hybrid_system = System(system_name, annual_capacity_tls, plant_lifetime_years)
 
     if on_premises_h2_production:
-        water_electrolysis = Device('water electrolysis', electrolyser_capex_desantis2021() * annual_capacity_tls)
+        water_electrolysis = Device('water electrolysis', 'electrolyser')
         hybrid_system.add_device(water_electrolysis)
         if h2_storage_method is not None:
-            h2_storage = Device('h2 storage')
+            h2_storage = Device('h2 storage', h2_storage_method)
             hybrid_system.add_device(h2_storage)
-    h2_heat_exchanger_1 = Device('h2 heat exchanger 1', 112439.95)
+    h2_heat_exchanger_1 = Device('h2 heat exchanger 1','gas heat exchanger')
     hybrid_system.add_device(h2_heat_exchanger_1)
-    h2_heat_exchanger_2 = Device('h2 heat exchanger 2', 112439.95)
+    h2_heat_exchanger_2 = Device('h2 heat exchanger 2', 'gas heat exchanger')
     hybrid_system.add_device(h2_heat_exchanger_2)
-    h2_heater_1 = Device('h2 heater 1')
+    h2_heater_1 = Device('h2 heater 1', 'gas heater')
     hybrid_system.add_device(h2_heater_1)
-    condenser_1 = Device('condenser and scrubber 1')
+    condenser_1 = Device('condenser and scrubber 1', 'condenser and scrubber')
     hybrid_system.add_device(condenser_1)
-    condenser_2 = Device('condenser and scrubber 2')
+    condenser_2 = Device('condenser and scrubber 2', 'condenser and scrubber')
     hybrid_system.add_device(condenser_2)
-    ore_heater = Device('ore heater', 6425140.11)
+    ore_heater = Device('ore heater', 'ore heater')
     hybrid_system.add_device(ore_heater)
-    fluidized_bed_1 = Device('fluidized bed 1', 309.52 * annual_capacity_tls / 3) #, dri_capex_wortler2013() / 3 * annual_capacity_tls)
+    fluidized_bed_1 = Device('fluidized bed 1', 'fluidized bed')
     hybrid_system.add_device(fluidized_bed_1)
-    fluidized_bed_2 = Device('fluidized bed 2', 309.52 * annual_capacity_tls / 3) #, dri_capex_wortler2013() / 3 * annual_capacity_tls)
+    fluidized_bed_2 = Device('fluidized bed 2', 'fluidized bed')
     hybrid_system.add_device(fluidized_bed_2)
     briquetting = Device('briquetting')
     hybrid_system.add_device(briquetting)
     plasma_torch = Device('plasma torch')
     hybrid_system.add_device(plasma_torch)
-    plasma_smelter = Device('plasma smelter', 269.82 * annual_capacity_tls) # plasma_capex_desantis2021() * annual_capacity_tls)
+    plasma_smelter = Device('plasma smelter', 'plasma smelter')
     hybrid_system.add_device(plasma_smelter)
     join_1 = Device('join 1')
     hybrid_system.add_device(join_1)
@@ -373,7 +373,7 @@ def create_hybrid_system(system_name='hybrid steelmaking',
     join_3 = Device('join 3')
     hybrid_system.add_device(join_3)
     if bof_steelmaking:
-        bof = Device('bof', (bof_capex_zang2023() + bof_capex_wortler2013())*0.5*annual_capacity_tls)
+        bof = Device('bof', 'bof')
         hybrid_system.add_device(bof)
 
     ironmaking_device_names = [fluidized_bed_1.name, fluidized_bed_2.name]
@@ -381,9 +381,9 @@ def create_hybrid_system(system_name='hybrid steelmaking',
         # More reduction takes place in the fluidized beds, so need 
         # additional devices. This is why the prereduction percent variable 
         # must be set here.
-        h2_heater_2 = Device('h2 heater 2')
+        h2_heater_2 = Device('h2 heater 2', 'gas heater')
         hybrid_system.add_device(h2_heater_2)
-        fluidized_bed_3 = Device('fluidized bed 3', 309.52 * annual_capacity_tls / 3 )# , dri_capex_wortler2013() / 3 * annual_capacity_tls)
+        fluidized_bed_3 = Device('fluidized bed 3', 'fluidized bed')
         hybrid_system.add_device(fluidized_bed_3)
         ironmaking_device_names += [fluidized_bed_3.name]
 
@@ -574,123 +574,6 @@ def add_bof_flows(system: System, plasma_smelter_name: str, bof_name: str):
     system.add_output(bof_name, create_dummy_mixture('slag'))
     system.add_output(bof_name, create_dummy_mixture('steel'))
     system.add_output(bof_name, create_dummy_mixture('carbon gas'))
-
-
-# Capex helpers
-# Capex data is derived form the literature
-# Biag2016
-# 2015 reference yea. 
-def dri_capex_biag2018():
-    # Midrex DRI Shaft furnace.
-    inflation_2015_2023 = 1.28
-    dri_shaft_furnace_reference_cpt = 199.9 * inflation_2015_2023 # $ / tonne
-    return dri_shaft_furnace_reference_cpt
-
-def eaf_capex_biag2018():
-    inflation_2015_2023 = 1.28
-    eaf_reference_cpt = 111.43 * inflation_2015_2023 # $ / tonne
-    return eaf_reference_cpt
-
-# Vogl2018
-# Inflation never explicity stated. Using 2018
-# Uses Wortler2013 for the capital cost of the DRI and EAF plant.
-def electrolyser_capex_vogl2018():
-    inflation_2018_2023 = 1.21
-    usd_per_euro_2018 = 1.180
-    electrolyser_reference_cpt = 160 * inflation_2018_2023 * usd_per_euro_2018 # $ / tonne
-    return electrolyser_reference_cpt
-
-# Fischedick2014
-# Reference year not explicitly statedn for Capex data. Using 2014. 
-# Uses Wortler2013 for the capital cost of the DRI and EAF plant.
-def electrolyser_capex_fischedick2014():
-    inflation_2014_2023 = 1.28
-    usd_per_euro_2014 = 1.38
-    electrolyser_reference_cpt = 450 * inflation_2014_2023 * usd_per_euro_2014 # $ / tonne
-    return electrolyser_reference_cpt
-
-# Wortler2013
-# Reference year for the capex data is 2010, so adjust by inflation to 2023.
-# Methods return the capex in USD / tonne of CS
-def dri_capex_wortler2013():
-    inflation_2010_2023 = 1.39
-    usd_per_euro_2010 = 1.33
-    dri_reference_cpt = 230 * inflation_2010_2023 * usd_per_euro_2010 
-    return dri_reference_cpt
-
-def eaf_capex_wortler2013():
-    inflation_2010_2023 = 1.39
-    usd_per_euro_2010 = 1.33
-    eaf_reference_cpt = 184 * inflation_2010_2023 * usd_per_euro_2010 
-    return eaf_reference_cpt
-
-def smelter_capex_wortler2013():
-    inflation_2010_2023 = 1.39
-    usd_per_euro_2010 = 1.33
-    smelter_reference_cpt = 265 * inflation_2010_2023 * usd_per_euro_2010
-    return smelter_reference_cpt
-
-def bof_capex_wortler2013():
-    inflation_2010_2023 = 1.39
-    usd_per_euro_2010 = 1.33
-    bof_reference_cpt = 128 * inflation_2010_2023 * usd_per_euro_2010
-    return bof_reference_cpt
-
-def bf_capex_wortler2013():
-    inflation_2010_2023 = 1.39
-    usd_per_euro_2010 = 1.33
-    bf_reference_cpt = 149 * inflation_2010_2023 * usd_per_euro_2010
-    return bf_reference_cpt
-
-def sinter_capex_wortler2013():
-    inflation_2010_2023 = 1.39
-    usd_per_euro_2010 = 1.33
-    sinter_reference_cpt = 51 * inflation_2010_2023 * usd_per_euro_2010
-    return sinter_reference_cpt
-
-def coke_capex_wortler2013():
-    inflation_2010_2023 = 1.39
-    usd_per_euro_2010 = 1.33
-    coke_reference_cpt = 114 * inflation_2010_2023 * usd_per_euro_2010
-    return coke_reference_cpt
-
-# DeSantis2021
-# No specific reference year specified, and inflation never mentioned. Using 2021.
-# Uses Wortler2013 for the capital cost of the DRI and EAF plant.
-def electrolyser_capex_desantis2021():
-    inflation_2021_2023 = 1.12
-    usd_per_euro_2021 = 1.183 
-    electrolyser_reference_cpt = 90 * inflation_2021_2023 * usd_per_euro_2021 # $ / tonne
-    return electrolyser_reference_cpt
-
-def plasma_capex_desantis2021():
-    # Assumes a plama reactor itself will be 10% more expensive than a state of the art EAF plant.
-    # Uses Wortler2013 as the reference price of the EAF. 
-    # Although DeSantis then notes that the rest of the plant will require more expensive equipment,
-    # which will 2x the cost again. Little justification but says it is inline with industry consultation.
-    plasma_reference_cpt = eaf_capex_wortler2013() * 1.1 * 2 # $ / tonne
-    return plasma_reference_cpt
-
-# Gielan2020
-# Gielen takes this table directly from Mayer2019 and converts to USD. 
-# IN general, much more expensive than other sources. Highlights the large error bars in these estimates. 
-def plasma_capex_gielen2020():
-    inflation_2020_2023 = 1.18
-    plasma_reference_cpt = 1179 * inflation_2020_2023 # $ / tonne
-    return plasma_reference_cpt
-
-def dri_eaf_capex_gielen2020(): # This doesn't include the electrolyser cost. Why is it so much higher?
-    inflation_2020_2023 = 1.18
-    dri_eaf_reference_cpt = 1258 * inflation_2020_2023 # $ / tonne
-    return dri_eaf_reference_cpt
-
-# Zang2023
-def bof_capex_zang2023():
-    return 106.17
-
-# Wortler2013
-def bof_capex_wortler2013():
-    return 186.49
 
 if __name__ == "__main__":
     main()

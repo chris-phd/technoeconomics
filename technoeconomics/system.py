@@ -45,11 +45,12 @@ class Device:
     have a set of state variables.
     """
 
-    def __init__(self, name: str, capex=None):
+    def __init__(self, name: str, capex_label: Optional[str] = None):
         self._name = name
         self._inputs = {}
         self._outputs = {}
-        self._capex = capex
+        self._capex_label = capex_label
+        self._capex = None
         self._device_vars = {}
 
     def __repr__(self):
@@ -82,6 +83,14 @@ class Device:
     def outputs(self):
         return self._outputs
     
+    @property
+    def capex_label(self):
+        return self._capex_label
+    
+    @capex_label.setter
+    def capex_label(self, value):
+        self._capex_label = value
+
     @property
     def capex(self):
         return self._capex
