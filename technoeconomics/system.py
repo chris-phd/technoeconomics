@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
-import copy
 import graphviz
-from typing import Optional, Type, Union, Dict
+from typing import Optional, Type, Union, Dict, Callable, Any
 
 from technoeconomics.species import Species, Mixture
 from technoeconomics.utils import celsius_to_kelvin
@@ -203,9 +202,11 @@ class System:
         self._graph_dot = graphviz.Digraph()
         self._devices = {}
         self._flows = {}
-        self._system_vars = {}
-        self._annual_capacity = annual_capacity
-        self._lifetime_years = lifetime_years
+        self._system_vars: Dict[str, Any] = {}
+        self._annual_capacity: float = annual_capacity
+        self._lifetime_years: float = lifetime_years
+        self._add_mass_energy_flow_func: Optional[Callable] = None
+        self._lcop_breakdown: Dict[str, float] = {}
 
     def __repr__(self):
         s = f"System({self.name}"
@@ -243,6 +244,22 @@ class System:
     @property
     def lifetime_years(self):
         return self._lifetime_years
+
+    @property
+    def add_mass_energy_flow_func(self) -> Optional[Callable]:
+        return self._add_mass_energy_flow_func
+    
+    @add_mass_energy_flow_func.setter
+    def add_mass_energy_flow_func(self, value: Optional[Callable]):
+        self._add_mass_energy_flow_func = value
+
+    @property
+    def lcop_breakdown(self) -> Dict[str, float]:
+        return self._lcop_breakdown
+    
+    @lcop_breakdown.setter
+    def lcop_breakdown(self, value: Dict[str, float]):
+        self._lcop_breakdown = value
 
     def add_device(self, device: Type[Device]):
         if device.name in self._devices:

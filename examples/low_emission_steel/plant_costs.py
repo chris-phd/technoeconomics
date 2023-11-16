@@ -50,6 +50,19 @@ def load_prices_from_csv(filename: str) -> Dict[str, PriceEntry]:
         return prices
 
 
+def add_steel_plant_lcop(system: System, prices: Dict[str, PriceEntry]):
+    lcop_itemised = {
+        'capex': lcop_capex_only(system.capex(), system.annual_capacity, system.lifetime_years)
+    }
+
+    inputs = system.system_inputs(ignore_flows_named=['infiltrated air'], separate_mixtures_named=['flux', 'h2 rich gas'], mass_flow_only=False)
+    operating_costs = operating_cost_per_tonne(inputs, prices, system.system_vars['cheap electricity hours'])
+    for opex_name, opex_per_tonne in operating_costs.items():
+        lcop_itemised[opex_name] = opex_per_tonne
+
+    system.lcop_breakdown = lcop_itemised
+
+
 def operating_cost_per_tonne(inputs: Dict[str, float], prices: Dict[str, PriceEntry], spot_electricity_hours: float = 8.0) -> Dict[str, float]:
     # TODO! Update the electrcity prices based on the location of the plant
 
@@ -89,9 +102,6 @@ def operating_cost_per_tonne(inputs: Dict[str, float], prices: Dict[str, PriceEn
 
     return cost 
 
-
-def capex_steel_plant(system: System, prices: Dict[str, PriceEntry]) -> float:
-    pass
 
 def add_steel_plant_capex(system: System):
     # TODO! Need to unify the ways of defining the steel plant capex.

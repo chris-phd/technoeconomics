@@ -57,7 +57,7 @@ def main():
     # Overwrite system vars here to modify behaviour
     for system in systems:
         system.system_vars['scrap perc'] = 0.0
-        system.system_vars['ore name'] = 'IOA'
+        system.system_vars['ore name'] = 'IOC'
         system.system_vars['report slag composition'] = True
         system.system_vars['use mgo slag weight perc'] = True
 
