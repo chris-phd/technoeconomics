@@ -27,26 +27,26 @@ def main():
     args = parse_args()
     systems = create_systems()
     system_names = [s.name for s in systems]
+    prices = load_prices_from_csv(args.price_file)
 
     if args.render:
         render_systems(systems, args.render)
 
     ## Solve
-    print("Solving mass and energy flow...")
+    print("Solving mass and energy flow and calculating cost...")
     for s in systems:
         solve_mass_energy_flow(s, s.add_mass_energy_flow_func, args.verbose)
-        
-        if args.verbose:
-            report_slag_composition(s)
-
-    ## Prices
-    prices = load_prices_from_csv(args.price_file)
-    
-    for s in systems:
         add_steel_plant_lcop(s, prices, args.verbose)
+    print("Done.")
+    
+    ## Report
+    for s in systems:
         print(f"{s.name} total lcop [USD] = {sum(s.lcop_breakdown.values()):.2f}")
         for k, v in s.lcop_breakdown.items():
             print(f"    {k} = {v:.2f}")
+        
+        if args.verbose:
+            report_slag_composition(s)
 
     ## Plots
     if args.mass_flow:
@@ -130,7 +130,7 @@ def create_systems() -> List[System]:
     # Overwrite system vars here to modify behaviour
     for system in systems:
         system.system_vars['scrap perc'] = 0.0
-        system.system_vars['ore name'] = 'IOC'
+        system.system_vars['ore name'] = 'IOA'
         system.system_vars['use mgo slag weight perc'] = True
 
     plasma_ar_h2_system.system_vars['argon molar percent in h2 plasma'] = 10.0
