@@ -57,7 +57,7 @@ def add_steel_plant_lcop(system: System, prices: Dict[str, PriceEntry], print_de
     add_steel_plant_capex(system, prices)
 
     lcop_itemised = {
-        'capex': lcop_capex_only(system.capex(), system.annual_capacity, system.lifetime_years)
+        'capex': lcop_capex_only(system.capex(), system.annual_capacity * system.system_vars["capacity factor"], system.lifetime_years)
     }
 
     inputs = system.system_inputs(ignore_flows_named=['infiltrated air'], separate_mixtures_named=['flux', 'h2 rich gas'], mass_flow_only=False)
@@ -201,6 +201,7 @@ def lcop_opex_only(annual_operating_cost, annual_production):
 
 
 def lcop_total(capex, annual_operating_cost, annual_production, plant_lifetime_years):
-    # TODO! levelised cost of production will depend on the capacity factor of the plant
+    # levelised cost of production will depend on the capacity factor of the plant.
+    # It is up to the caller of this function to account for that in the annual_production var.
     return lcop_capex_only(capex, annual_production, plant_lifetime_years) + \
            lcop_opex_only(annual_operating_cost, annual_production)
