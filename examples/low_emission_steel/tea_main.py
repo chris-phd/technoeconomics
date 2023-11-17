@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 import argparse
+import csv
 import os
 import sys
-from typing import List
+from typing import List, Dict, Any
 import matplotlib.pyplot as plt
 from create_plants import create_dri_eaf_system, create_hybrid_system, create_plasma_system
 from mass_energy_flow import solve_mass_energy_flow, add_dri_eaf_mass_and_energy, add_hybrid_mass_and_energy,\
@@ -28,6 +29,7 @@ def main():
     systems = create_systems()
     system_names = [s.name for s in systems]
     prices = load_prices_from_csv(args.price_file)
+    config = load_config_from_csv(args.config_file)
 
     if args.render:
         render_systems(systems, args.render)
@@ -81,6 +83,7 @@ def main():
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='perform the technoeconomic analysis on hydrogen plasma based low emission steel plants and calculates the levelised cost of liquid steel.')
     parser.add_argument('-p', '--price_file', help='path to the csv file containing capex and commondity prices.', required=False, default='prices_default.csv')
+    parser.add_argument('-c', '--config_file', help='path to the csv file containing the system configuration.', required=False, default='config_default.csv')
     parser.add_argument('-r', '--render', help='render the steelplant system diagrams. "<system name>" or "ALL"', required=False, default=None)
     parser.add_argument('-s', '--sensitivity_analysis', help='perform sensitivity analysis boolean flag.', required=False, action='store_true')
     parser.add_argument('-m', '--mass_flow', help='show the mass flow bar chart boolean flag.', required=False, action='store_true')
@@ -160,6 +163,32 @@ def render_systems(systems: List[System], render_name: str):
                 s.render_system()
                 break
 
+
+def load_config_from_csv(filename: str) -> Dict[str, Dict[str, Any]]:
+    config = {}
+    with open(filename, newline='') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)  # skip the title row
+        for row in reader:
+            system_name = row[0].strip().lower()
+            variable_name = row[1].strip().lower()
+            variable_type = row[3].strip().lower()
+            variable_value = row[2].strip()
+            if variable_type.lower() == "string":
+                pass
+            elif variable_type.lower() == "number":
+                variable_value = float(variable_value)
+            elif variable_type.lower() == "boolean":
+                variable_value = bool(variable_value)
+            else:
+                raise ValueError(f"Unrecognised variable type {variable_type} in config file {filename}.")
+
+            if system_name in config:
+                config[system_name][variable_name] = variable_value
+            else:
+                config[system_name] = {variable_name: variable_value}
+    
+    return config
 
 if __name__ == '__main__':
     main()

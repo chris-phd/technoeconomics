@@ -158,8 +158,8 @@ def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable, print
     system.validate_energy_balance(tolerance)
     system.validate_mass_balance(tolerance)
 
-def add_plasma_mass_and_energy(system: System):
-    add_ore_composition(system)
+def add_plasma_mass_and_energy(system: System, print_debug_messages:bool=True):
+    add_ore_composition(system, print_debug_messages)
     add_steel_out(system)
     if system.system_vars.get('bof steelmaking', False):
         add_bof_flows(system)
@@ -187,8 +187,8 @@ def add_plasma_mass_and_energy(system: System):
         system.system_vars['steelmaking device name'] = 'bof'
 
 
-def add_dri_eaf_mass_and_energy(system: System):
-    add_ore_composition(system)
+def add_dri_eaf_mass_and_energy(system: System, print_debug_messages:bool=True):
+    add_ore_composition(system, print_debug_messages)
     add_steel_out(system)
     add_eaf_flows_initial(system)
     add_ore(system)
@@ -210,8 +210,8 @@ def add_dri_eaf_mass_and_energy(system: System):
     add_h2_heater_flows(system)
 
 
-def add_hybrid_mass_and_energy(system: System):
-    add_ore_composition(system)
+def add_hybrid_mass_and_energy(system: System, print_debug_messages:bool=True):
+    add_ore_composition(system, print_debug_messages)
     add_steel_out(system)
     if system.system_vars.get('bof steelmaking', False):
         add_bof_flows(system)
@@ -293,7 +293,7 @@ def hematite_normalise(ore_comp: Dict[str, float]):
     return ore_comp
 
 
-def add_ore_composition(system: System):
+def add_ore_composition(system: System, print_debug_messages:bool=True):
     """
     Add 'ore composition' and 'ore composition simple' to the system variables.
     Ore composition simple is the hematite ore with only SiO2, Al2O3, CaO and MgO
@@ -355,6 +355,7 @@ def add_ore_composition(system: System):
                                     'Mn': 0.40,
                                     'LOI': 8.8}
     else:
+        ore_name = "default"
         ore_composition_complex = {'Fe': 65.263,
                                     'SiO2': 3.814,
                                     'Al2O3': 2.437,
@@ -366,7 +367,13 @@ def add_ore_composition(system: System):
                                     'K2O': 0.011,
                                     'P': 0.109,
                                     'S': 0.024}
+        if print_debug_messages:
+            print(f"Warning! ore {ore_name} not recognised. Using default ore composition.")
 
+    if print_debug_messages:
+        print(f"Using {ore_name} ore composition for system {system.name}:")
+        for k, v in ore_composition_complex.items():
+            print(f"  {k} : {v:.1f}%")
 
     ore_composition_complex['gangue'] = sum(ore_composition_complex.values()) - ore_composition_complex['Fe'] - ore_composition_complex.get('LOI', 0.0)
     ore_composition_complex['hematite'] = 100 - ore_composition_complex['gangue'] -  - ore_composition_complex.get('LOI', 0.0)

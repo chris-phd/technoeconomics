@@ -1,0 +1,4 @@
+system name,variable name,variable value,variable type
+all,ore name, IOA,string
+all,capacity factor,0.9,number
+all,on premesis h2 production,False,boolean

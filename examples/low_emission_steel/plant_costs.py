@@ -46,9 +46,9 @@ def load_prices_from_csv(filename: str) -> Dict[str, PriceEntry]:
         next(reader)  # skip the title row
         prices = {}
         for row in reader:
-            name = row[0]
-            price_usd = float(row[1])
-            units = PriceUnits[row[2]]
+            name = row[0].strip()
+            price_usd = float(row[1].strip())
+            units = PriceUnits[row[2].strip()]
             prices[name] = PriceEntry(name, price_usd, units)
         return prices
 
