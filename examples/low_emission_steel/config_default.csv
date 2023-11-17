@@ -1,4 +1,15 @@
 system name,variable name,variable value,variable type
-all,ore name, IOA,string
+all,system lifetime years,20,number
+all,annual steel production tonnes,1.5e6,number
+all,on premises h2 production,False,boolean
 all,capacity factor,0.9,number
-all,on premesis h2 production,False,boolean
+all,ore name,IOA,string
+all,use mgo slag weight perc,True,boolean
+plasma,plasma h2 excess ratio,2.0,number
+plasma ar-h2,plasma h2 excess ratio,2.0,number
+plasma ar-h2,argon molar percent in h2 plasma,10,number
+plasma bof,plasma h2 excess ratio,2.0,number
+hybrid 33,plasma h2 excess ratio,4.0,number
+hybrid 33 ar-h2,argon molar percent in h2 plasma,10,number
+hybrid 55,plasma h2 excess ratio,5.5,number
+hybrid 90,plasma h2 excess ratio,30.0,number

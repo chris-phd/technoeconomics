@@ -26,10 +26,10 @@ except ImportError:
 def main():
     ## Setup
     args = parse_args()
-    systems = create_systems()
-    system_names = [s.name for s in systems]
     prices = load_prices_from_csv(args.price_file)
     config = load_config_from_csv(args.config_file)
+    systems = create_systems(config)
+    system_names = [s.name for s in systems]
 
     if args.render:
         render_systems(systems, args.render)
@@ -93,22 +93,26 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def create_systems() -> List[System]:
-    annual_steel_production_tonnes = 1.5e6
-    plant_lifetime_years = 20.0
-    # capacity_factor = 0.9 # TODO! Need to add this.
-    on_premises_h2_production = False
-    h2_storage_type = "salt caverns"
-
-    plasma_system = create_plasma_system("Plasma", on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years)
-    plasma_ar_h2_system = create_plasma_system("Plasma Ar-H2", on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years)
-    plasma_bof_system = create_plasma_system("Plasma BOF", on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years, bof_steelmaking=True)
-    dri_eaf_system = create_dri_eaf_system("DRI-EAF", on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years)
-    hybrid33_system = create_hybrid_system("Hybrid 33", on_premises_h2_production, h2_storage_type, 33.33, annual_steel_production_tonnes, plant_lifetime_years)
-    hybrid33_ar_h2_system = create_hybrid_system("Hybrid 33 Ar-H2", on_premises_h2_production, h2_storage_type, 33.33, annual_steel_production_tonnes, plant_lifetime_years)
-    hybrid33_bof_system = create_hybrid_system("Hybrid 33 BOF", on_premises_h2_production, h2_storage_type, 33.33, annual_steel_production_tonnes, plant_lifetime_years, bof_steelmaking=True)
-    hybrid55_system = create_hybrid_system("Hybrid 55", on_premises_h2_production, h2_storage_type, 55.0, annual_steel_production_tonnes, plant_lifetime_years)
-    hybrid95_system = create_hybrid_system("Hybrid 90", on_premises_h2_production, h2_storage_type, 90.0, annual_steel_production_tonnes, plant_lifetime_years)
+def create_systems(config: Dict[str, Dict[str, Any]]) -> List[System]:
+    ## Create the system objects
+    on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("Plasma", config)
+    plasma_system = create_plasma_system("Plasma", on_prem_h2, h2_storage, annual_steel, lifetime)
+    on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("Plasma Ar-H2", config)
+    plasma_ar_h2_system = create_plasma_system("Plasma Ar-H2", on_prem_h2, h2_storage, annual_steel, lifetime)
+    on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("Plasma BOF", config)
+    plasma_bof_system = create_plasma_system("Plasma BOF", on_prem_h2, h2_storage, annual_steel, lifetime, bof_steelmaking=True)
+    on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("DRI-EAF", config)
+    dri_eaf_system = create_dri_eaf_system("DRI-EAF", on_prem_h2, h2_storage, annual_steel, lifetime)
+    on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("Hybrid 33", config)
+    hybrid33_system = create_hybrid_system("Hybrid 33", on_prem_h2, h2_storage, 33.33, annual_steel, lifetime)
+    on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("Hybrid 33 Ar-H2", config)
+    hybrid33_ar_h2_system = create_hybrid_system("Hybrid 33 Ar-H2", on_prem_h2, annual_steel, 33.33, annual_steel, lifetime)
+    on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("Hybrid 33 BOF", config)
+    hybrid33_bof_system = create_hybrid_system("Hybrid 33 BOF", on_prem_h2, h2_storage, 33.33, annual_steel, lifetime, bof_steelmaking=True)
+    on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("Hybrid 55", config)
+    hybrid55_system = create_hybrid_system("Hybrid 55", on_prem_h2, h2_storage, 55.0, annual_steel, lifetime)
+    on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("Hybrid 90", config)
+    hybrid90_system = create_hybrid_system("Hybrid 90", on_prem_h2, h2_storage, 90.0, annual_steel, lifetime)
 
     plasma_system.add_mass_energy_flow_func = add_plasma_mass_and_energy
     plasma_ar_h2_system.add_mass_energy_flow_func = add_plasma_mass_and_energy
@@ -118,7 +122,7 @@ def create_systems() -> List[System]:
     hybrid33_ar_h2_system.add_mass_energy_flow_func = add_hybrid_mass_and_energy
     hybrid33_bof_system.add_mass_energy_flow_func = add_hybrid_mass_and_energy
     hybrid55_system.add_mass_energy_flow_func = add_hybrid_mass_and_energy
-    hybrid95_system.add_mass_energy_flow_func = add_hybrid_mass_and_energy
+    hybrid90_system.add_mass_energy_flow_func = add_hybrid_mass_and_energy
 
     systems = [plasma_system,
                plasma_ar_h2_system,
@@ -128,27 +132,18 @@ def create_systems() -> List[System]:
                hybrid33_ar_h2_system,
                hybrid33_bof_system,
                hybrid55_system,
-               hybrid95_system]
+               hybrid90_system]
 
     # Overwrite system vars here to modify behaviour
+    default_config = config.get("all", {})
+    for entry in default_config:
+        for system in systems:
+            system.system_vars[entry] = default_config[entry]
+
     for system in systems:
-        system.system_vars['scrap perc'] = 0.0
-        system.system_vars['ore name'] = 'IOA'
-        system.system_vars['use mgo slag weight perc'] = True
-
-    plasma_ar_h2_system.system_vars['argon molar percent in h2 plasma'] = 10.0
-    hybrid33_ar_h2_system.system_vars['argon molar percent in h2 plasma'] = 10.0
-
-    # For systems where hydrogen is the carrier of thermal energy as well as the reducing
-    # agent, you excess h2 ratio may need to be adjusted to ensure there is anough thermal
-    # energy to melt the steel and maintain the heat balance. Values listed here is only the initial guess.
-    plasma_system.system_vars['plasma h2 excess ratio'] = 2.5 # 1.75 too low, anticipate 40-50% utilisation
-    plasma_ar_h2_system.system_vars['plasma h2 excess ratio'] = 1.0
-    plasma_bof_system.system_vars['plasma h2 excess ratio'] = 2.5 # 1.75 too low, as above
-    hybrid33_system.system_vars['plasma h2 excess ratio'] = 4.0
-    hybrid33_ar_h2_system.system_vars['plasma h2 excess ratio'] = 3.5
-    hybrid55_system.system_vars['plasma h2 excess ratio'] = 5.5
-    hybrid95_system.system_vars['plasma h2 excess ratio'] = 30.0
+        system_specific_config = config.get(system.name.lower(), {})
+        for entry in system_specific_config:
+            system.system_vars[entry] = system_specific_config[entry]
 
     return systems
 
@@ -179,7 +174,7 @@ def load_config_from_csv(filename: str) -> Dict[str, Dict[str, Any]]:
             elif variable_type.lower() == "number":
                 variable_value = float(variable_value)
             elif variable_type.lower() == "boolean":
-                variable_value = bool(variable_value)
+                variable_value = variable_value.lower() == "true"
             else:
                 raise ValueError(f"Unrecognised variable type {variable_type} in config file {filename}.")
 
@@ -189,6 +184,36 @@ def load_config_from_csv(filename: str) -> Dict[str, Dict[str, Any]]:
                 config[system_name] = {variable_name: variable_value}
     
     return config
+
+
+def get_important_config_entries(system_name: str, config: Dict[str, Dict[str, Any]]):
+    system_name = system_name.lower()
+
+    system_specific_config = config.get(system_name, {})
+    default_config = config.get("all", {})
+
+    try:
+        on_premises_h2_production = system_specific_config["on premises h2 production"]
+    except KeyError:
+        on_premises_h2_production = default_config.get("on premises h2 production", False)
+
+    try:
+        h2_storage_type = system_specific_config["h2 storage type"]
+    except KeyError:
+        h2_storage_type = default_config.get("h2 storage type", "salt caverns")
+
+    try:
+        annual_steel_production_tonnes = system_specific_config["annual steel production tonnes"]
+    except KeyError:
+        annual_steel_production_tonnes = default_config.get("annual steel production tonnes", 1.5e6)
+
+    try:
+        plant_lifetime_years = system_specific_config["plant lifetime years"]
+    except KeyError:
+        plant_lifetime_years = default_config.get("plant lifetime years", 20.0)
+
+    return on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years
+
 
 if __name__ == '__main__':
     main()

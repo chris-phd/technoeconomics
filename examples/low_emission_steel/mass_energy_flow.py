@@ -132,7 +132,7 @@ def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable, print
         first = False
 
         try:
-            mass_and_energy_func(system_solved)
+            mass_and_energy_func(system_solved, print_debug_messages)
             converged = True
         except IncreaseExcessHydrogenPlasma:
             system_vars_solved['plasma h2 excess ratio'] *= 1.1
@@ -152,7 +152,7 @@ def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable, print
     # TODO: THIS IS SERIOUSLY INEFFICIENCT should just be able to copy over the result, 
     # but quick hack to avoid a mistake, just resolve
     system.system_vars = copy.deepcopy(system_solved.system_vars)
-    mass_and_energy_func(system)
+    mass_and_energy_func(system, print_debug_messages)
 
     tolerance = 1e-4
     system.validate_energy_balance(tolerance)
@@ -371,9 +371,9 @@ def add_ore_composition(system: System, print_debug_messages:bool=True):
             print(f"Warning! ore {ore_name} not recognised. Using default ore composition.")
 
     if print_debug_messages:
-        print(f"Using {ore_name} ore composition for system {system.name}:")
-        for k, v in ore_composition_complex.items():
-            print(f"  {k} : {v:.1f}%")
+        print(f"Using {ore_name} ore composition for system {system.name}")
+        # for k, v in ore_composition_complex.items():
+        #     print(f"  {k} : {v:.3f}%")
 
     ore_composition_complex['gangue'] = sum(ore_composition_complex.values()) - ore_composition_complex['Fe'] - ore_composition_complex.get('LOI', 0.0)
     ore_composition_complex['hematite'] = 100 - ore_composition_complex['gangue'] -  - ore_composition_complex.get('LOI', 0.0)
