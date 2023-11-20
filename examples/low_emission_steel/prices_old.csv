@@ -10,7 +10,7 @@ C,130,PerTonne,5,Carbon. Injected for slag foaming and alloy.
 Labour,60,PerTonneOfProduct,5,
 Cheap Spot Electricity,54.5,PerMegaWattHour,5,Electricity spot price when renewables are abundant
 Expensive Spot Electricity,93.1,PerMegaWattHour,5,"Electricity spot price for all other times. For a constant electricity price, remove the ‘Spot Electricity’ entries and set one entry of ‘Base Electricity'"
-Electrolyser,999,PerKiloJouleOfCapacity,5,
+Electrolyser,999,PerKiloWattOfCapacity,5,
 Salt Caverns,999,PerKiloOfCapacity,5,
 Compressed Gas Vessels,999,PerKiloOfCapacity,5,
 Gas Heat Exchanger,999,PerDevice,5,

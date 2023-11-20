@@ -27,7 +27,7 @@ class PriceUnits(Enum):
     PerTonneOfAnnualCapacity = 5
     PerTonneOfProduct = 6
     PerKiloOfCapacity = 7
-    PerKiloJouleOfCapacity = 8
+    PerKiloWattOfCapacity = 8
 
 
 class PriceEntry:
@@ -128,6 +128,12 @@ def add_steel_plant_capex(system: System, prices: Dict[str, PriceEntry]):
     if 'h2 storage' in system.devices:
         add_h2_storage_capex(system, prices_lower)
 
+    if 'water electrolysis' in system.devices:
+        add_electrolyser_capex(system, prices_lower)
+
+        print(f"system = {system.name}, electrolyser capex = {system.devices['water electrolysis'].capex}")
+        print(f"  usd per tls = {system.devices['water electrolysis'].capex / system.annual_capacity}")
+
     for device_name, device in system.devices.items():
         if device.capex_label is None:
             continue # capex price already set
@@ -161,10 +167,10 @@ def add_h2_storage_capex(system: System, prices: Dict[str, PriceEntry]):
     h2_storage_required = tonnes_steel_per_hour * mass_h2_per_tonne_steel * h2_storage_hours_of_operation
     system.devices['h2 storage'].device_vars['h2 storage size [kg]'] = h2_storage_required
     system.devices['h2 storage'].device_vars['h2 storage type'] = h2_storage_method
-    
+
     if h2_storage_method.lower() == 'salt caverns':
         system.devices['h2 storage'].capex = h2_storage_required * price.price_usd
-        # required h2 storage is less than a typical salt canvern. Would need to share with some
+        # required h2 storage is less than a typical salt cavern. Would need to share with some
         # other applications.
     elif h2_storage_method.lower() == 'compressed gas vessels':
         system.devices['h2 storage'].capex = h2_storage_required * price.price_usd
@@ -172,6 +178,22 @@ def add_h2_storage_capex(system: System, prices: Dict[str, PriceEntry]):
     else:
         raise ValueError('h2 storage method not recognised')
 
+
+def add_electrolyser_capex(system: System, prices: Dict[str, PriceEntry]):
+    price = prices[system.devices['water electrolysis'].capex_label.lower()]
+    if price.units != PriceUnits.PerKiloWattOfCapacity: 
+        raise ValueError(f"Only PriceUnits of {PriceUnits.PerKiloWattOfCapacity} are supported for electrolysers.")
+
+    hours_of_operation = system.system_vars.get('cheap electricity hours', 24.0)
+    eff_perc = system.system_vars['electrolysis lhv efficiency percent']
+    lhv_h2 = 33.33 # kWh/kg, lower heating value of hydrogen 
+    kilowatts_per_kg_h2 = lhv_h2  / (eff_perc * 0.01) # kWh/kg
+    mass_h2_per_tonne_steel = system.devices['water electrolysis'].first_output_containing_name('h2').mass # kg / T
+    tonnes_steel_per_hour = system.annual_capacity / (365.25 * 24) # T / hr
+    electrolyser_cap_in_kw_for_const_op = kilowatts_per_kg_h2 * mass_h2_per_tonne_steel * tonnes_steel_per_hour # kW
+    oversize_capacity = (24 / hours_of_operation) # unitless 
+    electrolyser_cap_in_kw = electrolyser_cap_in_kw_for_const_op * oversize_capacity # kW
+    system.devices['water electrolysis'].capex = electrolyser_cap_in_kw * price.price_usd 
 
 def capex_direct_and_indirect(direct_capex: float) -> float:
     r_contg = 0.1 # contingency cost coefficient

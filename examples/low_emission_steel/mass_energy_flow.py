@@ -1203,9 +1203,6 @@ def add_h2_storage_flows(system: System):
     stored_h2_mass = stored_h2_frac * system.devices['h2 storage'].inputs['h2 rich gas'].mass
     h2_hhv = 142.0e6 # J/kg
 
-    # PICK UP FROM HERE... Currently seeing if I can get the system to run when I
-    # just buy the H2. Then need to work on the costs. The precense of the h2 storage 
-    # should be based on the device list. But this system_var will usually exist anyway.
     if system.system_vars['h2 storage method'].lower() == "salt caverns":
         # Pressure around ~100 bar (but could be in range of 50-160). 
         # Assume mixed isothermal, adiabatic compression. Figure 6 in elberry2021

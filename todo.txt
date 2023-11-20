@@ -121,5 +121,10 @@ Sounds like someone is doing something similar to me..
   - https://stackoverflow.com/questions/76126929/using-gekko-for-large-scale-dynamic-flowsheet-simulation-with-custom-thermodynam
 
 
-- Need to have most of the system vars configurable via a csv also if I'm going to bundle this
-  up into an opaque binary.
+- Should refactor the settings files to use xml rather than csv
+- Should add the ability to enter a custom Fe and gangue %
+  - Will be super useful for the sensiticity analysis. 
+- Check the treatment of IOC, IOD and IOE (being goethite and liothite) are correct. 
+
+
+- Need to think more deaply about including fixed operating costs in the economic model

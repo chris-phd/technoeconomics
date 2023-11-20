@@ -1,10 +1,12 @@
 system name,variable name,variable value,variable type
 all,system lifetime years,20,number
 all,annual steel production tonnes,1.5e6,number
-all,on premises h2 production,False,boolean
+all,on premises h2 production,True,boolean
+all,h2 storage method,salt caverns,string
 all,capacity factor,0.9,number
 all,ore name,IOA,string
 all,use mgo slag weight perc,True,boolean
+all,electrolysis lhv efficiency percent,70,number
 all,slag mgo weight perc,7.0,number
 plasma,plasma h2 excess ratio,2.0,number
 plasma ar-h2,plasma h2 excess ratio,2.0,number

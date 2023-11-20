@@ -106,7 +106,7 @@ def create_systems(config: Dict[str, Dict[str, Any]]) -> List[System]:
     on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("Hybrid 33", config)
     hybrid33_system = create_hybrid_system("Hybrid 33", on_prem_h2, h2_storage, 33.33, annual_steel, lifetime)
     on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("Hybrid 33 Ar-H2", config)
-    hybrid33_ar_h2_system = create_hybrid_system("Hybrid 33 Ar-H2", on_prem_h2, annual_steel, 33.33, annual_steel, lifetime)
+    hybrid33_ar_h2_system = create_hybrid_system("Hybrid 33 Ar-H2", on_prem_h2, h2_storage, 33.33, annual_steel, lifetime)
     on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("Hybrid 33 BOF", config)
     hybrid33_bof_system = create_hybrid_system("Hybrid 33 BOF", on_prem_h2, h2_storage, 33.33, annual_steel, lifetime, bof_steelmaking=True)
     on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("Hybrid 55", config)
