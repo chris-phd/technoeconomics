@@ -20,13 +20,13 @@ except ImportError:
 
 
 class PriceUnits(Enum):
-    PerKilo = 1
+    PerKilogram = 1
     PerTonne = 2
     PerMegaWattHour = 3
     PerDevice = 4
     PerTonneOfAnnualCapacity = 5
     PerTonneOfProduct = 6
-    PerKiloOfCapacity = 7
+    PerKilogramOfCapacity = 7
     PerKiloWattOfCapacity = 8
 
 
@@ -57,7 +57,7 @@ def add_steel_plant_lcop(system: System, prices: Dict[str, PriceEntry], print_de
     add_steel_plant_capex(system, prices)
 
     lcop_itemised = {
-        'capex': lcop_capex_only(system.capex(), system.annual_capacity * system.system_vars["capacity factor"], system.lifetime_years)
+        'capex': lcop_capex_only(system.capex(print_debug_messages), system.annual_capacity * system.system_vars["capacity factor"], system.lifetime_years)
     }
 
     inputs = system.system_inputs(ignore_flows_named=['infiltrated air'], separate_mixtures_named=['flux', 'h2 rich gas'], mass_flow_only=False)
@@ -103,7 +103,7 @@ def operating_cost_per_tonne(inputs: Dict[str, float], prices: Dict[str, PriceEn
 
         if input_name in prices_lower:
             price = prices_lower[input_name]
-            if price.units == PriceUnits.PerKilo:
+            if price.units == PriceUnits.PerKilogram:
                 operating_costs[input_name] = input_amount * price.price_usd
             elif price.units == PriceUnits.PerTonne:
                 operating_costs[input_name] = input_amount * price.price_usd / 1000.0
@@ -131,9 +131,6 @@ def add_steel_plant_capex(system: System, prices: Dict[str, PriceEntry]):
     if 'water electrolysis' in system.devices:
         add_electrolyser_capex(system, prices_lower)
 
-        print(f"system = {system.name}, electrolyser capex = {system.devices['water electrolysis'].capex}")
-        print(f"  usd per tls = {system.devices['water electrolysis'].capex / system.annual_capacity}")
-
     for device_name, device in system.devices.items():
         if device.capex_label is None:
             continue # capex price already set
@@ -159,8 +156,8 @@ def add_h2_storage_capex(system: System, prices: Dict[str, PriceEntry]):
     h2_storage_hours_of_operation = system.system_vars['h2 storage hours of operation']
 
     price = prices[system.devices['h2 storage'].capex_label.lower()]
-    if price.units != PriceUnits.PerKiloOfCapacity: 
-        raise ValueError(f"Only PriceUnits of {PriceUnits.PerKiloOfCapacity} are supported for H2 storage.")
+    if price.units != PriceUnits.PerKilogramOfCapacity: 
+        raise ValueError(f"Only PriceUnits of {PriceUnits.PerKilogramOfCapacity} are supported for H2 storage.")
 
     mass_h2_per_tonne_steel = system.devices['water electrolysis'].first_output_containing_name('h2').mass
     tonnes_steel_per_hour = system.annual_capacity / (365.25 * 24)

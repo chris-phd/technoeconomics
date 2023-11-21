@@ -1,7 +1,7 @@
 system name,variable name,variable value,variable type
 all,system lifetime years,20,number
 all,annual steel production tonnes,1.5e6,number
-all,on premises h2 production,True,boolean
+all,on premises h2 production,False,boolean
 all,h2 storage method,salt caverns,string
 all,capacity factor,0.9,number
 all,ore name,IOA,string

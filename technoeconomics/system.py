@@ -443,12 +443,21 @@ class System:
 
         return outputs
     
-    def capex(self):
+    def capex(self, report_capex_breakdown: bool=False) -> float:
+        breakdown = {}
+
         total = 0.0
         for device in self._devices.values():
             if device.capex is None:
                 continue # raise an exception / warning?
             total += device.capex
+            breakdown[device.name] = device.capex
+
+        if report_capex_breakdown:
+            print(f"Capex breakdown for {self.name}")
+            for key, value in breakdown.items():
+                print(f"   {key:<20}: {value/total * 100:.1f} %")
+            
         return total
     
     def validate_energy_balance(self, tol:float=1e-7):        
