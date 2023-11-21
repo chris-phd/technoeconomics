@@ -128,3 +128,6 @@ Sounds like someone is doing something similar to me..
 
 
 - Need to think more deaply about including fixed operating costs in the economic model
+
+- Prices for many of the smaller devices are dubious...
+  - Also need to include engineering and other costs into the model.

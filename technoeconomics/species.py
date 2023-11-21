@@ -77,6 +77,8 @@ class Species:
     
     @mass.setter
     def mass(self, value: float):
+        if math.isclose(value+1.0, 1.0):
+            value = 0.0
         if value < 0.0:
             raise Exception("Species::mass: Cannot set mass to a negative value")
         self._mols = value / self._mm

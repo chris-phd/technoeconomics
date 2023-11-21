@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import copy
+import csv
 import sys
 import os
 import numpy as np
@@ -8,7 +9,6 @@ import math
 import matplotlib.pyplot as plt
 from typing import Dict, List, Callable, Optional
 from create_plants import create_plasma_system, create_dri_eaf_system, create_hybrid_system
-from plant_costs import capex_direct_and_indirect, operating_cost_per_tonne, lcop_total, lcop_capex_only, lcop_opex_only, add_steel_plant_capex
 from plot_helpers import histogram_labels_from_datasets, add_stacked_histogram_data_to_axis, add_titles_to_axis
 
 try:
@@ -280,20 +280,65 @@ def hematite_normalise(ore_comp: Dict[str, float]):
     Changes the Fe% so that all the iron is in hematite.
     Necessary for the code, which assumes pure hematite.
     """
-    fe = species.create_fe_species()
-    fe2o3 = species.create_fe2o3_species()
-    iron_to_hematite_ratio = fe.mm / (0.5 * fe2o3.mm)
+    iron_to_hematite_ratio = 0.6994255054537529
 
     hematite_perc = 100.0 - ore_comp['gangue'] - ore_comp.get('LOI', 0.0)
     iron_perc = hematite_perc * iron_to_hematite_ratio
     if abs(ore_comp['Fe'] - iron_perc) > 1.0:
-        raise Exception('Ore composition may not be pure hematite! Cannot safetly normalise')
+        raise Exception('Ore composition is not hematite, goethite or limonite. Cannot perform mass flow calculation.')
     ore_comp['Fe'] = iron_perc
 
     return ore_comp
 
 
-def add_ore_composition(system: System, print_debug_messages:bool=True):
+def read_ore_composition_from_csv(filename: str, template_ore_composition: Dict[str, float]) -> Dict[str, float]:
+    """
+    Read the ore composition from a csv file.
+    filename = the name of the csv file. Contains the ore composition.
+        Fe,64.3
+        SiO2,3.8
+        ...
+    template_ore_composition = the composition used if only the Fe content, gangue and LOI percent are found.
+        Fe,56.1
+        LOI,7.2
+    """
+    file_contents = {}
+    with open(filename, 'r') as file:
+        reader = csv.reader(file)
+        next(reader)
+        for row in reader:
+            if len(row) != 2:
+                raise Exception(f"Error reading ore composition from csv file {filename}.")
+            file_contents[row[0]] = float(row[1])
+
+    iron_to_hematite_ratio = 0.6994255054537529
+
+    # Validate the file contents
+    if len(file_contents) == 2 and 'Fe' in file_contents and 'LOI' in file_contents:
+        ore_composition = {
+            'Fe': file_contents['Fe'],
+            'LOI': file_contents['LOI']        
+        }
+        gangue_in_ore = 100.0 - file_contents['Fe'] / iron_to_hematite_ratio - file_contents['LOI']
+        gangue_in_template = sum(template_ore_composition.values()) - template_ore_composition['Fe'] \
+            - template_ore_composition.get('LOI', 0.0) - template_ore_composition.get('gangue', 0.0)
+        for k, v in template_ore_composition.items():
+            if k not in ore_composition:
+                ore_composition[k] = v * gangue_in_ore / gangue_in_template
+    elif len(file_contents) > 4 and 'Fe' in file_contents and 'SiO2' in file_contents and 'CaO' \
+        and 'MgO' in file_contents and 'Al2O3' in file_contents:
+        ore_composition = file_contents
+    else:
+        raise Exception(f"Error reading ore composition from csv file {filename}.")
+
+    max_fe_perc = iron_to_hematite_ratio * (100.0 - ore_composition.get('LOI'))
+    if ore_composition['Fe'] > max_fe_perc:
+        raise Exception(f"Selected iron ore grade exceeds maximum possible Fe% for hematite")
+
+    return ore_composition
+
+
+def add_ore_composition(system: System, print_debug_messages: bool=True):
     """
     Add 'ore composition' and 'ore composition simple' to the system variables.
     Ore composition simple is the hematite ore with only SiO2, Al2O3, CaO and MgO
@@ -301,9 +346,20 @@ def add_ore_composition(system: System, print_debug_messages:bool=True):
     """
     ore_name = system.system_vars.get('ore name', 'default')
     
-    # Mass percent of dry ore.
-    # Remaining mass percent is oxygen in the iron oxide.
-    # Values are in mass / weight percent.
+    # Mass percent of dry ore. Remaining mass percent is oxygen in the iron oxide.
+    # Only hematite, goethite and limonite ores are supported. (no magnetite, wustite, etc.)
+    ore_composition_complex = {'Fe': 65.263,
+                                'SiO2': 3.814,
+                                'Al2O3': 2.437,
+                                'TiO2': 0.095,
+                                'Mn': 0.148,
+                                'CaO': 0.032,
+                                'MgO': 0.085,
+                                'Na2O': 0.012,
+                                'K2O': 0.011,
+                                'P': 0.109,
+                                'S': 0.024}
+    
     if ore_name.upper() == 'IOA':
         ore_composition_complex = {'Fe': 66.31,
                                  'TiO2': 0.15,
@@ -354,29 +410,21 @@ def add_ore_composition(system: System, print_debug_messages:bool=True):
                                     'P2O5': 0.06,
                                     'Mn': 0.40,
                                     'LOI': 8.8}
+    elif ".csv" in ore_name.lower():
+        ore_composition_complex = read_ore_composition_from_csv(ore_name, ore_composition_complex)
     else:
         ore_name = "default"
-        ore_composition_complex = {'Fe': 65.263,
-                                    'SiO2': 3.814,
-                                    'Al2O3': 2.437,
-                                    'TiO2': 0.095,
-                                    'Mn': 0.148,
-                                    'CaO': 0.032,
-                                    'MgO': 0.085,
-                                    'Na2O': 0.012,
-                                    'K2O': 0.011,
-                                    'P': 0.109,
-                                    'S': 0.024}
         if print_debug_messages:
             print(f"Warning! ore {ore_name} not recognised. Using default ore composition.")
 
     if print_debug_messages:
         print(f"Using {ore_name} ore composition for system {system.name}")
-        # for k, v in ore_composition_complex.items():
-        #     print(f"  {k} : {v:.3f}%")
+        for k, v in ore_composition_complex.items():
+            print(f"  {k} : {v:.3f}%")
 
-    ore_composition_complex['gangue'] = sum(ore_composition_complex.values()) - ore_composition_complex['Fe'] - ore_composition_complex.get('LOI', 0.0)
-    ore_composition_complex['hematite'] = 100 - ore_composition_complex['gangue'] -  - ore_composition_complex.get('LOI', 0.0)
+    ore_composition_complex['gangue'] = sum(ore_composition_complex.values()) - ore_composition_complex['Fe'] \
+                                        - ore_composition_complex.get('LOI', 0.0) - ore_composition_complex.get('gangue', 0.0)
+    ore_composition_complex['hematite'] = 100 - ore_composition_complex['gangue'] - ore_composition_complex.get('LOI', 0.0)
     ore_composition_complex = hematite_normalise(ore_composition_complex)
 
     # Neglecting the gangue elements other than SiO2, Al2O3, CaO and MgO. Adding the mass of 
@@ -808,7 +856,7 @@ def add_eaf_flows_final(system: System):
     # We also assume all the injected o2 is used in combustion / oxidation. No O2 
     # gas escapes. 
     total_o2_injected_mass = system.system_vars['o2 injection kg']
-    assert total_o2_injected_mass >= o2_oxidation.mass
+    assert total_o2_injected_mass > o2_oxidation.mass or math.isclose(total_o2_injected_mass, o2_oxidation.mass)
 
     # Assume a mix of CO and CO2 is produced. We know from hornby2021, that
     # approx 10% of energy comes from CO formation and 24% of energy comes from
