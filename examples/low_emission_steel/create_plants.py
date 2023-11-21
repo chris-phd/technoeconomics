@@ -148,6 +148,7 @@ def create_plasma_system(system_name: str ='plasma steelmaking',
     plasma_system.add_input(ore_heater.name, create_dummy_mixture('ore'))
     plasma_system.add_input(ore_heater.name, EnergyFlow('base electricity'))
     plasma_system.add_output(ore_heater.name, EnergyFlow('losses'))
+    plasma_system.add_output(ore_heater.name, create_dummy_species('h2o'))
 
     # plasma torch
     plasma_system.add_flow(h2_heat_exchanger.name, plasma_torch.name, create_dummy_mixture('h2 rich gas'))
@@ -278,6 +279,7 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking',
     dri_eaf_system.add_input(ore_heater.name, create_dummy_mixture('ore'))
     dri_eaf_system.add_input(ore_heater.name, EnergyFlow('base electricity'))
     dri_eaf_system.add_output(ore_heater.name, EnergyFlow('losses'))
+    dri_eaf_system.add_output(ore_heater.name, create_dummy_species('h2o'))
 
     # fluidized bed 1
     dri_eaf_system.add_flow(ore_heater.name, fluidized_bed_1.name, create_dummy_mixture('ore'))
@@ -486,6 +488,7 @@ def create_hybrid_system(system_name='hybrid steelmaking',
     hybrid_system.add_input(ore_heater.name, create_dummy_mixture('ore'))
     hybrid_system.add_input(ore_heater.name, EnergyFlow('base electricity'))
     hybrid_system.add_output(ore_heater.name, EnergyFlow('losses'))
+    hybrid_system.add_output(ore_heater.name, create_dummy_species('h2o'))
 
     # fluidized bed 1
     hybrid_system.add_flow(ore_heater.name, fluidized_bed_1.name, create_dummy_mixture('ore'))

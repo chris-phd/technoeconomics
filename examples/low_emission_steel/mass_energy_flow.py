@@ -625,6 +625,15 @@ def add_ore(system: System):
         ore.temp_kelvin = ore_preheating_temp
         ore_preheating_device.outputs['ore'].set(ore)
 
+        goethite_dehydration_temp = celsius_to_kelvin(375)
+        if ore_preheating_temp > goethite_dehydration_temp:
+            # Any water / LOI in the ore will boil off
+            water_loi.temp_kelvin = goethite_dehydration_temp
+            ore_preheating_device.outputs['h2o'].set(water_loi)
+            ore.remove_species('H2O')
+        else:
+            # water remains in the ore, but set the output nontheless
+            ore_preheating_device.outputs['h2o'].set(species.create_h2o_species())
 
         # Add electrical energy to heat the ore
         # Assume no thermal losses for now.
@@ -856,7 +865,7 @@ def add_eaf_flows_final(system: System):
     # We also assume all the injected o2 is used in combustion / oxidation. No O2 
     # gas escapes. 
     total_o2_injected_mass = system.system_vars['o2 injection kg']
-    assert total_o2_injected_mass > o2_oxidation.mass or math.isclose(total_o2_injected_mass, o2_oxidation.mass)
+    assert total_o2_injected_mass > o2_oxidation.mass or math.isclose(total_o2_injected_mass + 1.0, o2_oxidation.mass + 1.0)
 
     # Assume a mix of CO and CO2 is produced. We know from hornby2021, that
     # approx 10% of energy comes from CO formation and 24% of energy comes from
