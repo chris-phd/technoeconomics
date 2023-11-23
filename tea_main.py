@@ -29,8 +29,8 @@ def main():
         sensitivity_runner = sensitivity_analysis_runner_from_csv(args.sensitivity_file)
         sensitivity_runner.systems = copy.deepcopy(systems)
 
-    if args.render:
-        render_systems(systems, args.render)
+    if args.render_dir:
+        render_systems(systems, args.render_dir)
 
     ## Solve
     print("Solving mass and energy flow and calculating cost...")
@@ -93,7 +93,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='perform the technoeconomic analysis on hydrogen plasma based low emission steel plants and calculates the levelised cost of liquid steel.')
     parser.add_argument('-p', '--price_file', help='path to the csv file containing capex and commondity prices.', required=False, default='prices_default.csv')
     parser.add_argument('-c', '--config_file', help='path to the csv file containing the system configuration.', required=False, default='config_default.csv')
-    parser.add_argument('-r', '--render', help='render the steelplant system diagrams. "<system name>" or "ALL"', required=False, default=None)
+    parser.add_argument('-r', '--render_dir', help='path to directory to render the steelplant system diagrams.', required=False, default=None)
     parser.add_argument('-s', '--sensitivity_file', help='path to the csv file containing the sensitivity analysis settings.', required=False, default=None)
     parser.add_argument('-m', '--mass_flow', help='show the mass flow bar chart boolean flag.', required=False, action='store_true')
     parser.add_argument('-e', '--energy_flow', help='show the enery flow bar chart boolean flag.', required=False, action='store_true')
@@ -157,16 +157,9 @@ def create_systems(config: Dict[str, Dict[str, Any]]) -> List[System]:
     return systems
 
 
-def render_systems(systems: List[System], render_name: str):
-    if render_name.upper() == "ALL":
-        for s in systems:
-            s.render()
-    else:
-        for s in systems:
-            if s.name == render_name:
-                s.render()
-                break
-
+def render_systems(systems: List[System], render_dir: str):
+    for s in systems:
+        s.render(render_dir, view=True)
 
 def load_config_from_csv(filename: str) -> Dict[str, Dict[str, Any]]:
     config = {}

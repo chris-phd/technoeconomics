@@ -351,14 +351,9 @@ class System:
         to_device_name = from_device_name + self._output_node_suffix
         return self.get_flow(from_device_name, to_device_name, flow_name)
 
-    def render(self, view=True, output_directory: Optional[str]=None):
-        if output_directory is None:
-            # File still created? TODO: Fix this, don't want anything on disk 
-            # after exit.
-            self._graph_dot.render(view=view)
-        else:
-            filename = self._name.replace(" ", "_")
-            self._graph_dot.render(directory=output_directory, view=view, filename=filename)
+    def render(self, output_directory: str, view=True):
+        filename = self._name.replace(" ", "_")
+        self._graph_dot.render(directory=output_directory, view=view, filename=filename)
 
     def devices_containing_name(self, name: str):
         """

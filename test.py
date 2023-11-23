@@ -49,7 +49,7 @@ class SystemTest(TestCase):
         my_system.add_input(device_a.name, energy_a)
 
         intial_num_files_in_temp_dir = len(os.listdir(str(self.temp_dir_path)))
-        my_system.render(False, str(self.temp_dir_path))
+        my_system.render(str(self.temp_dir_path), False)
         final_num_files_in_temp_dir = len(os.listdir(str(self.temp_dir_path)))
         graph_render_successful = final_num_files_in_temp_dir == intial_num_files_in_temp_dir + 2
         self.assertTrue(graph_render_successful)
