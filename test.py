@@ -6,10 +6,10 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase, main
 import os
 
-import technoeconomics.species as species
-import technoeconomics.system as system
-import technoeconomics.thermo as thermo
-import technoeconomics.utils as utils
+import species
+import system
+import thermo
+import utils
 
 
 class UtilsTest(TestCase):
@@ -285,6 +285,15 @@ class SpeciesThermoTest(TestCase):
         delta_h_5000K = h2.heat_energy(5000.0)
         factsage_delta_h = 6.10239E+05
         # self.assertAlmostEqual(delta_h_5000K / 10000, factsage_delta_h / 10000, places=1)
+
+
+class TestFileIO(TestCase):
+    def test_load_config_from_csv(self):
+        config_filename = "config_default.csv"
+        config = load_config_from_csv(config_filename)
+        print(config)
+        self.assertTrue(len(config) > 0)
+        self.assertTrue(len(config["all"]) > 0)
 
 
 if __name__ == '__main__':
