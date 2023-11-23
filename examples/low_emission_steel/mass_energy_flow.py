@@ -453,6 +453,35 @@ def add_ore_composition(system: System, print_debug_messages: bool=True):
 
     system.system_vars['ore composition'] = ore_composition_complex
     system.system_vars['ore composition simple'] = ore_composition_simple
+    system.system_vars['ore composition LOI removed'] = hematite_normalise(remove_LOI_from_ore_composition(ore_composition_complex))
+    system.system_vars['ore composition simple LOI removed'] = hematite_normalise(remove_LOI_from_ore_composition(ore_composition_simple))
+
+
+def remove_LOI_from_ore_composition(composition: Dict[str, float]) -> Dict[str, float]:
+    composition_tmp = copy.deepcopy(composition)
+    if not 'LOI' in composition_tmp:
+        return composition_tmp 
+    composition_tmp.pop('Fe')
+    composition_tmp.pop('gangue')
+
+    total_with_loi = sum(composition_tmp.values())
+    if not math.isclose(total_with_loi, 100.0):
+        raise Exception("Ore composition does not sum to 100%")
+    composition_tmp.pop('LOI')
+    total_without_loi = sum(composition_tmp.values())
+
+    new_composition = {}
+    for k, v in composition_tmp.items():
+        new_composition[k] = v / total_without_loi * total_with_loi
+
+    if not math.isclose(sum(new_composition.values()), 100.0):
+        raise Exception("Ore composition with LOI removed does not sum to 100%")
+
+    iron_to_hematite_ratio = 0.6994255054537529
+    new_composition['gangue'] = 100.0 - new_composition['hematite']
+    new_composition['Fe'] = new_composition['hematite'] * iron_to_hematite_ratio
+
+    return new_composition
 
 
 def add_slag_and_flux_mass(system: System):
@@ -460,7 +489,7 @@ def add_slag_and_flux_mass(system: System):
     b2_basicity = system.system_vars['b2 basicity']
     b4_basicity = system.system_vars['b4 basicity']
     mgo_in_slag_perc = system.system_vars['slag mgo weight perc']
-    ore_composition_simple = system.system_vars['ore composition simple']
+    ore_composition_simple = system.system_vars['ore composition simple LOI removed']
     final_reduction_degree = system.system_vars['final reduction percent'] * 0.01
     o2_injection_mols = system.system_vars['o2 injection kg'] / species.create_o2_species().mm
     max_feo_in_slag_perc = system.system_vars['feo soluble in slag percent']
@@ -623,17 +652,18 @@ def add_ore(system: System):
         ore_preheating_device = system.devices[ore_heater_device_name]
         ore_preheating_device.inputs['ore'].set(ore)
         ore.temp_kelvin = ore_preheating_temp
-        ore_preheating_device.outputs['ore'].set(ore)
 
         goethite_dehydration_temp = celsius_to_kelvin(375)
         if ore_preheating_temp > goethite_dehydration_temp:
-            # Any water / LOI in the ore will boil off
+            # Any water / LOI in the ore willq boil off
             water_loi.temp_kelvin = goethite_dehydration_temp
             ore_preheating_device.outputs['h2o'].set(water_loi)
             ore.remove_species('H2O')
         else:
             # water remains in the ore, but set the output nontheless
             ore_preheating_device.outputs['h2o'].set(species.create_h2o_species())
+
+        ore_preheating_device.outputs['ore'].set(ore)
 
         # Add electrical energy to heat the ore
         # Assume no thermal losses for now.
@@ -643,9 +673,6 @@ def add_ore(system: System):
         electrical_losses = EnergyFlow('losses', electrical_energy.energy * (1 - electrical_heat_eff))
         ore_preheating_device.outputs['losses'].set(electrical_losses)
     
-    iron_making_device = system.devices[first_ironmaking_device_name]
-    iron_making_device.inputs['ore'].set(ore)
-
 
 def iron_species_from_reduction_degree(reduction_degree: float, initial_ore_mass: float, hematite_composition: Dict[str, float]):
     """
@@ -699,7 +726,7 @@ def add_fluidized_bed_flows(system: System):
     ironmaking_device = system.devices[ironmaking_device_names[0]]
     ore = ironmaking_device.inputs['ore']
 
-    hematite_composition = system.system_vars['ore composition simple']
+    hematite_composition = system.system_vars['ore composition simple LOI removed']
     fe_dri, feo_dri, fe3o4_dri, fe2o3_dri = iron_species_from_reduction_degree(reduction_degree, ore.mass, hematite_composition)
 
     dri = species.Mixture('dri fines', [fe_dri, feo_dri, fe3o4_dri, fe2o3_dri,
@@ -947,7 +974,7 @@ def add_plasma_flows_final(system: System):
     plasma_smelter = system.devices[steelmaking_device_name]
     plasma_torch = system.devices['plasma torch']
     first_ironmaking_device_name = system.system_vars['ironmaking device names'][0]
-    ore_composition_simple = system.system_vars['ore composition simple']
+    ore_composition_simple = system.system_vars['ore composition simple LOI removed']
     steel_bath_temp_K = system.system_vars['steel exit temp K']
     argon_perc_in_plasma = system.system_vars.get('argon molar percent in h2 plasma', 0.0)
 
