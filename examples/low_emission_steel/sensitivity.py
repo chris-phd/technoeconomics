@@ -46,6 +46,8 @@ class SensitivityIndicator:
         self._parameter_vals: np.ndarray = np.array([])
         self._result_vals: np.ndarray = np.array([])
         self._calculate: Optional[Callable] = None
+        self._success: Optional[bool] = None
+        self._error_msg: str = ""
 
     @property
     def parameter_vals(self) -> np.ndarray:
@@ -71,6 +73,22 @@ class SensitivityIndicator:
     def calculate(self, value: Optional[Callable]):
         self._calculate = value
 
+    @property
+    def success(self) -> Optional[bool]:
+        return self._success
+
+    @success.setter
+    def success(self, value: Optional[bool]):
+        self._success = value
+
+    @property
+    def error_msg(self) -> str:
+        return self._error_msg
+
+    @error_msg.setter
+    def error_msg(self, value: str):
+        self._error_msg = value
+
 
 def report_sensitvity_analysis_for_system(output_dir: str, system: System, sensitivity_indicators: List[SensitivityIndicator]):
     system_name_sanitised = system.name.replace(' ', '_')
@@ -82,6 +100,10 @@ def report_sensitvity_analysis_for_system(output_dir: str, system: System, sensi
         for si in sensitivity_indicators:
             if system.name != si.system_name: 
                 raise Exception("System does not match the given sensitivity analysis indicator during reporting.")
+
+            if not si.success:
+                file.write(f"{si.parameter_name},{si.indicator_name},FAILED,{si.error_msg}\n")
+                continue
 
             si_val = si.calculate(si.parameter_vals, si.result_vals)
             if isinstance(si_val, float):
@@ -117,7 +139,6 @@ def calculate_spider_plot_si(parameter_vals: np.ndarray, result_vals: np.ndarray
         raise ValueError("SpiderPlot sensitivity indicator requires the same number of parameter values and result values.")
     return result_vals
     
-
 
 class SensitivityCase:
     def __init__(self, parameter_name: str, parameter_type: ParameterType):
@@ -173,7 +194,10 @@ class SensitivityCase:
         if self.parameter_type == ParameterType.Price:
             base_case_val = prices[self.parameter_name].price_usd
         elif self.parameter_type == ParameterType.SystemVar:
-            base_case_val = system.system_vars[self.parameter_name]
+            if self.parameter_name in system.system_vars:
+                base_case_val = system.system_vars[self.parameter_name]
+            else:
+                return []
         else:
             raise ValueError("Parameter type not recognized. Cannot setup sensitivity analysis.")
 
@@ -190,9 +214,7 @@ class SensitivityCase:
         elasticity.calculate = calculate_elasticity_si
 
         spider_plot = SensitivityIndicator("SpiderPlot", system.name, self.parameter_name, self.parameter_type)
-        spider_plot.parameter_vals = np.linspace(base_case_val * (100 - self.max_perc_change) * 0.01, 
-                                                base_case_val * (100 + self.max_perc_change) * 0.01, 
-                                                self.num_perc_increments)
+        spider_plot.parameter_vals = np.linspace(self.X_min, self.X_max, self.num_perc_increments)
         spider_plot.calculate = calculate_spider_plot_si
 
         return [min_max, elasticity, spider_plot]
@@ -235,9 +257,14 @@ class SensitivityAnalysisRunner:
                     
                         # Solve the system with this new set of parameters and save the result
                         tmp_system.name = tmp_system.name + ": SA_" + si.parameter_name + str(parameter_val)
-                        solve_mass_energy_flow(tmp_system, tmp_system.add_mass_energy_flow_func, False)
-                        add_steel_plant_lcop(tmp_system, tmp_prices, False)
-                        si.result_vals = np.append(si.result_vals, tmp_system.lcop())
+                        try:
+                            solve_mass_energy_flow(tmp_system, tmp_system.add_mass_energy_flow_func, False)
+                            add_steel_plant_lcop(tmp_system, tmp_prices, False)
+                            si.result_vals = np.append(si.result_vals, tmp_system.lcop())
+                            si.success = True
+                        except Exception as e:
+                            si.success = False
+                            si.error_msg = f"{e}"
 
                     sensitivity_indicators.append(si)
             sensitivity_indicators_for_each_system.append(sensitivity_indicators)
@@ -260,9 +287,8 @@ def sensitivity_analysis_runner_from_csv(filename: str) -> Optional[Type[Sensiti
             sensitivity_case = SensitivityCase(parameter_name, parameter_type)
             sensitivity_case.X_max = float(row[2])
             sensitivity_case.X_min = float(row[3])
-            sensitivity_case.max_perc_change = float(row[4])
-            sensitivity_case.num_perc_increments = int(row[5])
-            sensitivity_case.elasticity_perc_change = float(row[6])
+            sensitivity_case.num_perc_increments = int(row[4])
+            sensitivity_case.elasticity_perc_change = float(row[5])
             sensitivity_cases.append(sensitivity_case)
 
     runner = SensitivityAnalysisRunner(sensitivity_cases)
