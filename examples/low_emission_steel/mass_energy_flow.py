@@ -1052,7 +1052,8 @@ def add_plasma_flows_final(system: System):
         chemical_energy += -num_feo_c_reduction_reactions * species.delta_h_feo_c_fe_co(plasma_temp)
 
     total_o2_injected_mass = system.system_vars['o2 injection kg']
-    assert total_o2_injected_mass >= o2_oxidation.mass
+    if total_o2_injected_mass < o2_oxidation.mass:
+        raise Exception(f"In {system.name}, add_plasma_flows_final: injected o2 is less than the o2 required for oxidation")
 
     # We assume oxygen always oxidises Fe to max FeO solubility in the slag before
     # it begins combusting with the carbon. 

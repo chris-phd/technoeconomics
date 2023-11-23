@@ -256,7 +256,7 @@ class SensitivityAnalysisRunner:
                             raise ValueError("Parameter type not recognized. Cannot run sensitivity analysis.")
                     
                         # Solve the system with this new set of parameters and save the result
-                        tmp_system.name = tmp_system.name + ": SA_" + si.parameter_name + str(parameter_val)
+                        tmp_system.name = f"{tmp_system.name}_SA_{si.parameter_name}_{parameter_val}"
                         try:
                             solve_mass_energy_flow(tmp_system, tmp_system.add_mass_energy_flow_func, False)
                             add_steel_plant_lcop(tmp_system, tmp_prices, False)
