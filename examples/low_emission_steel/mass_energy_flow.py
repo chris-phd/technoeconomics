@@ -609,7 +609,6 @@ def add_ore(system: System):
     steelmaking_device_name = system.system_vars['steelmaking device name']
     ore_composition_simple = system.system_vars['ore composition simple']
     ore_heater_device_name = system.system_vars['ore heater device name']
-    first_ironmaking_device_name = system.system_vars['ironmaking device names'][0]
 
     # Calculate the mass of the ore required.
     # Note that this is the input ore at the very start of the process.     
@@ -662,6 +661,7 @@ def add_ore(system: System):
         else:
             # water remains in the ore, but set the output nontheless
             ore_preheating_device.outputs['h2o'].set(species.create_h2o_species())
+            raise Exception("LOI not removed during preheating. Calculation in add_slag_and_flux_mass assumes that it is. (1)")
 
         ore_preheating_device.outputs['ore'].set(ore)
 
@@ -672,6 +672,8 @@ def add_ore(system: System):
         ore_preheating_device.inputs['base electricity'].set(electrical_energy)
         electrical_losses = EnergyFlow('losses', electrical_energy.energy * (1 - electrical_heat_eff))
         ore_preheating_device.outputs['losses'].set(electrical_losses)
+    else:
+        raise Exception("LOI not removed during preheating. Calculation in add_slag_and_flux_mass assumes that it is. (2)")
     
 
 def iron_species_from_reduction_degree(reduction_degree: float, initial_ore_mass: float, hematite_composition: Dict[str, float]):
