@@ -124,16 +124,15 @@ def create_systems(config: Dict[str, Dict[str, Any]]) -> List[System]:
     hybrid55_system.add_mass_energy_flow_func = add_hybrid_mass_and_energy
     hybrid90_system.add_mass_energy_flow_func = add_hybrid_mass_and_energy
 
-    # systems = [plasma_system,
-    #            plasma_ar_h2_system,
-    #            plasma_bof_system,
-    #            dri_eaf_system,
-    #            hybrid33_system,
-    #            hybrid33_ar_h2_system,
-    #            hybrid33_bof_system,
-    #            hybrid55_system,
-    #            hybrid90_system]
-    systems = [dri_eaf_system]
+    systems = [plasma_system,
+               plasma_ar_h2_system,
+               plasma_bof_system,
+               dri_eaf_system,
+               hybrid33_system,
+               hybrid33_ar_h2_system,
+               hybrid33_bof_system,
+               hybrid55_system,
+               hybrid90_system]
 
     # Overwrite system vars here to modify behaviour
     default_config = config.get("all", {})
