@@ -68,31 +68,55 @@ class SensitivityIndicator:
         self._calculate = value
 
 
+def calculate_min_max_si(parameter_vals: np.ndarray, result_vals: np.ndarray) -> float:
+    if len(parameter_vals) != 2 or len(result_vals) != 2:
+        raise ValueError("MinMax sensitivity indicator requires two parameter values and two result values.")
+
+    return (result_vals[1] - result_vals[0]) / result_vals[0]
+
+
+def calculate_elasticity_si(parameter_vals: np.ndarray, result_vals: np.ndarray) -> float:
+    if len(parameter_vals) != 2 or len(result_vals) != 2:
+        raise ValueError("Elasticity sensitivity indicator requires two parameter values and two result values.")
+
+    X = (parameter_vals[0] + parameter_vals[1]) * 0.5
+    Y = (result_vals[0] + result_vals[1]) * 0.5
+
+    return (result_vals[1] - result_vals[0]) / (parameter_vals[1] - parameter_vals[0]) * (X / Y)
+
+
+def calculate_spider_plot_si(parameter_vals: np.ndarray, result_vals: np.ndarray) -> np.ndarray:
+    if len(parameter_vals) != len(result_vals):
+        raise ValueError("SpiderPlot sensitivity indicator requires the same number of parameter values and result values.")
+    return result_vals
+    
+
+
 class SensitivityCase:
     def __init__(self, parameter_name: str, parameter_type: ParameterType):
         self.parameter_name = parameter_name
         self.parameter_type = parameter_type
-        self._D_max = 0.0
-        self._D_min = 0.0
+        self._X_max = 0.0
+        self._X_min = 0.0
         self._max_perc_change = 30.0
         self._num_perc_increments = 11
         self._elasticity_perc_change = 3.0
     
     @property
-    def D_max(self) -> float:
-        return self._D_max
+    def X_max(self) -> float:
+        return self._X_max
 
-    @D_max.setter
-    def D_max(self, value: float):
-        self._D_max = value
+    @X_max.setter
+    def X_max(self, value: float):
+        self._X_max = value
 
     @property
-    def D_min(self) -> float:
-        return self._D_min
+    def X_min(self) -> float:
+        return self._X_min
 
-    @D_min.setter
-    def D_min(self, value: float):
-        self._D_min = value
+    @X_min.setter
+    def X_min(self, value: float):
+        self._X_min = value
 
     @property
     def max_perc_change(self) -> float:
@@ -127,18 +151,19 @@ class SensitivityCase:
             raise ValueError("Parameter type not recognized. Cannot setup sensitivity analysis.")
 
         minMax = SensitivityIndicator("MinMax", system.name, self.parameter_name)
-        minMax.parameter_vals = np.array([self.D_min, self.D_max])
-        # add the callable
+        minMax.parameter_vals = np.array([self.X_min, self.X_max])
+        minMax.calculate = calculate_min_max_si
 
         elasticity = SensitivityIndicator("Elasticity", system.name, self.parameter_name)
         elasticity.parameter_vals = np.linspace(base_case_val * (100 - 0.5 * self.elasticity_perc_change) * 0.01, 
                                                 base_case_val * (100 + 0.5 * self.elasticity_perc_change) * 0.01)
-        # add the callable
+        elasticity.calculate = calculate_elasticity_si
+
         spiderPlot = SensitivityIndicator("SpiderPlot", system.name, self.parameter_name)
         spiderPlot.parameter_vals = np.linspace(base_case_val * (100 - self.max_perc_change) * 0.01, 
                                                 base_case_val * (100 + self.max_perc_change) * 0.01, 
                                                 self.num_perc_increments)
-        # add the callable
+        spiderPlot.calculate = calculate_spider_plot_si
 
 
 class SensitivityAnalysisRunner:
@@ -168,8 +193,8 @@ def sensitivity_analysis_runner_from_csv(filename: str) -> Optional[Type[Sensiti
             parameter_name = row[0]
             parameter_type = ParameterType[row[1]]
             sensitivity_case = SensitivityCase(parameter_name, parameter_type)
-            sensitivity_case.D_max = float(row[2])
-            sensitivity_case.D_min = float(row[3])
+            sensitivity_case.X_max = float(row[2])
+            sensitivity_case.X_min = float(row[3])
             sensitivity_case.max_perc_change = float(row[4])
             sensitivity_case.num_perc_increments = int(row[5])
             sensitivity_case.elasticity_perc_change = float(row[6])
