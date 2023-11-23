@@ -160,11 +160,11 @@ def create_systems(config: Dict[str, Dict[str, Any]]) -> List[System]:
 def render_systems(systems: List[System], render_name: str):
     if render_name.upper() == "ALL":
         for s in systems:
-            s.render_system()
+            s.render()
     else:
         for s in systems:
             if s.name == render_name:
-                s.render_system()
+                s.render()
                 break
 
 
