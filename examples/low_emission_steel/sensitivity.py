@@ -8,7 +8,7 @@ import os
 import sys
 from typing import Type, Dict, List, Optional, Callable
 from mass_energy_flow import solve_mass_energy_flow
-from plant_costs import PriceEntry
+from plant_costs import PriceEntry, add_steel_plant_lcop
 
 
 try:
@@ -34,8 +34,12 @@ class SensitivityIndicator:
         indicator_name: Name of the indicator: Elasticity, MinMax, SpiderPlot, etc.
         system_name: Name of the system that the indicator was calculated for
         parameter_name: Name of the parameter the indicator was calculated for
+        parameter_type: Indicates where in the model the parameter being analysed is stored.
+        parameter_vals: The value of the parameter for each run. The dependent variable, X
+        result_vals: The value of the result of interest. The independent variable, Y
+        calculate: Method to calculate the sensitivity indicator from the X and Y values.
         """
-        self.indiator_name: str = indicator_name
+        self.indicator_name: str = indicator_name
         self.system_name: str = system_name
         self.parameter_name: str = parameter_name
         self.parameter_type: ParameterType = parameter_type
@@ -66,6 +70,29 @@ class SensitivityIndicator:
     @calculate.setter
     def calculate(self, value: Optional[Callable]):
         self._calculate = value
+
+
+def report_sensitvity_analysis_for_system(output_dir: str, system: System, sensitivity_indicators: List[SensitivityIndicator]):
+    system_name_sanitised = system.name.replace(' ', '_')
+    output_filename = output_dir + system_name_sanitised + ".csv"
+    with open(output_filename, 'w') as file:
+        file.write(system.name + "\n\n")
+        file.write("parameter_name,indicator_name,sensitivity index param 1, sensitivity index param 2\n")
+
+        for si in sensitivity_indicators:
+            if system.name != si.system_name: 
+                raise Exception("System does not match the given sensitivity analysis indicator during reporting.")
+
+            si_val = si.calculate(si.parameter_vals, si.result_vals)
+            if isinstance(si_val, float):
+                file.write(f"{si.parameter_name},{si.indicator_name},{si_val:.7e},\n")
+            elif isinstance(si_val, np.ndarray):
+                if len(si_val) != len(si.parameter_vals):
+                    raise Exception("For multi-param sensitivity indicators, expected the num of param_vals to be equal to the result_vals but failed")
+                i = 0
+                for param, result in zip(si.parameter_vals, si_val):
+                    file.write(f"{si.parameter_name},{si.indicator_name}_{i},{param:.2f},{result:.2f}\n")
+                    i += 1
 
 
 def calculate_min_max_si(parameter_vals: np.ndarray, result_vals: np.ndarray) -> float:
@@ -144,40 +171,78 @@ class SensitivityCase:
 
     def create_sensitivity_indicators(self, system: System, prices: Dict[str, float]) -> List[SensitivityIndicator]:
         if self.parameter_type == ParameterType.Price:
-            base_case_val = system.prices
+            base_case_val = prices[self.parameter_name].price_usd
         elif self.parameter_type == ParameterType.SystemVar:
-            base_case_val = system.__dict__[self.parameter_name]
+            base_case_val = system.system_vars[self.parameter_name]
         else:
             raise ValueError("Parameter type not recognized. Cannot setup sensitivity analysis.")
 
-        minMax = SensitivityIndicator("MinMax", system.name, self.parameter_name)
-        minMax.parameter_vals = np.array([self.X_min, self.X_max])
-        minMax.calculate = calculate_min_max_si
+        if not isinstance(base_case_val, float) and not isinstance(base_case_val, int):
+            raise ValueError(f"The parameter type needs to be a numeric float or int, not {type(base_case_val)}")
 
-        elasticity = SensitivityIndicator("Elasticity", system.name, self.parameter_name)
-        elasticity.parameter_vals = np.linspace(base_case_val * (100 - 0.5 * self.elasticity_perc_change) * 0.01, 
-                                                base_case_val * (100 + 0.5 * self.elasticity_perc_change) * 0.01)
+        min_max = SensitivityIndicator("MinMax", system.name, self.parameter_name, self.parameter_type)
+        min_max.parameter_vals = np.array([self.X_min, self.X_max])
+        min_max.calculate = calculate_min_max_si
+
+        elasticity = SensitivityIndicator("Elasticity", system.name, self.parameter_name, self.parameter_type)
+        elasticity.parameter_vals = np.array([base_case_val * (100 - 0.5 * self.elasticity_perc_change) * 0.01, 
+                                              base_case_val * (100 + 0.5 * self.elasticity_perc_change) * 0.01])
         elasticity.calculate = calculate_elasticity_si
 
-        spiderPlot = SensitivityIndicator("SpiderPlot", system.name, self.parameter_name)
-        spiderPlot.parameter_vals = np.linspace(base_case_val * (100 - self.max_perc_change) * 0.01, 
+        spider_plot = SensitivityIndicator("SpiderPlot", system.name, self.parameter_name, self.parameter_type)
+        spider_plot.parameter_vals = np.linspace(base_case_val * (100 - self.max_perc_change) * 0.01, 
                                                 base_case_val * (100 + self.max_perc_change) * 0.01, 
                                                 self.num_perc_increments)
-        spiderPlot.calculate = calculate_spider_plot_si
+        spider_plot.calculate = calculate_spider_plot_si
+
+        return [min_max, elasticity, spider_plot]
 
 
 class SensitivityAnalysisRunner:
     def __init__(self, sensitivity_cases: List[Type[SensitivityCase]]):
-        self.cases = sensitivity_cases
+        self._cases = sensitivity_cases
+        self._systems = None
 
     @property
-    def cases(self) -> List[Type[SensitivityCase]]:
+    def cases(self) -> List[SensitivityCase]:
         return self._cases
     
-    def run(self, systems: List[System], prices: Dict[str, PriceEntry]):
-        for case in self._cases:
-            for s in systems:
-                pass
+    @property
+    def systems(self) -> List[System]:
+        return self._systems
+    
+    @systems.setter
+    def systems(self, value: List[System]):
+        self._systems = value
+    
+    def run(self, prices: Dict[str, PriceEntry]):
+        sensitivity_indicators_for_each_system: List[SensitivityIndicator] = []
+
+        # This is going to be so slow.... so many nested loops
+        for system in self.systems:
+            sensitivity_indicators: List[SensitivityIndicator] = []
+            for case in self.cases:
+                for si in case.create_sensitivity_indicators(system, prices):
+                    for parameter_val in si.parameter_vals:
+                        tmp_system = copy.deepcopy(system)
+                        if si.parameter_type == ParameterType.Price:
+                            tmp_prices = copy.deepcopy(prices)
+                            tmp_prices[si.parameter_name].price_usd = parameter_val
+                        elif si.parameter_type == ParameterType.SystemVar:
+                            tmp_system.system_vars[si.parameter_name] = parameter_val
+                        else:
+                            raise ValueError("Parameter type not recognized. Cannot run sensitivity analysis.")
+                    
+                        # Solve the system with this new set of parameters and save the result
+                        tmp_system.name = tmp_system.name + ": SA_" + si.parameter_name + str(parameter_val)
+                        solve_mass_energy_flow(tmp_system, tmp_system.add_mass_energy_flow_func, False)
+                        add_steel_plant_lcop(tmp_system, tmp_prices, False)
+                        si.result_vals = np.append(si.result_vals, tmp_system.lcop())
+
+                    sensitivity_indicators.append(si)
+            sensitivity_indicators_for_each_system.append(sensitivity_indicators)
+
+        return sensitivity_indicators_for_each_system
 
 
 def sensitivity_analysis_runner_from_csv(filename: str) -> Optional[Type[SensitivityAnalysisRunner]]:
