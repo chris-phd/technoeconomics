@@ -69,6 +69,18 @@
   - We should be able to dynamically solve the minimum excess h2 ratio required, as well
   as the feo reudction / yield that allows the sim to run. 
 
+  - BUG in the treatment of LOI. Working on a fix on branch fix_LOI
+  1 Trying to remove LOI in the ore heater. 
+  2 
+  3 Problem with this is that now the ore composition does not match between
+  4 what is specified in the system vars and the actual ore. Causes issues
+  5 when we call iron_species_from_reduction_degree.                   
+  6                                                                    
+  7 Actually, this problem might have always been here in the DRI-EAF system,                    
+  8 but was covered up by the injected O2. probs need another function to
+  9 get the ore composition from the actual ore or dri object, rather than
+ 10 relying on the system_vars. MAJOR BUG!
+
 ## Comments
 - A big assumption here is that the steel plant is always running at full capacity.
 - Electricity demand for all the major pathways is very similar at the commit:

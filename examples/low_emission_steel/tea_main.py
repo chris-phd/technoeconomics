@@ -11,6 +11,7 @@ from mass_energy_flow import solve_mass_energy_flow, add_dri_eaf_mass_and_energy
                              add_plasma_mass_and_energy, electricity_demand_per_major_device, report_slag_composition
 from plant_costs import load_prices_from_csv, add_steel_plant_lcop
 from plot_helpers import histogram_labels_from_datasets, add_stacked_histogram_data_to_axis, add_titles_to_axis
+from sensitivity import sensitivity_analysis_runner_from_csv
 
 try:
     from technoeconomics.system import System
@@ -28,6 +29,7 @@ def main():
     args = parse_args()
     prices = load_prices_from_csv(args.price_file)
     config = load_config_from_csv(args.config_file)
+    sensitivity_runner = sensitivity_analysis_runner_from_csv(args.sensitivity_file)
     systems = create_systems(config)
     system_names = [s.name for s in systems]
 
@@ -40,7 +42,7 @@ def main():
         solve_mass_energy_flow(s, s.add_mass_energy_flow_func, args.verbose)
         add_steel_plant_lcop(s, prices, args.verbose)
     print("Done.")
-    
+
     ## Report
     for s in systems:
         print(f"{s.name} total lcop [USD] = {sum(s.lcop_breakdown.values()):.2f}")
@@ -49,6 +51,12 @@ def main():
         
         if args.verbose:
             report_slag_composition(s)
+
+    ## Sensitivity Analysis
+    if sensitivity_runner:
+        print("Running sensitivity analysis...")
+        sensitivity_indicators = sensitivity_runner.run(systems, prices)
+        print("Done.")
 
     ## Plots
     if args.mass_flow:
@@ -85,7 +93,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('-p', '--price_file', help='path to the csv file containing capex and commondity prices.', required=False, default='prices_default.csv')
     parser.add_argument('-c', '--config_file', help='path to the csv file containing the system configuration.', required=False, default='config_default.csv')
     parser.add_argument('-r', '--render', help='render the steelplant system diagrams. "<system name>" or "ALL"', required=False, default=None)
-    parser.add_argument('-s', '--sensitivity_analysis', help='perform sensitivity analysis boolean flag.', required=False, action='store_true')
+    parser.add_argument('-s', '--sensitivity_file', help='path to the csv file containing the sensitivity analysis settings.', required=False, default=None)
     parser.add_argument('-m', '--mass_flow', help='show the mass flow bar chart boolean flag.', required=False, action='store_true')
     parser.add_argument('-e', '--energy_flow', help='show the enery flow bar chart boolean flag.', required=False, action='store_true')
     parser.add_argument('-v', '--verbose', help='when enabled, print / log debug messages.', required=False, action='store_true')
