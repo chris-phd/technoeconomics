@@ -270,6 +270,9 @@ class System:
     def lcop_breakdown(self, value: Dict[str, float]):
         self._lcop_breakdown = value
 
+    def lcop(self) -> float:
+        return sum(self._lcop_breakdown.values())
+
     def add_device(self, device: Type[Device]):
         if device.name in self._devices:
             raise ValueError(f"Device with name {device.name} already exists")

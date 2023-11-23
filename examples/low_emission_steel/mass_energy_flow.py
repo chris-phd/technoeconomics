@@ -122,9 +122,14 @@ def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable, print
     system_solved = copy.deepcopy(system)
     system_vars_solved = copy.deepcopy(system.system_vars)
 
+    max_iter = 50
+    iteration = 0
     first = True
     converged = False
     while not converged:
+        iteration += 1
+        if iteration > max_iter:
+            raise Exception(f"Could not solve {system.name}. Max iterations reached.")
         
         if not first:
             system_solved = copy.deepcopy(system)
@@ -146,6 +151,14 @@ def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable, print
             system_vars_solved['bof hot metal Si perc'] *= 0.9
             if print_debug_messages:
                 print(f"System {system.name} did not converge. Decreasing hot metal Si perc to {system_vars_solved['bof hot metal Si perc']}")
+        except IncreaseInjectedO2:
+            if not system_vars_solved['o2 injection kg']:
+                system_vars_solved['o2 injection kg'] = 5.0
+            else:
+                system_vars_solved['o2 injection kg'] *= 1.1
+            if print_debug_messages:
+                print(f"System {system.name} did not converge. Increasing injected o2 to {system_vars_solved['o2 injection kg']}")
+            
         
         
     # copy the result to the master copy of the system
@@ -1090,7 +1103,9 @@ def add_plasma_flows_final(system: System):
         chemical_energy += -num_feo_c_reduction_reactions * species.delta_h_feo_c_fe_co(plasma_temp)
 
     total_o2_injected_mass = system.system_vars['o2 injection kg']
-    assert total_o2_injected_mass >= o2_oxidation.mass
+    if total_o2_injected_mass < o2_oxidation.mass:
+        raise IncreaseInjectedO2
+        # raise Exception(f"In {system.name}, add_plasma_flows_final: injected o2 is less than the o2 required for oxidation")
 
     # We assume oxygen always oxidises Fe to max FeO solubility in the slag before
     # it begins combusting with the carbon. 
@@ -1724,6 +1739,9 @@ class DecreaseSiInHotMetal(Exception):
     pass
 
 class IncreaseCInHotMetal(Exception):
+    pass
+
+class IncreaseInjectedO2(Exception):
     pass
 
 if __name__ == '__main__':

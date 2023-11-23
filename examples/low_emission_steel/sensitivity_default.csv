@@ -1,0 +1,3 @@
+parameter name,parameter type,SI max abs, SI min abs,num increments,elasticity perc
+Plasma Smelter,Price,550,250,5,3
+plasma reduction percent,SystemVar,98.0,90,11,1
