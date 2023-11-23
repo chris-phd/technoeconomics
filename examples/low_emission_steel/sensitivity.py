@@ -107,7 +107,7 @@ def report_sensitvity_analysis_for_system(output_dir: str, system: System, sensi
 
             si_val = si.calculate(si.parameter_vals, si.result_vals)
             if isinstance(si_val, float):
-                file.write(f"{si.parameter_name},{si.indicator_name},{si_val:.7e},\n")
+                file.write(f"{si.parameter_name},{si.indicator_name},{si_val:.6f},\n")
             elif isinstance(si_val, np.ndarray):
                 if len(si_val) != len(si.parameter_vals):
                     raise Exception("For multi-param sensitivity indicators, expected the num of param_vals to be equal to the result_vals but failed")
@@ -265,6 +265,7 @@ class SensitivityAnalysisRunner:
                         except Exception as e:
                             si.success = False
                             si.error_msg = f"{e}"
+                            break
 
                     sensitivity_indicators.append(si)
             sensitivity_indicators_for_each_system.append(sensitivity_indicators)

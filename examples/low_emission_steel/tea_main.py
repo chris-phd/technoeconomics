@@ -33,8 +33,10 @@ def main():
     config = load_config_from_csv(args.config_file)
     systems = create_systems(config)
     system_names = [s.name for s in systems]
-    sensitivity_runner = sensitivity_analysis_runner_from_csv(args.sensitivity_file)
-    if sensitivity_runner:
+    
+    run_sensitivity_analysis = bool(args.sensitivity_file)
+    if run_sensitivity_analysis:
+        sensitivity_runner = sensitivity_analysis_runner_from_csv(args.sensitivity_file)
         sensitivity_runner.systems = copy.deepcopy(systems)
 
     if args.render:
@@ -48,7 +50,7 @@ def main():
     print("Done.")
 
     ## Report
-    if not sensitivity_runner:
+    if not run_sensitivity_analysis:
         for s in systems:
             print(f"{s.name} total lcop [USD] = {s.lcop():.2f}")
             for k, v in s.lcop_breakdown.items():
@@ -58,7 +60,7 @@ def main():
                 report_slag_composition(s)
 
     ## Sensitivity Analysis
-    if sensitivity_runner:
+    if run_sensitivity_analysis:
         print("Running sensitivity analysis...")
         sensitivity_indicators = sensitivity_runner.run(prices)
         output_dir = f"/tmp/TEA_SA_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}/"
