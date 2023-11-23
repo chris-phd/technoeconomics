@@ -4,23 +4,11 @@ import copy
 import csv
 from enum import Enum
 import numpy as np 
-import os
-import sys
 from typing import Type, Dict, List, Optional, Callable
+
 from mass_energy_flow import solve_mass_energy_flow
 from plant_costs import PriceEntry, add_steel_plant_lcop
-
-
-try:
-    from technoeconomics.system import System
-except ImportError:
-    # If the technoeconomics package is not installed via pip,
-    # add the package directory to the system path.
-    examples_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    package_dir = os.path.dirname(examples_dir)
-    sys.path.insert(0, package_dir)
-
-    from technoeconomics.system import System
+from system import System
 
 
 class ParameterType(Enum):

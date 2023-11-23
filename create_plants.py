@@ -1,24 +1,10 @@
 #!/usr/bin/env python3
 
-import sys
-import os
 from typing import Optional, Dict, Any
 
-try:
-    from technoeconomics.species import create_dummy_species, create_dummy_mixture
-    from technoeconomics.system import System, Device, EnergyFlow
-    from technoeconomics.utils import celsius_to_kelvin
-except ImportError:
-    # If the technoeconomics package is not installed via pip,
-    # add the package directory to the system path.
-    examples_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    package_dir = os.path.dirname(examples_dir)
-    sys.path.insert(0, package_dir)
-
-    from technoeconomics.species import create_dummy_species, create_dummy_mixture
-    from technoeconomics.system import System, Device, EnergyFlow
-    from technoeconomics.utils import celsius_to_kelvin
-
+from species import create_dummy_species, create_dummy_mixture
+from system import System, Device, EnergyFlow
+from utils import celsius_to_kelvin
 
 def main():
     plasma_system = create_plasma_system("Plasma new")

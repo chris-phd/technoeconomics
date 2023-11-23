@@ -4,7 +4,7 @@ import copy
 import math
 from typing import List
 
-from technoeconomics.thermo import ShomateEquation, SimpleHeatCapacity, ThermoData, LatentHeat
+from thermo import ShomateEquation, SimpleHeatCapacity, ThermoData, LatentHeat
 
 class Species:
     def __init__(self, name: str, molecular_mass_kg_mol: float, thermo_data: ThermoData, delta_h_formation: float = None):

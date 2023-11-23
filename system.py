@@ -3,8 +3,8 @@
 import graphviz
 from typing import Optional, Type, Union, Dict, Callable, Any
 
-from technoeconomics.species import Species, Mixture
-from technoeconomics.utils import celsius_to_kelvin
+from species import Species, Mixture
+from utils import celsius_to_kelvin
 
 class EnergyFlow:
     """

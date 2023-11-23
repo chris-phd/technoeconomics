@@ -2,29 +2,16 @@
 
 import copy
 import csv
-import sys
-import os
 import numpy as np
 import math
 import matplotlib.pyplot as plt
 from typing import Dict, List, Callable, Optional
+
 from create_plants import create_plasma_system, create_dri_eaf_system, create_hybrid_system
 from plot_helpers import histogram_labels_from_datasets, add_stacked_histogram_data_to_axis, add_titles_to_axis
-
-try:
-    import technoeconomics.species as species 
-    from technoeconomics.system import System, EnergyFlow
-    from technoeconomics.utils import celsius_to_kelvin
-except ImportError:
-    # If the technoeconomics package is not installed via pip,
-    # add the package directory to the system path.
-    examples_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    package_dir = os.path.dirname(examples_dir)
-    sys.path.insert(0, package_dir)
-
-    import technoeconomics.species as species 
-    from technoeconomics.system import System, EnergyFlow
-    from technoeconomics.utils import celsius_to_kelvin
+import species as species 
+from system import System, EnergyFlow
+from utils import celsius_to_kelvin
 
 
 def main():

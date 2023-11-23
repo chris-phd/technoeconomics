@@ -2,29 +2,19 @@
 
 import argparse
 import copy
+import datetime
 import csv
 import os
-import sys
 from typing import List, Dict, Any
 import matplotlib.pyplot as plt
+
 from create_plants import create_dri_eaf_system, create_hybrid_system, create_plasma_system
 from mass_energy_flow import solve_mass_energy_flow, add_dri_eaf_mass_and_energy, add_hybrid_mass_and_energy,\
                              add_plasma_mass_and_energy, electricity_demand_per_major_device, report_slag_composition
 from plant_costs import load_prices_from_csv, add_steel_plant_lcop
 from plot_helpers import histogram_labels_from_datasets, add_stacked_histogram_data_to_axis, add_titles_to_axis
 from sensitivity import sensitivity_analysis_runner_from_csv, report_sensitvity_analysis_for_system
-
-try:
-    from technoeconomics.system import System
-except ImportError:
-    # If the technoeconomics package is not installed via pip,
-    # add the package directory to the system path.
-    examples_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    package_dir = os.path.dirname(examples_dir)
-    sys.path.insert(0, package_dir)
-
-    from technoeconomics.system import System
-import datetime
+from system import System
 
 def main():
     ## Setup
