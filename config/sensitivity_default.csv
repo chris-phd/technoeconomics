@@ -1,3 +1,5 @@
-parameter name,parameter type,SI max abs, SI min abs,num increments,elasticity perc
-Plasma Smelter,Price,550,250,5,3
-plasma reduction percent,SystemVar,98.0,90,11,1
+system name,parameter name,parameter type,X max, X min,num increments,elasticity perc
+All,H2,Price,5.0,1.0,5,3
+Plasma,Plasma Smelter,Price,550,250,5,3
+Plasma,plasma reduction percent,SystemVar,98.0,90,11,1
+DRI-EAF,fluidized beds reduction percent,SystemVar,98.0,90,11,1

@@ -129,7 +129,8 @@ def calculate_spider_plot_si(parameter_vals: np.ndarray, result_vals: np.ndarray
     
 
 class SensitivityCase:
-    def __init__(self, parameter_name: str, parameter_type: ParameterType):
+    def __init__(self, system_name: str, parameter_name: str, parameter_type: ParameterType):
+        self.system_name = system_name
         self.parameter_name = parameter_name
         self.parameter_type = parameter_type
         self._X_max = 0.0
@@ -179,6 +180,9 @@ class SensitivityCase:
         self._elasticity_perc_change = value
 
     def create_sensitivity_indicators(self, system: System, prices: Dict[str, float]) -> List[SensitivityIndicator]:
+        if system.name != self.system_name and self.system_name.upper() != "ALL":
+            return []
+
         if self.parameter_type == ParameterType.Price:
             base_case_val = prices[self.parameter_name].price_usd
         elif self.parameter_type == ParameterType.SystemVar:
@@ -271,13 +275,16 @@ def sensitivity_analysis_runner_from_csv(filename: str) -> Optional[Type[Sensiti
         next(csv_reader) # Skip the header row
 
         for row in csv_reader:
-            parameter_name = row[0]
-            parameter_type = ParameterType[row[1]]
-            sensitivity_case = SensitivityCase(parameter_name, parameter_type)
-            sensitivity_case.X_max = float(row[2])
-            sensitivity_case.X_min = float(row[3])
-            sensitivity_case.num_perc_increments = int(row[4])
-            sensitivity_case.elasticity_perc_change = float(row[5])
+            system_name = row[0]
+            parameter_name = row[1]
+            parameter_type = ParameterType[row[2]]
+            sensitivity_case = SensitivityCase(system_name, parameter_name, parameter_type)
+            sensitivity_case.X_max = float(row[3])
+            sensitivity_case.X_min = float(row[4])
+            if sensitivity_case.X_max < sensitivity_case.X_min:
+                raise ValueError("The X_max value must be greater than the X_min value.")
+            sensitivity_case.num_perc_increments = int(row[5])
+            sensitivity_case.elasticity_perc_change = float(row[6])
             sensitivity_cases.append(sensitivity_case)
 
     runner = SensitivityAnalysisRunner(sensitivity_cases)
