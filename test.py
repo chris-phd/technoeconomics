@@ -6,6 +6,7 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase, main
 import os
 
+from tea_main import load_config_from_csv
 import species
 import system
 import thermo

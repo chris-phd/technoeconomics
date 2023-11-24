@@ -1,4 +1,4 @@
-# Plasma Steelmaking Technoeconomic Anlysis
+# Plasma Steelmaking Technoeconomic Analysis
 
 ## Install
 ### Pip 
