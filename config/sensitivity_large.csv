@@ -1,0 +1,14 @@
+system name,parameter name,parameter type,X max, X min,num increments,elasticity perc
+All,H2,Price,5.0,1.0,11,3
+Plasma,Plasma Smelter,Price,550,250,5,3
+Hybrid 33,Plasma Smelter,Price,550,250,5,3
+DRI-EAF,EAF,Price,280,120,11,3
+DRI-EAF,Fluidized Bed,Price,250,50,11,3
+Hybrid 33,Fluidized Bed,Price,250,50,11,3
+All,ore fe content weight perc,SystemVar,69.0,49.0,11,3
+Plasma,plasma reduction percent,SystemVar,98.0,90,11,1
+Hybrid 33,plasma reduction percent,SystemVar,98.0,90,11,1
+DRI-EAF,fluidized beds reduction percent,SystemVar,98.0,90,11,1
+Hybrid 33,fluidized beds reduction percent,SystemVar,33.33,13.33,11,1
+Hybrid 55,fluidized beds reduction percent,SystemVar,85.00,35.00,11,1
+Plasma Ar-H2,argon molar percent in h2 plasma,SystemVar,50,0,11,3

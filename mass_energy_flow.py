@@ -291,6 +291,30 @@ def hematite_normalise(ore_comp: Dict[str, float]):
     return ore_comp
 
 
+def fe_content_to_hematite(fe_and_loi_weight_perc: Dict[str, float], template_ore_composition):
+    """
+    fe_and_loi_weight_perc: a dictionary specifying the desired Fe and LOI weight percent of the ore only.
+                            The contents of the gangue is then calculated to make up the rest of the ore
+                            using the composition found in template_ore_composition 
+    template_ore_composition: the ore composition used to specify the contents of the gangue.
+    """
+    iron_to_hematite_ratio = 0.6994255054537529
+    gangue_in_ore = 100.0 - fe_and_loi_weight_perc['Fe'] / iron_to_hematite_ratio - fe_and_loi_weight_perc['LOI']
+    gangue_in_template = sum(template_ore_composition.values()) - template_ore_composition['Fe'] \
+        - template_ore_composition.get('LOI', 0.0) - template_ore_composition.get('gangue', 0.0)
+    ore_composition = copy.deepcopy(fe_and_loi_weight_perc)
+    for k, v in template_ore_composition.items():
+        if k not in ore_composition:
+            ore_composition[k] = v * gangue_in_ore / gangue_in_template
+
+    # TODO: reduce repetition with read_ore_composition_from_csv
+    max_fe_perc = iron_to_hematite_ratio * (100.0 - ore_composition.get('LOI'))
+    if ore_composition['Fe'] > max_fe_perc:
+        raise Exception(f"Selected iron ore grade exceeds maximum possible Fe% for hematite")
+
+    return ore_composition
+
+
 def read_ore_composition_from_csv(filename: str, template_ore_composition: Dict[str, float]) -> Dict[str, float]:
     """
     Read the ore composition from a csv file.
@@ -312,19 +336,13 @@ def read_ore_composition_from_csv(filename: str, template_ore_composition: Dict[
             file_contents[row[0]] = float(row[1])
 
     iron_to_hematite_ratio = 0.6994255054537529
-
     # Validate the file contents
     if len(file_contents) == 2 and 'Fe' in file_contents and 'LOI' in file_contents:
         ore_composition = {
             'Fe': file_contents['Fe'],
-            'LOI': file_contents['LOI']        
+            'LOI': file_contents['LOI']
         }
-        gangue_in_ore = 100.0 - file_contents['Fe'] / iron_to_hematite_ratio - file_contents['LOI']
-        gangue_in_template = sum(template_ore_composition.values()) - template_ore_composition['Fe'] \
-            - template_ore_composition.get('LOI', 0.0) - template_ore_composition.get('gangue', 0.0)
-        for k, v in template_ore_composition.items():
-            if k not in ore_composition:
-                ore_composition[k] = v * gangue_in_ore / gangue_in_template
+        ore_composition = fe_content_to_hematite(ore_composition, template_ore_composition)
     elif len(file_contents) > 4 and 'Fe' in file_contents and 'SiO2' in file_contents and 'CaO' \
         and 'MgO' in file_contents and 'Al2O3' in file_contents:
         ore_composition = file_contents
@@ -410,6 +428,10 @@ def add_ore_composition(system: System, print_debug_messages: bool=True):
                                     'P2O5': 0.06,
                                     'Mn': 0.40,
                                     'LOI': 8.8}
+    elif "fe content" == ore_name.lower():
+        fe_content = {'Fe': system.system_vars['ore fe content weight perc'],
+                      'LOI': system.system_vars['ore loi content weight perc']}
+        ore_composition_complex = fe_content_to_hematite(fe_content, ore_composition_complex)
     elif ".csv" in ore_name.lower():
         ore_composition_complex = read_ore_composition_from_csv(ore_name, ore_composition_complex)
     else:
@@ -421,6 +443,11 @@ def add_ore_composition(system: System, print_debug_messages: bool=True):
         print(f"Using {ore_name} ore composition for system {system.name}")
         for k, v in ore_composition_complex.items():
             print(f"  {k} : {v:.3f}%")
+
+    if ore_composition_complex['Fe'] > 70.0:
+        raise Exception("Selected iron content is above maximum possible for pure hematite")
+    elif ore_composition_complex['Fe'] < 20.0: # This limit is somewhat arbitrary...
+        raise Exception("Selected iron content is too low for iron and steelmaking")
 
     ore_composition_complex['gangue'] = sum(ore_composition_complex.values()) - ore_composition_complex['Fe'] \
                                         - ore_composition_complex.get('LOI', 0.0) - ore_composition_complex.get('gangue', 0.0)

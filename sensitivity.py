@@ -239,8 +239,8 @@ class SensitivityAnalysisRunner:
                 for si in case.create_sensitivity_indicators(system, prices):
                     for parameter_val in si.parameter_vals:
                         tmp_system = copy.deepcopy(system)
+                        tmp_prices = copy.deepcopy(prices)
                         if si.parameter_type == ParameterType.Price:
-                            tmp_prices = copy.deepcopy(prices)
                             tmp_prices[si.parameter_name].price_usd = parameter_val
                         elif si.parameter_type == ParameterType.SystemVar:
                             tmp_system.system_vars[si.parameter_name] = parameter_val
