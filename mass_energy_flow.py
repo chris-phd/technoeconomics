@@ -921,7 +921,8 @@ def add_eaf_flows_final(system: System):
     # We also assume all the injected o2 is used in combustion / oxidation. No O2 
     # gas escapes. 
     total_o2_injected_mass = system.system_vars['o2 injection kg']
-    assert total_o2_injected_mass > o2_oxidation.mass or math.isclose(total_o2_injected_mass + 1.0, o2_oxidation.mass + 1.0)
+    if total_o2_injected_mass < o2_oxidation.mass:
+        raise IncreaseInjectedO2
 
     # Assume a mix of CO and CO2 is produced. We know from hornby2021, that
     # approx 10% of energy comes from CO formation and 24% of energy comes from
