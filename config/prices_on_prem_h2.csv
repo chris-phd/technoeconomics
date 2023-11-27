@@ -8,7 +8,8 @@ O2,0.10,PerKilogram,5,
 H2O,0.00,PerKilogram,5,
 C,0.13,PerKilogram,5,Carbon. Injected for slag foaming and alloy.
 Labour,60.00,PerTonneOfProduct,5,
-Base Electricity,93.1,PerMegaWattHour,5,Electricity spot price for all other times. For a constant electricity price remove the Spot Electricity entries and set one entry of Base Electricity
+Cheap Spot Electricity,54.50,PerMegaWattHour,5,Electricity spot price when renewables are abundant
+Expensive Spot Electricity,113.10,PerMegaWattHour,5,Electricity spot price for all other times. For a constant electricity price remove the Spot Electricity entries and set one entry of Base Electricity
 Electrolyser,1075.42,PerKiloWattOfCapacity,5,
 Salt Caverns,107.56,PerKilogramOfCapacity,5,
 Compressed Gas Vessels,518.51,PerKilogramOfCapacity,5,

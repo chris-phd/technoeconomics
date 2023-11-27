@@ -76,6 +76,7 @@ def operating_cost_per_tonne(inputs: Dict[str, float], prices: Dict[str, PriceEn
         prices['Base Electricity'] = PriceEntry('Base Electricity', base_electricity_cpmwh, PriceUnits.PerMegaWattHour)
         prices_lower['base electricity'] = PriceEntry('base electricity', base_electricity_cpmwh, PriceUnits.PerMegaWattHour)
     elif 'base electricity' in prices_lower:
+        base_electricity_cpmwh = prices_lower['base electricity'].price_usd
         prices['Cheap Spot Electricity'] = PriceEntry('Cheap Spot Electricity', base_electricity_cpmwh, PriceUnits.PerMegaWattHour)
         prices_lower['cheap spot clectricity'] = PriceEntry('cheap spot clectricity', base_electricity_cpmwh, PriceUnits.PerMegaWattHour)
     else:
