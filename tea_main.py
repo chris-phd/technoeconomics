@@ -5,8 +5,9 @@ import copy
 import datetime
 import csv
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import matplotlib.pyplot as plt
+import shutil
 
 from create_plants import create_dri_eaf_system, create_hybrid_system, create_plasma_system
 from mass_energy_flow import solve_mass_energy_flow, add_dri_eaf_mass_and_energy, add_hybrid_mass_and_energy,\
@@ -41,23 +42,21 @@ def main():
 
     ## Report
     if not run_sensitivity_analysis:
-        for s in systems:
-            print(f"{s.name} total lcop [USD] = {s.lcop():.2f}")
-            for k, v in s.lcop_breakdown.items():
-                print(f"    {k} = {v:.2f}")
-            
-            if args.verbose:
-                report_slag_composition(s)
+        generate_lcop_report(systems)
 
     ## Sensitivity Analysis
     if run_sensitivity_analysis:
-        print("Running sensitivity analysis...")
-        sensitivity_indicators = sensitivity_runner.run(prices)
         output_dir = f"/tmp/TEA_SA_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}/"
         os.makedirs(output_dir)
+        generate_lcop_report(systems, output_dir, args.config_file, args.price_file)
+        
+        print("Running sensitivity analysis...")
+        sensitivity_indicators = sensitivity_runner.run(prices)
         for s, si in zip(sensitivity_runner.systems, sensitivity_indicators):
             report_sensitvity_analysis_for_system(output_dir, s, si)
         print(f"Done. Results saved to {output_dir}")
+
+        
 
     ## Plots
     if args.mass_flow:
@@ -216,6 +215,30 @@ def get_important_config_entries(system_name: str, config: Dict[str, Dict[str, A
 
     return on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years
 
+
+def generate_lcop_report(systems: List[System], output_dir: Optional[str]=None, config_file: Optional[str]=None, prices_file: Optional[str]=None):
+    if output_dir is None:
+        for s in systems:
+            print(f"{s.name} total lcop [USD] = {s.lcop():.2f}")
+            for k, v in s.lcop_breakdown.items():
+                print(f"    {k} = {v:.2f}")
+    else:
+        file_path = os.path.join(output_dir, "lcop.csv")
+        with open(file_path, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(["System Name", "Item", "LCOP [USD]"])
+            for system in systems:
+                writer.writerow([system.name, "Total", f"{system.lcop():.2f}"])
+                for k, v in system.lcop_breakdown.items():
+                    writer.writerow(["", f"{k}", f"{v:.2f}"])
+
+        # Copy config_file and prices_file to the output_dir
+        
+        if config_file is not None:
+            shutil.copy(config_file, os.path.join(output_dir, os.path.basename(config_file)))
+        if prices_file is not None:
+            shutil.copy(prices_file, os.path.join(output_dir, os.path.basename(prices_file)))
+                    
 
 if __name__ == '__main__':
     main()
