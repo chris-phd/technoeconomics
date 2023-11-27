@@ -55,7 +55,6 @@ def main():
         for s, si in zip(sensitivity_runner.systems, sensitivity_indicators):
             report_sensitvity_analysis_for_system(output_dir, s, si)
         print(f"Done. Results saved to {output_dir}")
-
         
 
     ## Plots
