@@ -48,7 +48,7 @@ def main():
     if run_sensitivity_analysis:
         output_dir = f"/tmp/TEA_SA_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}/"
         os.makedirs(output_dir)
-        generate_lcop_report(systems, output_dir, args.config_file, args.price_file)
+        generate_lcop_report(systems, output_dir, args.config_file, args.price_file, args.sensitivity_file)
         
         print("Running sensitivity analysis...")
         sensitivity_indicators = sensitivity_runner.run(prices)
@@ -216,7 +216,8 @@ def get_important_config_entries(system_name: str, config: Dict[str, Dict[str, A
     return on_premises_h2_production, h2_storage_type, annual_steel_production_tonnes, plant_lifetime_years
 
 
-def generate_lcop_report(systems: List[System], output_dir: Optional[str]=None, config_file: Optional[str]=None, prices_file: Optional[str]=None):
+def generate_lcop_report(systems: List[System], output_dir: Optional[str]=None, 
+                         config_file: Optional[str]=None, prices_file: Optional[str]=None, sensitivity_file: Optional[str]=None):
     if output_dir is None:
         for s in systems:
             print(f"{s.name} total lcop [USD] = {s.lcop():.2f}")
@@ -232,12 +233,13 @@ def generate_lcop_report(systems: List[System], output_dir: Optional[str]=None, 
                 for k, v in system.lcop_breakdown.items():
                     writer.writerow(["", f"{k}", f"{v:.2f}"])
 
-        # Copy config_file and prices_file to the output_dir
-        
+        # Copy config files to the output_dir
         if config_file is not None:
             shutil.copy(config_file, os.path.join(output_dir, os.path.basename(config_file)))
         if prices_file is not None:
             shutil.copy(prices_file, os.path.join(output_dir, os.path.basename(prices_file)))
+        if sensitivity_file is not None:
+            shutil.copy(sensitivity_file, os.path.join(output_dir, os.path.basename(sensitivity_file)))
                     
 
 if __name__ == '__main__':

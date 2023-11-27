@@ -143,3 +143,10 @@ Sounds like someone is doing something similar to me..
 
 - Prices for many of the smaller devices are dubious...
   - Also need to include engineering and other costs into the model.
+
+
+
+- The code is not really cross platform becuase of the use of the os.path.join function,
+  and especially the explicit use of the '/tmp' directory.
+  - Need to use pathlib instead. 
+  - https://stackoverflow.com/questions/51520/how-to-get-an-absolute-file-path-in-python

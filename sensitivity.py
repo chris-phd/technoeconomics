@@ -31,11 +31,29 @@ class SensitivityIndicator:
         self.system_name: str = system_name
         self.parameter_name: str = parameter_name
         self.parameter_type: ParameterType = parameter_type
+        self._base_parameter_val: Optional[float] = None
+        self._base_result_val: Optional[float] = None
         self._parameter_vals: np.ndarray = np.array([])
         self._result_vals: np.ndarray = np.array([])
         self._calculate: Optional[Callable] = None
         self._success: Optional[bool] = None
         self._error_msg: str = ""
+
+    @property
+    def base_parameter_val(self) -> Optional[float]:
+        return self._base_parameter_val
+    
+    @base_parameter_val.setter
+    def base_parameter_val(self, value: Optional[float]):
+        self._base_parameter_val = value
+
+    @property
+    def base_result_val(self) -> Optional[float]:
+        return self._base_result_val
+    
+    @base_result_val.setter
+    def base_result_val(self, value: Optional[float]):
+        self._base_result_val = value
 
     @property
     def parameter_vals(self) -> np.ndarray:
@@ -95,13 +113,16 @@ def report_sensitvity_analysis_for_system(output_dir: str, system: System, sensi
 
             si_val = si.calculate(si.parameter_vals, si.result_vals)
             if isinstance(si_val, float):
+                # Elasticity or MinMax
                 file.write(f"{si.parameter_name},{si.indicator_name},{si_val:.6f},\n")
             elif isinstance(si_val, np.ndarray):
+                # Spider Plot
                 if len(si_val) != len(si.parameter_vals):
                     raise Exception("For multi-param sensitivity indicators, expected the num of param_vals to be equal to the result_vals but failed")
                 i = 0
                 for param, result in zip(si.parameter_vals, si_val):
-                    file.write(f"{si.parameter_name},{si.indicator_name}_{i},{param:.2f},{result:.2f}\n")
+                    perc_change_from_base = (param - si.base_parameter_val) / si.base_parameter_val * 100
+                    file.write(f"{si.parameter_name},{si.indicator_name}_{i},{perc_change_from_base:.2f},{result:.2f}\n")
                     i += 1
 
 
@@ -199,15 +220,21 @@ class SensitivityCase:
         min_max = SensitivityIndicator("MinMax", system.name, self.parameter_name, self.parameter_type)
         min_max.parameter_vals = np.array([self.X_min, self.X_max])
         min_max.calculate = calculate_min_max_si
+        min_max.base_parameter_val = base_case_val
+        min_max.base_result_val = system.lcop()
 
         elasticity = SensitivityIndicator("Elasticity", system.name, self.parameter_name, self.parameter_type)
         elasticity.parameter_vals = np.array([base_case_val * (100 - 0.5 * self.elasticity_perc_change) * 0.01, 
                                               base_case_val * (100 + 0.5 * self.elasticity_perc_change) * 0.01])
         elasticity.calculate = calculate_elasticity_si
+        elasticity.base_parameter_val = base_case_val
+        elasticity.base_result_val = system.lcop()
 
         spider_plot = SensitivityIndicator("SpiderPlot", system.name, self.parameter_name, self.parameter_type)
         spider_plot.parameter_vals = np.linspace(self.X_min, self.X_max, self.num_perc_increments)
         spider_plot.calculate = calculate_spider_plot_si
+        spider_plot.base_parameter_val = base_case_val
+        spider_plot.base_result_val = system.lcop()
 
         return [min_max, elasticity, spider_plot]
 
