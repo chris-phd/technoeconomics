@@ -1,3 +1,4 @@
 graphviz>=0.20.0
 matplotlib>=3.7.0
 numpy>=1.23.0
+cantera>=3.0.0

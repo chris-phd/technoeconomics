@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import copy
+import cantera as ct
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase, main
@@ -295,6 +296,29 @@ class TestFileIO(TestCase):
         print(config)
         self.assertTrue(len(config) > 0)
         self.assertTrue(len(config["all"]) > 0)
+
+
+class TestCanteraEquilibrium(TestCase):
+    def test_cantera_equilibrium(self):
+        nasa_species = {s.name: s for s in ct.Species.list_from_file('nasa_gas.yaml')}
+        h2_plasma = ct.Solution(thermo='IdealGas', species=[nasa_species['H2'], 
+                                                         nasa_species['H2+'],
+                                                         nasa_species['H2-'],
+                                                         nasa_species['H'],
+                                                         nasa_species['H+'],
+                                                         nasa_species['H-'],
+                                                         nasa_species['Ar'],
+                                                         nasa_species['Ar+'],
+                                                         nasa_species['Electron']])
+        h2_plasma.TPX = 300.0, ct.one_atm, 'H2:1.0, Ar:0.1'
+        h2_plasma.equilibrate('TP')
+        monatomic_h_fraction = h2_plasma.X[3]
+        self.assertLess(monatomic_h_fraction, 1e-5)
+        
+        h2_plasma.TPX = 3000.0, ct.one_atm, 'H2:1.0, Ar:0.1'
+        h2_plasma.equilibrate('TP')
+        monatomic_h_fraction = h2_plasma.X[3]
+        self.assertGreater(monatomic_h_fraction, 0.1)
 
 
 if __name__ == '__main__':
