@@ -884,7 +884,8 @@ def add_eaf_flows_final(system: System):
     # We are only getting 455 kWh / tonne steel. Seems to be due to us keeping the hbi hot
     steelmaking_device_name = system.system_vars['steelmaking device name']
     steelmaking_device = system.devices[steelmaking_device_name]
-    reaction_temp = system.system_vars['eaf reaction temp K']
+    steel_bath_temp_K = system.system_vars['steel exit temp K']
+    reaction_temp = steel_bath_temp_K
 
     if steelmaking_device.inputs['hbi'].species('Fe3O4').mols > 0 or \
         steelmaking_device.inputs['hbi'].species('Fe2O3').mols > 0:
@@ -979,8 +980,8 @@ def add_eaf_flows_final(system: System):
     eaf_surface_radius = 3.8
     capacity_tonnes = 180
     tap_to_tap_secs = 60*60
-    radiation_losses = steelsurface_radiation_losses(np.pi*(eaf_surface_radius)**2, reaction_temp, celsius_to_kelvin(25),
-                                                     capacity_tonnes, tap_to_tap_secs)
+    radiation_losses = steelsurface_radiation_losses(np.pi*(eaf_surface_radius)**2, steel_bath_temp_K, 
+                                                     celsius_to_kelvin(25), capacity_tonnes, tap_to_tap_secs)
     steelmaking_device.outputs['losses'].energy += radiation_losses
 
     # Increase the electrical energy to balance the thermal losses 

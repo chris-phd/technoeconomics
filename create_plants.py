@@ -203,7 +203,6 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking',
     dri_eaf_system.system_vars['final reduction percent'] = dri_eaf_system.system_vars['fluidized beds reduction percent']
     dri_eaf_system.system_vars['steelmaking device name'] = eaf.name
     dri_eaf_system.system_vars['feo soluble in slag percent'] = 27.0
-    dri_eaf_system.system_vars['eaf reaction temp K'] = celsius_to_kelvin(1600) 
     dri_eaf_system.system_vars['steel exit temp K'] = celsius_to_kelvin(1600)
     dri_eaf_system.system_vars['b2 basicity'] = 2.0
     dri_eaf_system.system_vars['b4 basicity'] = 1.8
