@@ -101,7 +101,7 @@ def report_sensitvity_analysis_for_system(output_dir: str, system: System, sensi
     output_filename = output_dir + system_name_sanitised + ".csv"
     with open(output_filename, 'w') as file:
         file.write(system.name + "\n\n")
-        file.write("parameter_name,indicator_name,sensitivity index param 1, sensitivity index param 2\n")
+        file.write("parameter_name,indicator_name,sensitivity index param 1,sensitivity index param 2,sensitivity index param 3\n")
 
         for si in sensitivity_indicators:
             if system.name != si.system_name: 
@@ -122,7 +122,7 @@ def report_sensitvity_analysis_for_system(output_dir: str, system: System, sensi
                 i = 0
                 for param, result in zip(si.parameter_vals, si_val):
                     perc_change_from_base = (param - si.base_parameter_val) / si.base_parameter_val * 100
-                    file.write(f"{si.parameter_name},{si.indicator_name}_{i},{perc_change_from_base:.2f},{result:.2f}\n")
+                    file.write(f"{si.parameter_name},{si.indicator_name}_{i},{param:.2f},{perc_change_from_base:.2f},{result:.2f}\n")
                     i += 1
 
 
