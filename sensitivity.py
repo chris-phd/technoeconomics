@@ -14,6 +14,7 @@ from system import System
 class ParameterType(Enum):
     Price = 1
     SystemVar = 2
+    BoolSystemVar = 3
 
 
 class SensitivityIndicator:
@@ -204,7 +205,17 @@ class SensitivityCase:
         if system.name != self.system_name and self.system_name.upper() != "ALL":
             return []
 
-        if self.parameter_type == ParameterType.Price:
+        if self.parameter_type == ParameterType.BoolSystemVar:
+            if self.parameter_name not in system.system_vars:
+                return []
+            base_case_val = system.system_vars[self.parameter_name]
+            boolean_min_max = SensitivityIndicator("BooleanMinMax", system.name, self.parameter_name, self.parameter_type)
+            boolean_min_max.parameter_vals = np.array([False, True])
+            boolean_min_max.calculate = calculate_min_max_si
+            boolean_min_max.base_parameter_val = base_case_val
+            boolean_min_max.base_result_val = system.lcop()
+            return [boolean_min_max]
+        elif self.parameter_type == ParameterType.Price:
             base_case_val = prices[self.parameter_name].price_usd
         elif self.parameter_type == ParameterType.SystemVar:
             if self.parameter_name in system.system_vars:
@@ -306,6 +317,9 @@ def sensitivity_analysis_runner_from_csv(filename: str) -> Optional[Type[Sensiti
             parameter_name = row[1]
             parameter_type = ParameterType[row[2]]
             sensitivity_case = SensitivityCase(system_name, parameter_name, parameter_type)
+            if parameter_type == parameter_type.BoolSystemVar:
+                sensitivity_cases.append(sensitivity_case)
+                continue
             sensitivity_case.X_max = float(row[3])
             sensitivity_case.X_min = float(row[4])
             if sensitivity_case.X_max < sensitivity_case.X_min:
