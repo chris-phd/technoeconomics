@@ -109,7 +109,7 @@ def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable, print
     system_solved = copy.deepcopy(system)
     system_vars_solved = copy.deepcopy(system.system_vars)
 
-    max_iter = 50
+    max_iter = 100
     iteration = 0
     first = True
     converged = False
@@ -140,7 +140,7 @@ def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable, print
                 print(f"System {system.name} did not converge. Decreasing hot metal Si perc to {system_vars_solved['bof hot metal Si perc']}")
         except IncreaseInjectedO2:
             if not system_vars_solved['o2 injection kg']:
-                system_vars_solved['o2 injection kg'] = 5.0
+                system_vars_solved['o2 injection kg'] = 0.5
             else:
                 system_vars_solved['o2 injection kg'] *= 1.1
             if print_debug_messages:
@@ -1208,6 +1208,12 @@ def add_plasma_flows_final(system: System):
             raise Exception(f'Plasma smelter off gas exit temp calc did not converge after {max_iter} iterations')
 
     plasma_smelter.outputs['losses'].energy += plasma_to_melt_losses
+
+    if off_gas.temp_kelvin > system.system_vars['max heat exchanger temp K']:
+        # A real system may be able to use the excess heat from the plasma off gas to heat scrap or 
+        # something similar, but for now we consider everything losses.
+        off_gas.temp_kelvin = system.system_vars['max heat exchanger temp K']
+        plasma_smelter.outputs['losses'].energy -= plasma_smelter.energy_balance()
 
     # print(f"System = {system.name}")
     # print(f"  Off Gas Temp = {off_gas.temp_kelvin:.2f} K")
