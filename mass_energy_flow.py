@@ -1433,7 +1433,9 @@ def add_heat_exchanger_flows_final(system: System, heat_exchanger_device_name: s
 
     # The maximum possible efficiency. Actual efficiency can be lower,
     # if required cold gas exit temp is higher than the inlet hot gas temp.
-    heat_exchanger_eff = 0.9
+    heat_exchanger_eff = system.system_vars['max heat exchanger eff perc'] * 0.01
+    if heat_exchanger_eff < 0.30 or heat_exchanger_eff > 1.00:
+        raise ValueError("Error: Heat exchanger efficiency should be between 30 and 100%")
 
     # temp from electrolysis / storage and condenser
     initial_cold_gas_temp = heat_exchanger.inputs['h2 rich gas'].temp_kelvin

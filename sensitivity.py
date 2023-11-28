@@ -122,7 +122,10 @@ def report_sensitvity_analysis_for_system(output_dir: str, system: System, sensi
                     raise Exception("For multi-param sensitivity indicators, expected the num of param_vals to be equal to the result_vals but failed")
                 i = 0
                 for param, result in zip(si.parameter_vals, si_val):
-                    perc_change_from_base = (param - si.base_parameter_val) / si.base_parameter_val * 100
+                    try:
+                        perc_change_from_base = (param - si.base_parameter_val) / si.base_parameter_val * 100
+                    except:
+                        perc_change_from_base = param # expect this path to run when the params are non numerics. E.g. bools or strings
                     file.write(f"{si.parameter_name},{si.indicator_name}_{i},{param:.2f},{perc_change_from_base:.2f},{result:.2f}\n")
                     i += 1
 
@@ -214,7 +217,14 @@ class SensitivityCase:
             boolean_min_max.calculate = calculate_min_max_si
             boolean_min_max.base_parameter_val = base_case_val
             boolean_min_max.base_result_val = system.lcop()
-            return [boolean_min_max]
+
+            boolean_spider_plot = SensitivityIndicator("BooleanMinMax", system.name, self.parameter_name, self.parameter_type)
+            boolean_spider_plot.parameter_vals = np.array([False, True])
+            boolean_spider_plot.calculate = calculate_spider_plot_si
+            boolean_spider_plot.base_parameter_val = base_case_val
+            boolean_spider_plot.base_result_val = system.lcop()
+
+            return [boolean_min_max, boolean_spider_plot]
         elif self.parameter_type == ParameterType.Price:
             base_case_val = prices[self.parameter_name].price_usd
         elif self.parameter_type == ParameterType.SystemVar:
@@ -280,7 +290,7 @@ class SensitivityAnalysisRunner:
                         tmp_prices = copy.deepcopy(prices)
                         if si.parameter_type == ParameterType.Price:
                             tmp_prices[si.parameter_name].price_usd = parameter_val
-                        elif si.parameter_type == ParameterType.SystemVar:
+                        elif si.parameter_type == ParameterType.SystemVar or si.parameter_type == ParameterType.BoolSystemVar:
                             tmp_system.system_vars[si.parameter_name] = parameter_val
                         else:
                             raise ValueError("Parameter type not recognized. Cannot run sensitivity analysis.")

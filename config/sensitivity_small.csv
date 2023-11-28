@@ -1,2 +1,2 @@
 system name,parameter name,parameter type,X max, X min,num increments,elasticity perc
-Plasma,plasma temp K,SystemVar,3000,2000,11,3
+All,use mgo slag weight perc,BoolSystemVar,

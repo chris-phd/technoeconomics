@@ -85,6 +85,7 @@ def create_plasma_system(system_name: str ='plasma steelmaking',
     plasma_system.system_vars['scrap perc'] = 0.0
     plasma_system.system_vars['steel carbon perc'] = 1.0
     plasma_system.system_vars['max heat exchanger temp K'] = celsius_to_kelvin(1400)
+    plasma_system.system_vars['max heat exchanger eff perc'] = 75.0
     if h2_storage_method is not None:
         plasma_system.system_vars['h2 storage method'] = h2_storage_method
     if bof_steelmaking:
@@ -221,6 +222,7 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking',
     dri_eaf_system.system_vars['scrap perc'] = 0.0
     dri_eaf_system.system_vars['steel carbon perc'] = 1.0
     dri_eaf_system.system_vars['max heat exchanger temp K'] = celsius_to_kelvin(1400)
+    dri_eaf_system.system_vars['max heat exchanger eff perc'] = 75.0
     if h2_storage_method is not None:
         dri_eaf_system.system_vars['h2 storage method'] = h2_storage_method
 
@@ -406,6 +408,7 @@ def create_hybrid_system(system_name='hybrid steelmaking',
     hybrid_system.system_vars['scrap perc'] = 0.0
     hybrid_system.system_vars['steel carbon perc'] = 1.0
     hybrid_system.system_vars['max heat exchanger temp K'] = celsius_to_kelvin(1400)
+    hybrid_system.system_vars['max heat exchanger eff perc'] = 75.0
     if h2_storage_method is not None:
         hybrid_system.system_vars['h2 storage method'] = h2_storage_method
     if bof_steelmaking:

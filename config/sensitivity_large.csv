@@ -8,6 +8,7 @@ All,plasma torch electro-thermal eff pecent,SystemVar,100.0,30.0,21,5
 All,plasma energy to melt eff percent,SystemVar,100.0,30.0,21,5
 All,b2 basicity,SystemVar,3.5,0.5,11,5
 All,b2 basicity,SystemVar,3.5,0.5,11,5
+All,max heat exchanger eff perc,SystemVar,100.0,50.0,21,5
 Plasma,Plasma Smelter,Price,550,250,5,3
 Hybrid 33,Plasma Smelter,Price,550,250,5,3
 DRI-EAF,EAF,Price,280,120,11,3
