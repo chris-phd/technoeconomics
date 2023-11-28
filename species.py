@@ -332,6 +332,15 @@ def create_h2_species():
                       0.0)
     return species
 
+def create_h_species():
+    heat_capacities = [SimpleHeatCapacity(273.15, 6000.0, 20.78603)]
+    thermo_data = ThermoData(heat_capacities)
+    species = Species('H',
+                      0.00100794,
+                      thermo_data,
+                      217.998)
+    return species
+
 def create_o2_species():
     heat_capacities = [ShomateEquation(100.0, 700.0,
                                        (31.32234, -20.23531, 57.86644,
@@ -442,7 +451,7 @@ def create_fe3o4_species():
                                         (104.2096, 178.5108, 10.61510,
                                          1.132534, -0.994202, -1163.336, 
                                          212.0585, -1120.894)),
-                        SimpleHeatCapacity(900.0, 3000, 200.823)
+                        SimpleHeatCapacity(900.0, 3000.1, 200.823)
     ]
     latent_heats = [LatentHeat(1870.15, 138000)]
     thermo_data = ThermoData(heat_capacities, latent_heats)
@@ -462,7 +471,7 @@ def create_fe2o3_species():
                                          25.58683, -1.611330, -863.2094, 
                                          161.0719, -825.5032)),
                         SimpleHeatCapacity(950.0, 1050, 150.6240),
-                        ShomateEquation(1050.0, 3000.0, # max was 2500, but extending to 3000k
+                        ShomateEquation(1050.0, 3000.1, # max was 2500, but extending to 3000k
                                         (110.9362, 32.04714, -9.192333,
                                          0.901506, 5.433677, -843.1471, 
                                          228.3548, -825.5032))
@@ -476,7 +485,7 @@ def create_fe2o3_species():
     return species
 
 def create_c_species():
-    heat_capacities = [SimpleHeatCapacity(273.15, 3000.0, 10.68)] # simplified, but not a large input material
+    heat_capacities = [SimpleHeatCapacity(273.15, 3000.1, 10.68)] # simplified, but not a large input material
     thermo_data = ThermoData(heat_capacities)
     species = Species('C',
                         0.012011,
@@ -568,7 +577,7 @@ def create_sio2_species():
                                         (58.75340, 10.27925, -0.131384,
                                             0.025210, 0.025601, -929.3292,
                                             105.8092, -910.8568)),
-                        SimpleHeatCapacity(1996.0, 3000.0, 77.99) # NIST data didn't go higher, guessing
+                        SimpleHeatCapacity(1996.0, 3000.1, 77.99) # NIST data didn't go higher, guessing
     ]
     # Adding flux should reduce the melting point. Possibly effect
     # the latent heat value as well?
@@ -824,6 +833,58 @@ def delta_h_feo_h2_fe_h2o(temp_kelvin: float = 298.15) -> float: # TODO! Check w
     h2o.mols = 1
     products = [fe, h2o]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
+
+def delta_h_3fe2o3_2h_2fe3o4_h2o(temp_kelvin: float = 298.15) -> float: # TODO! Check with another source. Seems wrong
+    """
+    3 Fe2O3 + 2 H -> 2 Fe3O4 + H2O
+    Note: Monatomic hydrogen reduction.
+    """
+    fe2o3 = create_fe2o3_species()
+    fe2o3.mols = 3
+    h = create_h_species()
+    h.mols = 2
+    reactants = [fe2o3, h]
+    fe3o4 = create_fe3o4_species()
+    fe3o4.mols = 2
+    h2o = create_h2o_species()
+    h2o.mols = 1
+    products = [fe3o4, h2o]
+    return compute_reaction_enthalpy(reactants, products, temp_kelvin)
+
+def delta_h_fe3o4_2h_3feo_h2o(temp_kelvin: float = 298.15) -> float: # TODO! Check with another source. Seems wrong
+    """
+    Fe3O4 + 2 H -> 3 FeO + H2O
+    Note: Monatomic hydrogen reduction.
+    """
+    fe3o4 = create_fe3o4_species()
+    fe3o4.mols = 1
+    h = create_h_species()
+    h.mols = 2
+    reactants = [fe3o4, h]
+    feo = create_feo_species()
+    feo.mols = 3
+    h2o = create_h2o_species()
+    h2o.mols = 1
+    products = [feo, h2o]
+    return compute_reaction_enthalpy(reactants, products, temp_kelvin)
+
+def delta_h_feo_2h_fe_h2o(temp_kelvin: float = 298.15) -> float: # TODO! Check with another source. Seems wrong
+    """
+    FeO + 2 H -> Fe + H2O
+    Note: Monatomic hydrogen reduction.
+    """
+    feo = create_feo_species()
+    feo.mols = 1
+    h = create_h_species()
+    h.mols = 2
+    reactants = [feo, h]
+    fe = create_fe_species()
+    fe.mols = 1
+    h2o = create_h2o_species()
+    h2o.mols = 1
+    products = [fe, h2o]
+    return compute_reaction_enthalpy(reactants, products, temp_kelvin)
+
 
 def delta_h_fe2o3_3h2_3fe_3h2o(temp_kelvin: float = 298.15) -> float:
     """

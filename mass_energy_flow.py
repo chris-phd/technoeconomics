@@ -1042,15 +1042,13 @@ def add_plasma_flows_final(system: System):
         num_si_formations = si_in_steel.mols
     except:
         num_si_formations = 0.0
-    
 
+    h_reaction_frac = system.system_vars['plasma h fraction (excl. Ar and H2O)']
+    h2_reaction_frac = 1 - h_reaction_frac * 0.5
 
-    # TODO: Need to calculate the reaction enthalpy from monotomic H reduction. The fraction of H reduction will depend on the reaction temp
-    # Why is this chemical energy positive? Don't we expect the overall reduction to be endo thermic, even
-    # for the reaction takes place at these higher temperatures??
-    chemical_energy = -num_fe_formations * species.delta_h_feo_h2_fe_h2o(plasma_temp) \
-                      -num_feo_formations * species.delta_h_fe3o4_h2_3feo_h2o(plasma_temp) \
-                      -num_fe3o4_formations * species.delta_h_3fe2o3_h2_2fe3o4_h2o(plasma_temp) \
+    chemical_energy = -num_fe_formations * (h2_reaction_frac * species.delta_h_feo_h2_fe_h2o(plasma_temp) + h_reaction_frac * species.delta_h_feo_2h_fe_h2o(plasma_temp)) \
+                      -num_feo_formations * (h2_reaction_frac * species.delta_h_fe3o4_h2_3feo_h2o(plasma_temp) + h_reaction_frac * species.delta_h_fe3o4_2h_3feo_h2o(plasma_temp)) \
+                      -num_fe3o4_formations * (h2_reaction_frac * species.delta_h_3fe2o3_h2_2fe3o4_h2o(plasma_temp) + h_reaction_frac * species.delta_h_3fe2o3_2h_2fe3o4_h2o(plasma_temp)) \
                       -num_si_formations * species.delta_h_sio2_h2_si_h2o(plasma_temp)
 
 

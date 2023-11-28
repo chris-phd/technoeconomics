@@ -81,6 +81,10 @@
   9 get the ore composition from the actual ore or dri object, rather than
  10 relying on the system_vars. MAJOR BUG!
 
+- Energy required to heat the plasma to high temps is still not factored in, even though
+  some support to add in the enthalpy of reaction has been added. Need more rigerous addition
+  of cantera support in the species definition.
+
 ## Comments
 - A big assumption here is that the steel plant is always running at full capacity.
 - Electricity demand for all the major pathways is very similar at the commit:

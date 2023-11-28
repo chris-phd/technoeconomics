@@ -205,6 +205,30 @@ class SpeciesThermoTest(TestCase):
         # Failing. Pretty significant error...
         self.assertAlmostEqual(delta_h / 1000, factsage_delta_h / 1000, places=1)
 
+    def test_enthalpy_of_reaction_monatomic_h_reduction(self):
+        # These are all failing. The delta H of reaction that I am calcuating does not at
+        # all match what FactSage is suggesting..
+        temp_kelvin = 298
+        delta_h = species.delta_h_3fe2o3_2h_2fe3o4_h2o(temp_kelvin)
+        factsage_delta_h = -479275.2 
+        self.assertAlmostEqual(delta_h / 1000, factsage_delta_h / 1000, places=1)
+
+        temp_kelvin = 1000
+        delta_h = species.delta_h_3fe2o3_2h_2fe3o4_h2o(temp_kelvin)
+        factsage_delta_h = -447835.8 
+        # self.assertAlmostEqual(delta_h / 1000, factsage_delta_h / 1000, places=1)
+
+        temp_kelvin = 2000
+        delta_h = species.delta_h_3fe2o3_2h_2fe3o4_h2o(temp_kelvin)
+        factsage_delta_h = -171728.8 
+        # self.assertAlmostEqual(delta_h / 1000, factsage_delta_h / 1000, places=1)
+
+        temp_kelvin = 3000
+        delta_h = species.delta_h_3fe2o3_2h_2fe3o4_h2o(temp_kelvin)
+        factsage_delta_h = -142709.5 
+        # self.assertAlmostEqual(delta_h / 1000, factsage_delta_h / 1000, places=1)
+
+
     def test_enthalpy_of_oxidation_reaction(self):
         # Accuracy of the enthalpies of reaction for the oxidation reactions 
         # seems slightly better than the enthalpies of reaction of the hydrogen
@@ -254,8 +278,6 @@ class SpeciesThermoTest(TestCase):
         #                  round(factsage_delta_h/100))
 
 
-
-
     def test_energy_to_create_thermal_plasma(self):
         h2 = species.create_h2_species()
         h2.mols = 1.0
@@ -287,6 +309,8 @@ class SpeciesThermoTest(TestCase):
         delta_h_5000K = h2.heat_energy(5000.0)
         factsage_delta_h = 6.10239E+05
         # self.assertAlmostEqual(delta_h_5000K / 10000, factsage_delta_h / 10000, places=1)
+
+
 
 
 class TestFileIO(TestCase):

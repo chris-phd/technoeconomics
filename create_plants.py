@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import cantera as ct
+import math
 from typing import Optional, Dict, Any
 
 from species import create_dummy_species, create_dummy_mixture
@@ -61,7 +63,7 @@ def create_plasma_system(system_name: str ='plasma steelmaking',
     plasma_system.system_vars['cheap electricity hours'] = 8.0
     plasma_system.system_vars['h2 storage hours of operation'] = 24.0 - plasma_system.system_vars['cheap electricity hours']
     plasma_system.system_vars['feo soluble in slag percent'] = 27.0
-    plasma_system.system_vars['plasma temp K'] = 3000 # TODO Should be able to increase the plasma temp and reduce excess h2 ratio if I have higher temp thermo data
+    plasma_system.system_vars['plasma temp K'] = 2500 # TODO Should be able to increase the plasma temp and reduce excess h2 ratio if I have higher temp thermo data
     plasma_system.system_vars['argon molar percent in h2 plasma'] = 0.0
     plasma_system.system_vars['plasma reduction percent'] = 95.0
     plasma_system.system_vars['final reduction percent'] = plasma_system.system_vars['plasma reduction percent']
@@ -89,6 +91,7 @@ def create_plasma_system(system_name: str ='plasma steelmaking',
         add_bof_system_vars(plasma_system.system_vars, plasma_smelter.name, bof.name)
     else:
         plasma_system.system_vars['steelmaking device name'] = plasma_smelter.name
+    add_h2_plasma_composition(plasma_system)
 
     if on_premises_h2_production:
         # electrolysis flows
@@ -381,7 +384,7 @@ def create_hybrid_system(system_name='hybrid steelmaking',
     hybrid_system.system_vars['h2 storage hours of operation'] = 24.0 - hybrid_system.system_vars['cheap electricity hours']
     hybrid_system.system_vars['fluidized beds reduction percent'] = prereduction_perc
     hybrid_system.system_vars['feo soluble in slag percent'] = 27.0
-    hybrid_system.system_vars['plasma temp K'] = 3000 
+    hybrid_system.system_vars['plasma temp K'] = 2500 
     hybrid_system.system_vars['plasma reduction percent'] = 95.0
     hybrid_system.system_vars['final reduction percent'] = hybrid_system.system_vars['plasma reduction percent']
     hybrid_system.system_vars['plasma torch electro-thermal eff pecent'] = 80.0 # 55.0
@@ -409,6 +412,7 @@ def create_hybrid_system(system_name='hybrid steelmaking',
         add_bof_system_vars(hybrid_system.system_vars, plasma_smelter.name, bof.name)
     else:
         hybrid_system.system_vars['steelmaking device name'] = plasma_smelter.name
+    add_h2_plasma_composition(hybrid_system)
 
     # electrolysis flows
     if on_premises_h2_production:
@@ -562,6 +566,29 @@ def add_bof_flows(system: System, plasma_smelter_name: str, bof_name: str):
     system.add_output(bof_name, create_dummy_mixture('slag'))
     system.add_output(bof_name, create_dummy_mixture('steel'))
     system.add_output(bof_name, create_dummy_mixture('carbon gas'))
+
+
+def add_h2_plasma_composition(system: System):
+    if 'plasma temp K' not in system.system_vars:
+        raise Exception("Could not add plasma composition. No 'plasma temp K' system variable.")
+    
+    nasa_species = {s.name: s for s in ct.Species.list_from_file('nasa_gas.yaml')}
+    h2_plasma = ct.Solution(thermo='IdealGas', species=[nasa_species['H2'], 
+                                                        nasa_species['H2+'],
+                                                        nasa_species['H2-'],
+                                                        nasa_species['H'],
+                                                        nasa_species['H+'],
+                                                        nasa_species['H-'],
+                                                        nasa_species['Electron']])
+    h2_plasma.TPX = system.system_vars['plasma temp K'], ct.one_atm, 'H2:1.0'
+    h2_plasma.equilibrate('TP')
+    h2_fraction = h2_plasma.X[0]
+    h_fraction = h2_plasma.X[3]
+    if not math.isclose(h2_fraction + h_fraction, 1.0):
+        raise Exception("Could not add plasma composition. Expect H2 and H fractions do not sum to 1.")
+    system.system_vars['plasma h2 fraction (excl. Ar and H2O)'] = h2_fraction
+    system.system_vars['plasma h fraction (excl. Ar and H2O)'] = h_fraction
+
 
 if __name__ == "__main__":
     main()
