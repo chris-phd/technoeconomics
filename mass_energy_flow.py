@@ -1064,10 +1064,6 @@ def add_plasma_flows_final(system: System):
     h2_total = species.create_h2_species()
     h2_total.mols = h2_consumed_mols + h2_excess.mols
 
-    if h2_total.mass < 1:
-        # Not enough h2 gas to carry enough heat to melt the iron material.
-        raise Exception(f"Error: Not enough H2 gas to carry heat. Device {plasma_smelter.name} in system {system.name}")
-
     # convert to a mixture
     hydrogen_frac_in_plasma = 1.0 - 0.01 * argon_perc_in_plasma
     argon = species.create_ar_species()
