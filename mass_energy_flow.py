@@ -815,7 +815,7 @@ def add_fluidized_bed_flows(system: System):
     thermal_losses_frac = 0.04
     thermal_losses = -thermal_losses_frac * ironmaking_device.thermal_energy_balance()
 
-    max_iter = 100
+    max_iter = 1000
     i = 0
     while True:
         if abs(ironmaking_device.energy_balance() + thermal_losses) < 1e-6:
