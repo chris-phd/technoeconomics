@@ -129,7 +129,11 @@ def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable, print
         except IncreaseExcessHydrogenPlasma:
             system_vars_solved['plasma h2 excess ratio'] *= 1.05
             if print_debug_messages:
-                print(f"System {system.name} did not converge. Increasing excess h2 ratio to {system_vars_solved['plasma h2 excess ratio']}")
+                print(f"System {system.name} did not converge. Increasing plasma excess h2 ratio to {system_vars_solved['plasma h2 excess ratio']}")
+        except IncreaseExcessHydrogenFluidizedBeds:
+            system_vars_solved['fluidized beds h2 excess ratio'] *= 1.05
+            if print_debug_messages:
+                print(f"System {system.name} did not converge. Increasing fluidized bed excess h2 ratio to {system_vars_solved['fluidized beds h2 excess ratio']}")
         except IncreaseCInHotMetal:
             system_vars_solved['bof hot metal C perc'] *= 1.05
             if print_debug_messages:
@@ -750,7 +754,8 @@ def add_fluidized_bed_flows(system: System):
     assert excess_h2_ratio >= 1.0
 
     in_gas_temp = celsius_to_kelvin(900)
-    reaction_temp = celsius_to_kelvin(700)
+    reaction_temp = celsius_to_kelvin(775)
+    minimum_off_gas_temp = celsius_to_kelvin(650)
 
     ironmaking_device = system.devices[ironmaking_device_names[0]]
     ore = ironmaking_device.inputs['ore']
@@ -800,33 +805,35 @@ def add_fluidized_bed_flows(system: System):
     hydrogen = species.Mixture('H2', [h2_total])
     hydrogen.temp_kelvin = in_gas_temp 
     ironmaking_device.first_input_containing_name('h2 rich gas').set(hydrogen)
+
     # Set initial guess for the out gas temp
     # Then iteratively solve fo the temp that balances the energy balance
-
-    out_gas_temp = in_gas_temp
-
     off_gas = species.Mixture('H2 H2O', [h2o, h2_excess])
-    off_gas.temp_kelvin = out_gas_temp
+    off_gas.temp_kelvin = minimum_off_gas_temp
     ironmaking_device.first_output_containing_name('h2 rich gas').set(off_gas)
     
     # Convection and conduction losses are 4% of input heat. 
     # TODO! Find a better justification for this 4%. Currently reusing the EAF loss recommended 
     # by Sujay Kumar Dutta pg 425
     thermal_losses_frac = 0.04
-    thermal_losses = -thermal_losses_frac * ironmaking_device.thermal_energy_balance()
 
     max_iter = 1000
     i = 0
     while True:
-        if abs(ironmaking_device.energy_balance() + thermal_losses) < 1e-6:
+        thermal_losses = -thermal_losses_frac * ironmaking_device.thermal_energy_balance()
+        energy_balance = ironmaking_device.energy_balance() + thermal_losses
+        if abs(energy_balance) < 1e-6:
             break
         if i > max_iter:
             raise Exception("Failed to converge on the out gas temp. Reached max interation")
 
-        energy_balance = ironmaking_device.energy_balance() + thermal_losses
-        specific_enthalpy = ironmaking_device.first_output_containing_name('h2 rich gas').cp()
-        ironmaking_device.first_output_containing_name('h2 rich gas').temp_kelvin -= energy_balance / specific_enthalpy
-        thermal_losses = -thermal_losses_frac * ironmaking_device.thermal_energy_balance()
+        cp = ironmaking_device.first_output_containing_name('h2 rich gas').cp()
+        new_out_temp = ironmaking_device.first_output_containing_name('h2 rich gas').temp_kelvin - energy_balance / cp
+
+        if new_out_temp < minimum_off_gas_temp:
+            raise IncreaseExcessHydrogenFluidizedBeds
+
+        ironmaking_device.first_output_containing_name('h2 rich gas').temp_kelvin = new_out_temp
 
         i += 1
 
@@ -1751,6 +1758,9 @@ def get_slag_composition(system: System, device_name: str) -> Optional[Dict[str,
 
 ## Adjust Non-Converged Systems
 class IncreaseExcessHydrogenPlasma(Exception):
+    pass
+
+class IncreaseExcessHydrogenFluidizedBeds(Exception):
     pass
 
 class DecreaseSiInHotMetal(Exception):
