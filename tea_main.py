@@ -166,7 +166,7 @@ def load_config_from_csv(filename: str) -> Dict[str, Dict[str, Any]]:
         next(reader)  # skip the title row
         for row in reader:
             system_name = row[0].strip().lower()
-            variable_name = row[1].strip().lower()
+            variable_name = row[1].strip()
             variable_type = row[3].strip().lower()
             variable_value = row[2].strip()
             if variable_type.lower() == "string":
