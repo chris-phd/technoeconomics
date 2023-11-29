@@ -582,7 +582,7 @@ def add_slag_and_flux_mass(system: System):
                 slag_mass = (sio2_slag.mass + al2o3_slag.mass \
                             + cao_slag.mass + feo_slag.mass) / \
                             (1.0 - mgo_in_slag_perc * 0.01)
-                mgo_slag.mass = slag_mass * mgo_in_slag_perc * 0.01
+                mgo_slag.mass = max(slag_mass * mgo_in_slag_perc * 0.01, mgo_gangue.mass)
                 mgo_flux.mols = mgo_slag.mols - mgo_gangue.mols
                 
             if feo_slag.mass > max_feo_in_slag_perc * slag_mass * 0.01:
