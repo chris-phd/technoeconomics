@@ -922,7 +922,7 @@ def add_eaf_flows_final(system: System):
     # We also assume all the injected o2 is used in combustion / oxidation. No O2 
     # gas escapes. 
     total_o2_injected_mass = system.system_vars['o2 injection kg']
-    if total_o2_injected_mass < o2_oxidation.mass:
+    if total_o2_injected_mass < o2_oxidation.mass and not math.isclose(total_o2_injected_mass, o2_oxidation.mass):
         raise IncreaseInjectedO2
 
     # Assume a mix of CO and CO2 is produced. We know from hornby2021, that
@@ -1117,7 +1117,7 @@ def add_plasma_flows_final(system: System):
         chemical_energy += -num_feo_c_reduction_reactions * species.delta_h_feo_c_fe_co(plasma_temp)
 
     total_o2_injected_mass = system.system_vars['o2 injection kg']
-    if total_o2_injected_mass < o2_oxidation.mass:
+    if total_o2_injected_mass < o2_oxidation.mass and not math.isclose(total_o2_injected_mass, o2_oxidation.mass):
         raise IncreaseInjectedO2
         # raise Exception(f"In {system.name}, add_plasma_flows_final: injected o2 is less than the o2 required for oxidation")
 
