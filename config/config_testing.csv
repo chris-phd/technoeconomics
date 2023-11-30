@@ -5,17 +5,25 @@ all,on premises h2 production,False,boolean
 all,h2 storage method,salt caverns,string
 all,capacity factor,0.9,number
 all,ore name,Fe content,string
-all,ore fe content weight perc,59.0,number
+all,ore fe content weight perc,63.0,number
 all,ore loi content weight perc,0.0,number
 all,use mgo slag weight perc,True,boolean
 all,electrolysis lhv efficiency percent,70,number
 all,slag mgo weight perc,7.0,number
-plasma,plasma h2 excess ratio,2.0,number
-plasma ar-h2,plasma h2 excess ratio,2.0,number
+all,max heat exchanger temp K,2000,number
+plasma,plasma h2 excess ratio,3.22,number
+plasma ar-h2,plasma h2 excess ratio,3.22,number
 plasma ar-h2,argon molar percent in h2 plasma,10,number
-plasma bof,plasma h2 excess ratio,2.0,number
-hybrid 33,plasma h2 excess ratio,4.0,number
+plasma bof,plasma h2 excess ratio,4.28,number
+hybrid 33,plasma h2 excess ratio,8.57,number
+hybrid 33 bof,plasma h2 excess ratio,10.09,number
+hybrid 33 ar-h2,plasma h2 excess ratio,7.58,number
 hybrid 33 ar-h2,argon molar percent in h2 plasma,10,number
-hybrid 55,plasma h2 excess ratio,5.5,number
-hybrid 90,plasma h2 excess ratio,30.0,number
-dri-eaf,fluidized beds reduction percent,90,number
+hybrid 55,plasma h2 excess ratio,10.71,number
+hybrid 90,plasma h2 excess ratio,64.30,number
+dri-eaf,fluidized beds h2 excess ratio,5.778,number
+hybrid 33,fluidized beds h2 excess ratio,5.503,number
+hybrid 33 ar-h2,fluidized beds h2 excess ratio,5.503,number
+hybrid 33 bof,fluidized beds h2 excess ratio,5.503,number
+hybrid 90,fluidized beds h2 excess ratio,5.778,number
+hybrid 55,fluidized beds h2 excess ratio,5.778,number
