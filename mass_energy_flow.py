@@ -822,10 +822,10 @@ def add_fluidized_bed_flows(system: System):
     while True:
         thermal_losses = -thermal_losses_frac * ironmaking_device.thermal_energy_balance()
         energy_balance = ironmaking_device.energy_balance() + thermal_losses
-        if abs(energy_balance) < 1e-6:
+        if abs(energy_balance) < 2e-6:
             break
         if i > max_iter:
-            raise Exception("Failed to converge on the out gas temp. Reached max interation")
+            raise Exception(f"Failed to converge on the out gas temp with excess h2 ratio = {excess_h2_ratio}. Reached max interation")
 
         cp = ironmaking_device.first_output_containing_name('h2 rich gas').cp()
         new_out_temp = ironmaking_device.first_output_containing_name('h2 rich gas').temp_kelvin - energy_balance / cp
