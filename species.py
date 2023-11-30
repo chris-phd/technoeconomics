@@ -247,7 +247,7 @@ class Mixture:
             energy_in_output_mixtures = -self.heat_energy(ref_temp)
             assert energy_in_input_mixtures >= 0 and energy_in_output_mixtures >= 0
 
-            if abs((energy_in_input_mixtures - energy_in_output_mixtures) / energy_in_input_mixtures) < 1e-12:
+            if abs((energy_in_input_mixtures - energy_in_output_mixtures) / energy_in_input_mixtures) < 1e-13:
                 break
 
             dH = energy_in_input_mixtures - energy_in_output_mixtures
