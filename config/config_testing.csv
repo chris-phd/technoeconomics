@@ -5,12 +5,13 @@ all,on premises h2 production,False,boolean
 all,h2 storage method,salt caverns,string
 all,capacity factor,0.9,number
 all,ore name,Fe content,string
-all,ore fe content weight perc,63.0,number
+all,ore fe content weight perc,59.0,number
 all,ore loi content weight perc,0.0,number
 all,use mgo slag weight perc,True,boolean
 all,electrolysis lhv efficiency percent,70,number
 all,slag mgo weight perc,7.0,number
-all,max heat exchanger temp K,2000,number
+all,max heat exchanger temp K,1673.15,number
+all,plasma temp K,2500,number
 plasma,plasma h2 excess ratio,3.22,number
 plasma ar-h2,plasma h2 excess ratio,3.22,number
 plasma ar-h2,argon molar percent in h2 plasma,10,number

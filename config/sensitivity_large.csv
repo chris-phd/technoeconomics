@@ -19,5 +19,14 @@ All,use mgo slag weight perc,BoolSystemVar,
 All,ore fe content weight perc,SystemVar,69.0,49.0,11,3
 All,plasma reduction percent,SystemVar,98.0,90,11,2
 All,fluidized beds reduction percent,SystemVar,98.0,90,11,2
-Plasma Ar-H2,argon molar percent in h2 plasma,SystemVar,50,0,11,3
 DRI-EAF,o2 injection kg,SystemVar,70,0,15,3
+Plasma,plasma h2 excess ratio,SystemVar,5.796,0.644,21,3
+Plasma Ar-H2,plasma h2 excess ratio,SystemVar,5.796,0.644,21,3
+Plasma Ar-H2,argon molar percent in h2 plasma,SystemVar,90,0,11,3
+Plasma BOF,plasma h2 excess ratio,SystemVar,7.704,0.856,21,3
+Hybrid 33,plasma h2 excess ratio,SystemVar,15.426,1.714,21,3
+Hybrid 33 BOF,plasma h2 excess ratio,SystemVar,18.162,2.018,21,3
+Hybrid 33 Ar-H2,plasma h2 excess ratio,SystemVar,13.644,1.516,21,3
+Hybrid 33 Ar-H2,argon molar percent in h2 plasma,SystemVar,90,0,11,3
+hybrid 55,plasma h2 excess ratio,SystemVar,19.278,2.142,21,3
+hybrid 90,plasma h2 excess ratio,SystemVar,115.74,12.86,21,3

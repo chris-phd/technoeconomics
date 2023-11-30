@@ -1,2 +1,2 @@
 system name,parameter name,parameter type,X max, X min,num increments,elasticity perc
-All,ore fe content weight perc,SystemVar,69.0,49.0,11,3
+DRI-EAF,ore fe content weight perc,SystemVar,53,49.0,21,3

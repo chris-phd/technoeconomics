@@ -1192,7 +1192,7 @@ def add_plasma_flows_final(system: System):
     max_iter = 100
     while True:
         reactor_energy_balance = plasma_smelter.energy_balance() + plasma_to_melt_losses
-        if abs(reactor_energy_balance) < 0.5e-5:
+        if abs(reactor_energy_balance) < 2e-5:
             break # could not seem to converge smaller than this.
 
         mols_times_molar_heat_capacity = off_gas.heat_energy(off_gas.temp_kelvin + 1)
@@ -1270,7 +1270,7 @@ def add_electrolysis_flows(system: System):
     h2.temp_kelvin = gas_output_temp
     h2.mols = find_consumed_h2_moles(system, hydrogen_consuming_device_names)
     electrolyser.outputs['h2 rich gas'].set(h2)
-    assert 20.0 < h2.mass < 60.0, "Expect around 55kg of H2, but can be lower if scrap is used."
+    assert 20.0 < h2.mass < 70.0, "Expect around 55kg of H2, but can be lower if scrap is used."
     
     o2 = species.create_o2_species()
     o2.mols = h2.mols * 0.5

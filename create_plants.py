@@ -550,7 +550,6 @@ def add_bof_system_vars(system_vars: Dict[str, Any], ironmaking_device_name: str
     system_vars['slag mgo weight perc'] = 7.0 # Check what we expect in a melter / blast furnace
     system_vars['steelmaking device name'] = bof_name
     system_vars['ironmaking device name'] = ironmaking_device_name
-    system_vars['bof o2 injection kg'] = 0.0
     system_vars['bof b2 basicity'] = 3.5
     system_vars['bof b4 basicity'] = 3.5
     system_vars['bof slag mgo weight perc'] = 7.0
