@@ -109,7 +109,7 @@ def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable, print
     system_solved = copy.deepcopy(system)
     system_vars_solved = copy.deepcopy(system.system_vars)
 
-    max_iter = 100
+    max_iter = 1000
     iteration = 0
     first = True
     converged = False
@@ -521,7 +521,10 @@ def add_slag_and_flux_mass(system: System):
     b4_basicity = system.system_vars['b4 basicity']
     mgo_in_slag_perc = system.system_vars['slag mgo weight perc']
     ore_composition_simple = system.system_vars['ore composition simple LOI removed']
-    final_reduction_degree = system.system_vars['final reduction percent'] * 0.01
+    if 'plasma reduction percent' in system.system_vars:
+        final_reduction_degree = system.system_vars['plasma reduction percent'] * 0.01
+    else:
+        final_reduction_degree = system.system_vars['fluidized beds reduction percent'] * 0.01
     o2_injection_mols = system.system_vars['o2 injection kg'] / species.create_o2_species().mm
     max_feo_in_slag_perc = system.system_vars['feo soluble in slag percent']
     use_mgo_slag_weight_perc = system.system_vars.get('use mgo slag weight perc', False) # or \
