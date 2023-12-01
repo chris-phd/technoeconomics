@@ -102,44 +102,28 @@ def parse_args() -> argparse.Namespace:
 
 def create_systems(config: Dict[str, Dict[str, Any]]) -> List[System]:
     ## Create the system objects
+    on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("DRI-EAF", config)
+    dri_eaf_system = create_dri_eaf_system("DRI-EAF", on_prem_h2, h2_storage, annual_steel, lifetime)
     on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("Plasma", config)
     plasma_system = create_plasma_system("Plasma", on_prem_h2, h2_storage, annual_steel, lifetime)
     on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("Plasma Ar-H2", config)
-    plasma_ar_h2_system = create_plasma_system("Plasma Ar-H2", on_prem_h2, h2_storage, annual_steel, lifetime)
-    on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("Plasma BOF", config)
     plasma_bof_system = create_plasma_system("Plasma BOF", on_prem_h2, h2_storage, annual_steel, lifetime, bof_steelmaking=True)
-    on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("DRI-EAF", config)
-    dri_eaf_system = create_dri_eaf_system("DRI-EAF", on_prem_h2, h2_storage, annual_steel, lifetime)
     on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("Hybrid 33", config)
     hybrid33_system = create_hybrid_system("Hybrid 33", on_prem_h2, h2_storage, 33.33, annual_steel, lifetime)
-    on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("Hybrid 33 Ar-H2", config)
-    hybrid33_ar_h2_system = create_hybrid_system("Hybrid 33 Ar-H2", on_prem_h2, h2_storage, 33.33, annual_steel, lifetime)
-    on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("Hybrid 33 BOF", config)
-    hybrid33_bof_system = create_hybrid_system("Hybrid 33 BOF", on_prem_h2, h2_storage, 33.33, annual_steel, lifetime, bof_steelmaking=True)
     on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("Hybrid 55", config)
     hybrid55_system = create_hybrid_system("Hybrid 55", on_prem_h2, h2_storage, 55.0, annual_steel, lifetime)
-    on_prem_h2, h2_storage, annual_steel, lifetime = get_important_config_entries("Hybrid 90", config)
-    hybrid90_system = create_hybrid_system("Hybrid 90", on_prem_h2, h2_storage, 90.0, annual_steel, lifetime)
 
-    plasma_system.add_mass_energy_flow_func = add_plasma_mass_and_energy
-    plasma_ar_h2_system.add_mass_energy_flow_func = add_plasma_mass_and_energy
-    plasma_bof_system.add_mass_energy_flow_func = add_plasma_mass_and_energy
     dri_eaf_system.add_mass_energy_flow_func = add_dri_eaf_mass_and_energy
+    plasma_system.add_mass_energy_flow_func = add_plasma_mass_and_energy
+    plasma_bof_system.add_mass_energy_flow_func = add_plasma_mass_and_energy
     hybrid33_system.add_mass_energy_flow_func = add_hybrid_mass_and_energy
-    hybrid33_ar_h2_system.add_mass_energy_flow_func = add_hybrid_mass_and_energy
-    hybrid33_bof_system.add_mass_energy_flow_func = add_hybrid_mass_and_energy
     hybrid55_system.add_mass_energy_flow_func = add_hybrid_mass_and_energy
-    hybrid90_system.add_mass_energy_flow_func = add_hybrid_mass_and_energy
 
-    systems = [plasma_system,
-               plasma_ar_h2_system,
-               plasma_bof_system,
-               dri_eaf_system,
-               hybrid33_system,
-               hybrid33_ar_h2_system,
-               hybrid33_bof_system,
-               hybrid55_system,
-               hybrid90_system]
+    systems = [dri_eaf_system,
+                plasma_system,
+                plasma_bof_system,
+                hybrid33_system,
+                hybrid55_system]
 
     # Overwrite system vars here to modify behaviour
     default_config = config.get("all", {})
