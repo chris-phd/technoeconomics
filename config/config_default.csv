@@ -20,3 +20,9 @@ hybrid 33 ar-h2,plasma h2 excess ratio,7.58,number
 hybrid 33 ar-h2,argon molar percent in h2 plasma,10,number
 hybrid 55,plasma h2 excess ratio,10.71,number
 hybrid 90,plasma h2 excess ratio,64.30,number
+dri-eaf,fluidized beds h2 excess ratio,5.778,number
+hybrid 33,fluidized beds h2 excess ratio,5.503,number
+hybrid 33 ar-h2,fluidized beds h2 excess ratio,5.503,number
+hybrid 33 bof,fluidized beds h2 excess ratio,5.503,number
+hybrid 90,fluidized beds h2 excess ratio,5.778,number
+hybrid 55,fluidized beds h2 excess ratio,5.778,number

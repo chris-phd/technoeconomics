@@ -1,2 +1,3 @@
 system name,parameter name,parameter type,X max, X min,num increments,elasticity perc
-All,Electrolyser,Price,1875.42,275.42,11,5
+All,plasma reduction percent,SystemVar,98.0,90,11,2
+All,fluidized beds reduction percent,SystemVar,98.0,90,11,2

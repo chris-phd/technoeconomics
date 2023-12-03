@@ -528,7 +528,6 @@ def add_slag_and_flux_mass(system: System):
     o2_injection_mols = system.system_vars['o2 injection kg'] / species.create_o2_species().mm
     max_feo_in_slag_perc = system.system_vars['feo soluble in slag percent']
     use_mgo_slag_weight_perc = system.system_vars.get('use mgo slag weight perc', False) # or \
-                               # 'plasma' in steelmaking_device_name or 'bof' in steelmaking_device_name
 
     feo_slag = species.create_feo_species()
     sio2_gangue = species.create_sio2_species()
