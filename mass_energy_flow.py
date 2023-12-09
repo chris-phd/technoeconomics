@@ -1007,6 +1007,7 @@ def add_plasma_flows_final(system: System):
     """
     # reduction_degree: The degree of reduction achieved by the hydrogen plasma. Based on the mass of oxygen 
     # remaining in iron oxide, compared to the mass of oxygen in the iron oxide at the very start of the process.
+    # TODO: Fix this. Reduction degree is based on the mass of the oxygen in unreduced hematite. 
     reduction_degree = system.system_vars['plasma reduction percent'] * 0.01
     plasma_temp = system.system_vars['plasma temp K']
     excess_h2_ratio = system.system_vars['plasma h2 excess ratio']
