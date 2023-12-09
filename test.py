@@ -10,7 +10,6 @@ import os
 from tea_main import load_config_from_csv
 import species
 import system
-import thermo
 import utils
 
 
@@ -115,35 +114,13 @@ class SystemTest(TestCase):
 
 
 class SpeciesThermoTest(TestCase):
-    def test_thermo_data(self):
-        # Thermo data for SiO2. Data from the NIST webbook.
-        # delta_h calculation verfied using FactSage. Accuracy is not great.
-        heat_capacities = [thermo.SimpleHeatCapacity(273.15, 298.0, 44.57),
-                    thermo.ShomateEquation(298.0, 847.0,
-                                    (-6.076591, 251.6755, -324.7964,
-                                        168.5604, 0.002548, -917.6893,
-                                        -27.96962, -910.8568)),
-                    thermo.ShomateEquation(847.0, 1996.0,
-                                    (58.75340, 10.27925, -0.131384,
-                                        0.025210, 0.025601, -929.3292,
-                                        105.8092, -910.8568)),
-                    thermo.SimpleHeatCapacity(1996.0, 3000.0, 77.99) # NIST data didn't go higher, guessing
-        ]
-        latent_heats = [thermo.LatentHeat(1983.15, 9600)]
-        thermo_data = thermo.ThermoData(heat_capacities, latent_heats)
-        mols = 1.0
-        delta_h = thermo_data.delta_h(mols, utils.celsius_to_kelvin(25), utils.celsius_to_kelvin(2000))
-        factsage_delta_h = 153464.0
-        self.assertEqual(round(delta_h / 10000), 
-                         round(factsage_delta_h / 10000))
-
     def test_h2o_heat_capacity(self):
-        h2o = species.create_h2o_species()
-        h2o.temp_kelvin = utils.celsius_to_kelvin(25)
+        h2o = species.create_h2o_l_mixture()
+        h2o.T = utils.celsius_to_kelvin(25)
         molar_cp = h2o.cp()
         specific_cp = h2o.cp(False)
         self.assertAlmostEqual(molar_cp, 75.4, places=1)
-        self.assertAlmostEqual(specific_cp, 4.18, places=1)
+        self.assertAlmostEqual(specific_cp * 0.001, 4.18, places=1)
 
     def test_air_energy_to_heat(self):
         mass = 1.0 # kg

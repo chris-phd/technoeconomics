@@ -3,116 +3,278 @@
 import cantera as ct
 import copy
 import math
-from typing import List
+from typing import List, Optional, Tuple
 
-class LatentHeat:
-    """
-    Latent heat required for melting or boiling.
-    """
-
-    def __init__(self, temp_kelvin: float, latent_heat: float):
-        """
-        Latent heat in J/mol
-        """
-        self.temp_kelvin = temp_kelvin
-        self.latent_heat = latent_heat
-
-    def __repr__(self):
-        return f"LatentHeat({self.temp_kelvin} K, latent_heat={self.latent_heat} J/mol)"
-
-    def delta_h(self, mols: float):
-        return mols * self.latent_heat
-
-
-class Species:
-    def __init__(self, name: str, quantity: ct.Quantity):
-        """
-        The Species class represents an amount of a substance / solution.
-        It stores the thermodynamic phase data and the amount of a substance.
-        As implemented right now, it is essentially a wrapper class around the
-        Cantera.Quantity class, but with optionally additional latent heat and
-        heat of formation data option.
-        """
-        pass
-
-
-class Mixture:
+class OldSpecies:
     def __init__(self):
         pass
 
+class OldMixture:
+    def __init__(self):
+        pass
+
+class LatentHeat:
+    """
+    Latent heat required for a phase change. Typically melting or boiling.
+    """
+
+    def __init__(self, T: float, latent_heat: float):
+        """
+        Args:
+            T (float): Temperature that the phase change occurs [K]
+            latent_heat (float): Latent heat [J/mol]
+        """
+        self._T = T
+        self._latent_heat = latent_heat
+
+    def __repr__(self):
+        return f"LatentHeat({self._T} K, {self._latent_heat} J/mol)"
+
+    @property
+    def T(self) -> float:
+        """
+        Temperature [K]
+        """
+        return self._T
+
+    @property
+    def latent_heat(self) -> float:
+        """
+        Latent heat [J/mol]
+        """
+        return self._latent_heat
+
+
+class Species:
+    """
+    The Species class represents an amount of a substance / solution.
+    It stores the thermodynamic phase data and the amount of a substance.
+    As implemented right now, it is essentially a wrapper class around the
+    Cantera.Quantity class, but with optionally additional latent heat and
+    heat of formation data option.
+    """
+
+    gas_data = {s.name: s for s in ct.Species.list_from_file('nasa_gas.yaml')}
+    condensed_data = {s.name: s for s in ct.Species.list_from_file('nasa_condensed.yaml')}
+
+    def __init__(self, name: str, quantity: ct.Quantity, latent_heats: Optional[List[LatentHeat]]=None,
+                 delta_h_formation: Optional[float]=None):
+        """
+        Args:
+            name: The name of the species, typically the chemical formula
+            quantity: The cantera quantity containing phase data and the amount of the species
+            latent_heats: The latent heat of any phase changes between the temperature that the
+                species exists and 298.15 K, assuming atmospheric pressure. Only include this
+                 if the Cp data does not extend to 298.15 [J/mol]
+            delta_h_formation: The enthalpy of formation at standard conditions 298.15 K, one
+                atmospheric pressure. [J/mol]
+        """
+        self._name = name
+        self._quantity = quantity
+        self._latent_heats = [] if latent_heats is None else latent_heats
+        self._delta_h_formation = delta_h_formation
+
+    def __repr__(self):
+        return f"Species({self._name} K, {self._quantity.mass} kg)"
+
+    def quantity_from_database_name(name: str, mass: Optional[float] = None,
+                                    moles: Optional[float] = None) -> ct.Quantity:
+        """
+        Attempts to find a phase with the given name in the available databases (nasa_gas.yaml
+        and nasa_condensed.yaml). Creates the ct.Quantity object if it exists.
+
+        Args:
+            name: The name of the phase, as it appears in the database
+            mass: The mass of the quantity [kg]
+            moles: The moles of the quantity [moles]
+
+        Raises:
+            ValueError: if the name of the species does not exist in the known databases, or
+                        if neither mass nor moles are given.
+        """
+
+        if name in Species.gas_data:
+            solution_data = ct.Solution(thermo='ideal-gas', species=[Species.gas_data[name]])
+            solution_data.TPX = 298.15, ct.one_atm, f'{name}:1.0'
+        elif name in Species.condensed_data:
+            solution_data = ct.Solution(thermo='fixed-stoichiometry', species=[Species.condensed_data[name]])
+            solution_data.TPX = 298.15, ct.one_atm, f'{name}:1.0'
+        else:
+            raise ValueError(f'No such species {name} in available databases.')
+
+        if moles is not None:
+            quantity = ct.Quantity(solution_data, moles=moles)
+        elif mass is not None:
+            quantity = ct.Quantity(solution_data, mass=mass)
+        else:
+            raise ValueError(f'No mass or mole value provided for {name}')
+
+        return quantity
+
+    @property
+    def T(self) -> float:
+        """
+        Temperature [K]
+        """
+        return self._quantity.T
+
+    @T.setter
+    def T(self, val: float):
+        self._quantity.TP = val, self.P
+
+    @property
+    def P(self) -> float:
+        """
+        Pressure [Pa]
+        """
+        return self._quantity.P
+
+    @property
+    def TP(self) -> Tuple[float, float]:
+        return self._quantity.TP
+
+    @TP.setter
+    def TP(self, tp: Tuple[float, float]):
+        self._quantity.TP = tp
+
+    @property
+    def H(self) -> float:
+        """
+        Enthalpy change relative to standard conditions (298K, 1 bar) [J]
+        """
+        return self._quantity.H
+
+    @property
+    def mm(self) -> float:
+        """
+        The molecular mass [kg / mol]
+        """
+        return self._quantity.mean_molecular_weight * 0.001
+
+    def cp(self, molar_cp:bool =True) -> float:
+        """
+        The molar heat capacity.
+
+        Args:
+            molar_cp: When true returns molar heat capacity [J / mol K]
+                When false, returns specific heat capacity [J / kg K]
+        """
+        return self._quantity.cp_mole * 0.001 if molar_cp else self._quantity.cp_mass
+
+
+class Mixture:
+    """
+    The Mixture class stores one or more Species objects. Should always use
+    a Mixture in the mass and energy flow simulation, even when transporting
+    a simple Species.
+    """
+    def __init__(self, name: str, species: Optional[List[Species]] = None):
+        self._name = name
+        self._species = [] if species is None else species
+
+    def __repr__(self):
+            s = f"Mixture({self._name} K"
+            for species in self._species:
+                s += f", {species}"
+            s += ")"
+            return s
+
+    @property
+    def T(self) -> float:
+        """
+        Temperature [K]
+
+        raises:
+            Exception: If no species are in the mixture, or if not all the temperatures
+                of the individual species are the same.
+        """
+        num_species = len(self._species)
+        if num_species == 0:
+            raise Exception('Could not retrieve temperature. Empty Mixture')
+        elif num_species == 1:
+            return self._species[0].T
+
+        temps = [s.T for s in self._species]
+        for i in range(num_species - 1):
+            if not math.isclose(self._species[i].T, self._species[i+1].T):
+                raise Exception('Could not retrieve temperature. Species in the Mixture have different temperatures')
+        return temps[0]
+
+    @T.setter
+    def T(self, val: float):
+        for species in self._species:
+            species.T = val
+
+    @property
+    def mm(self) -> float:
+        """
+        The molecular mass [kg / mol]
+
+        raises:
+            Exception: There is more or less than exactly one species in the mixture.
+        """
+        if len(self._species) != 1:
+            raise Exception(f'Could not retrieve molar mass. Expected 1 species, not {len(self._species)}.')
+
+        return self._species[0].mm
+
+    def cp(self, molar_cp:bool =True) -> float:
+        """
+        The molar heat capacity.
+
+        Args:
+            molar_cp: When true returns molar heat capacity [J / mol K]
+                When false, returns specific heat capacity [J / kg K]
+        raises:
+            Exception: There is more or less than exactly one species in the mixture.
+        """
+        if len(self._species) != 1:
+            raise Exception(f'Could not retrieve heat capacity. Expected 1 species, not {len(self._species)}.')
+
+        return self._species[0].cp(molar_cp)
+
+
+
 # Species - Master copies
+# Unless otherwise stated, thermodynamic data is obtained from the following sources:
 # Heat capacity data is provided by the nasa gas and nasa condensed databases, provided through cantera
 # Latent Heat Data is from the CRC Handbook of Chemistry and Physics, Enthalpy of Fusion, 6-146
-# Enthalpy of Formation data is from the CRC Handbook of Chemistry and Physics, Enthalpy of Formation, 5-1
+# Enthalpy of Formation data is from the CRC Handbook of Chemistry and Physics, Enthalpy of Formation, 5-1,
+# and checked against the NIST webbook.
 def create_dummy_mixture(name):
-    return OldMixture(name, [create_dummy_species('a species')])
+    return Mixture(name)
 
-def create_h2_species():
-    heat_capacities = [ShomateEquation(273.15, 1000.0, # modify the start temp slightly
-                              (33.066178, -11.363417, 11.432816, 
-                               -2.772874, -0.158558, -9.980797, 172.707974, 0.0)),
-                                ShomateEquation(1000.0, 2500.0,
-                                (18.563083, 12.257357, -2.859786,
-                                0.268238, 1.977990, -1.147438, 156.288133, 0.0)),
-                                ShomateEquation(2500.0, 6000.0,
-                                (43.413560, -4.293079, 1.272428,
-                                -0.096876, -20.533862, -38.515158, 162.081354, 0.0))
-                              ]
-    thermo_data = ThermoData(heat_capacities)
-    species = OldSpecies('H2',
-                         0.00201588,
-                         thermo_data,
-                         0.0)
-    return species
+def create_h2_mixture():
+    name = 'H2'
+    quantity = Species.quantity_from_database_name(name, moles=0.0)
+    species = Species(name,
+                      quantity,
+                      delta_h_formation=0.0)
+    return Mixture(name, [species])
 
-def create_h_species():
-    heat_capacities = [SimpleHeatCapacity(273.15, 6000.0, 20.78603)]
-    thermo_data = ThermoData(heat_capacities)
-    species = OldSpecies('H',
-                         0.00100794,
-                         thermo_data,
-                         217.998)
-    return species
+def create_o2_mixture():
+    name = 'O2'
+    quantity = Species.quantity_from_database_name(name, moles=0.0)
+    species = Species(name,
+                      quantity,
+                      delta_h_formation=0.0)
+    return Mixture(name, [species])
 
-def create_o2_species():
-    heat_capacities = [ShomateEquation(100.0, 700.0,
-                                       (31.32234, -20.23531, 57.86644,
-                                        -36.50624, -0.007374, -8.903471, 
-                                        246.7945, 0.0)),
-                        ShomateEquation(700.0, 2000.0,
-                                        (30.03235, 8.772972, -3.988133,
-                                        0.788313, -0.741599, -11.32468,
-                                        236.1663, 0.0)),
-                        ShomateEquation(2000.0, 6000.0,
-                                        (20.91111, 10.72071, -2.020498,
-                                        0.146449, 9.245722, 5.337651,
-                                        237.6185, 0.0))]
-    thermo_data = ThermoData(heat_capacities)
-    species = OldSpecies('O2',
-                         0.0319988,
-                         thermo_data,
-                         0.0)
-    return species
+def create_h2o_g_mixture():
+    name = 'H2O'
+    quantity = Species.quantity_from_database_name(name, moles=0.0)
+    species = Species(name,
+                     quantity,
+                     delta_h_formation=-241.83e3)
+    return Mixture(name, [species])
 
-def create_h2o_species():
-    o2 = create_o2_species()
-    h2 = create_h2_species()
-
-    heat_capacities = [SimpleHeatCapacity(273.15, 373.15, 75.36), # liquid water
-                       SimpleHeatCapacity(373.15, 500.0, 36.57),
-                              ShomateEquation(500.0, 1700.0, # Why does the gas phase data end here???
-                                              (30.09200, 6.832514, 6.793435,
-                                              -2.534480, 0.082139, -250.8810, 223.3967, -241.8264)),
-                              ShomateEquation(1700.0, 6000.0,
-                                              (41.96426, 8.622053, -1.499780,
-                                              0.098119, -11.15764, -272.1797, 219.7809, -241.8264))]
-    latent_heats = [LatentHeat(373.15, 40660.0)]
-    thermo_data = ThermoData(heat_capacities, latent_heats)
-    species = OldSpecies('H2O',
-                         h2.mm + o2.mm * 0.5,
-                         thermo_data,
-                         -285.83e3) # liquid water enthalpy of formation
-    return species
+def create_h2o_l_mixture():
+    name = 'H2O(L)'
+    quantity = Species.quantity_from_database_name(name, moles=0.0)
+    species = Species(name,
+                     quantity,
+                     delta_h_formation=-285.83e3)
+    return Mixture(name, [species])
 
 def create_n2_species():
     heat_capacities = [ShomateEquation(100.0, 500.0,
