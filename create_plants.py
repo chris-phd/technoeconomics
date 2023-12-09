@@ -4,7 +4,6 @@ import cantera as ct
 import math
 from typing import Optional, Dict, Any
 
-from species import create_dummy_species, create_dummy_mixture
 from system import System, Device, EnergyFlow
 from utils import celsius_to_kelvin
 

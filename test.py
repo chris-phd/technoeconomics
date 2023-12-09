@@ -8,6 +8,7 @@ from unittest import TestCase, main
 import os
 
 from tea_main import load_config_from_csv
+import reactions
 import species
 import system
 import utils
@@ -116,21 +117,28 @@ class SystemTest(TestCase):
 class SpeciesThermoTest(TestCase):
     def test_h2o_heat_capacity(self):
         h2o = species.create_h2o_l_mixture()
+        h2o.mass = 1.0
         h2o.T = utils.celsius_to_kelvin(25)
         molar_cp = h2o.cp()
         specific_cp = h2o.cp(False)
         self.assertAlmostEqual(molar_cp, 75.4, places=1)
         self.assertAlmostEqual(specific_cp * 0.001, 4.18, places=1)
 
-    def test_air_energy_to_heat(self):
-        mass = 1.0 # kg
-        air = species.create_air_mixture(mass)
-        air.temp_kelvin = utils.celsius_to_kelvin(100)
-        heat_energy = air.heat_energy(air.temp_kelvin + 1)
-        self.assertAlmostEqual(heat_energy, 1015.4, places=1)
-        heat_energy = air.heat_energy(air.temp_kelvin + 700)
-        print(f'heat_energy: {heat_energy}')
-        self.assertAlmostEqual(heat_energy, 732417.1, places=1)
+    def test_h2_molecular_mass(self):
+        h2 = species.create_h2_mixture()
+        h2.moles = 42.0
+        self.assertAlmostEqual(h2.mm*1000, 2.016, places=2)
+
+    def test_enthalpy_of_reaction_h2_combustion(self):
+        T = 600.0
+        delta_h = reactions.enthalpy_2h2_o2_to_2h2o(T)
+        delta_h_factsage = -489531.3
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.01*abs(delta_h_factsage))
+
+        T = 1000.0
+        delta_h = reactions.enthalpy_2h2_o2_to_2h2o(T)
+        delta_h_factsage =  -503164.9
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.015*abs(delta_h_factsage))
 
     def test_iron_heat_energy(self): 
         fe = species.create_fe_species()

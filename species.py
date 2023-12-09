@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import cantera as ct
-import copy
 import math
 from typing import List, Optional, Tuple
 
@@ -138,11 +137,12 @@ class Species:
         self._quantity.TP = tp
 
     @property
-    def H(self) -> float:
+    def enthalpy(self) -> float:
         """
         Enthalpy change relative to standard conditions (298K, 1 bar) [J]
+        Excludes any latent heat
         """
-        return self._quantity.H
+        return self._quantity.enthalpy
 
     @property
     def mm(self) -> float:
@@ -150,6 +150,29 @@ class Species:
         The molecular mass [kg / mol]
         """
         return self._quantity.mean_molecular_weight * 0.001
+
+    @property
+    def mass(self) -> float:
+        """
+        The mass [kg]
+        """
+        return self._quantity.mass
+
+    @mass.setter
+    def mass(self, val):
+        self._quantity.mass = val
+
+    @property
+    def moles(self) -> float:
+        return self._quantity.moles
+
+    @moles.setter
+    def moles(self, val):
+        self._quantity.moles = val * 0.001
+
+    @property
+    def delta_h_formation(self):
+        return self._delta_h_formation
 
     def cp(self, molar_cp:bool =True) -> float:
         """
@@ -161,6 +184,21 @@ class Species:
         """
         return self._quantity.cp_mole * 0.001 if molar_cp else self._quantity.cp_mass
 
+    @property
+    def latent_heat(self) -> float:
+        """
+        The latent heat required to heat this species from standard conditions 298.15 K
+        to the current temperature. Returns the required energy in [J]
+
+        Args:
+            T_final: The final temperature [K]
+        """
+        total = 0.0
+        for lh in self._latent_heats:
+            if self.T > lh.T:
+                total += self.moles * lh.latent_heat
+
+        return total
 
 class Mixture:
     """
@@ -178,6 +216,10 @@ class Mixture:
                 s += f", {species}"
             s += ")"
             return s
+
+    @property
+    def species(self):
+        return self._species
 
     @property
     def T(self) -> float:
@@ -232,6 +274,16 @@ class Mixture:
             raise Exception(f'Could not retrieve heat capacity. Expected 1 species, not {len(self._species)}.')
 
         return self._species[0].cp(molar_cp)
+
+    @property
+    def mass(self) -> float:
+        """
+        The mass [kg]
+        """
+        total = 0.0
+        for species in self._species:
+            total += species.mass
+        return total
 
 
 
