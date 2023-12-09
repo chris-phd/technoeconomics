@@ -271,7 +271,7 @@ def add_steel_out(system: System):
     scrap.name = 'scrap'
     scrap.temp_kelvin = celsius_to_kelvin(25)
 
-    steel = species.Mixture('steel', [fe, c, scrap])
+    steel = species.OldMixture('steel', [fe, c, scrap])
     steel.temp_kelvin = system.system_vars['steel exit temp K']
 
     steelmaking_device_name = system.system_vars['steelmaking device name']
@@ -600,11 +600,11 @@ def add_slag_and_flux_mass(system: System):
         fe_total_mass = fe.mass + feo_slag.mass * fe.mm / feo_slag.mm
         ore_mass = fe_total_mass / (ore_composition_simple['Fe'] * 0.01)
 
-    flux = species.Mixture('flux', [cao_flux, mgo_flux])
+    flux = species.OldMixture('flux', [cao_flux, mgo_flux])
     flux.temp_kelvin = system.system_vars['steel exit temp K']
     steelmaking_device.inputs['flux'].set(flux)
 
-    slag = species.Mixture('slag', [feo_slag, sio2_slag, al2o3_slag, cao_slag, mgo_slag])
+    slag = species.OldMixture('slag', [feo_slag, sio2_slag, al2o3_slag, cao_slag, mgo_slag])
     slag.temp_kelvin = system.system_vars['steel exit temp K']
     steelmaking_device.outputs['slag'].set(slag)
 
@@ -675,9 +675,9 @@ def add_ore(system: System):
     water_loi = species.create_h2o_species()
     water_loi.mass = ore_mass * ore_composition_simple.get('LOI', 0.0) * 0.01
 
-    ore = species.Mixture('ore', [fe2o3_ore, fe3o4, feo, fe,
-                          cao_gangue, mgo_gangue, sio2_gangue, al2o3_gangue,
-                          water_loi])
+    ore = species.OldMixture('ore', [fe2o3_ore, fe3o4, feo, fe,
+                                     cao_gangue, mgo_gangue, sio2_gangue, al2o3_gangue,
+                                     water_loi])
     ore.temp_kelvin = ore_initial_temp
 
     if ore_heater_device_name is not None:
@@ -765,11 +765,11 @@ def add_fluidized_bed_flows(system: System):
     hematite_composition = system.system_vars['ore composition simple LOI removed']
     fe_dri, feo_dri, fe3o4_dri, fe2o3_dri = iron_species_from_reduction_degree(reduction_degree, ore.mass, hematite_composition)
 
-    dri = species.Mixture('dri fines', [fe_dri, feo_dri, fe3o4_dri, fe2o3_dri,
-                                copy.deepcopy(ore.species('CaO')),
-                                copy.deepcopy(ore.species('MgO')),
-                                copy.deepcopy(ore.species('SiO2')),
-                                copy.deepcopy(ore.species('Al2O3'))])
+    dri = species.OldMixture('dri fines', [fe_dri, feo_dri, fe3o4_dri, fe2o3_dri,
+                                           copy.deepcopy(ore.species('CaO')),
+                                           copy.deepcopy(ore.species('MgO')),
+                                           copy.deepcopy(ore.species('SiO2')),
+                                           copy.deepcopy(ore.species('Al2O3'))])
     dri.temp_kelvin = in_gas_temp - 50 # Assumption, TODO understand what the basis of this assumption is.
     ironmaking_device.outputs['dri'].set(dri)
 
@@ -804,13 +804,13 @@ def add_fluidized_bed_flows(system: System):
     h2_total = species.create_h2_species()
     h2_total.mols = h2_consumed.mols + h2_excess.mols
 
-    hydrogen = species.Mixture('H2', [h2_total])
+    hydrogen = species.OldMixture('H2', [h2_total])
     hydrogen.temp_kelvin = in_gas_temp 
     ironmaking_device.first_input_containing_name('h2 rich gas').set(hydrogen)
 
     # Set initial guess for the out gas temp
     # Then iteratively solve fo the temp that balances the energy balance
-    off_gas = species.Mixture('H2 H2O', [h2o, h2_excess])
+    off_gas = species.OldMixture('H2 H2O', [h2o, h2_excess])
     off_gas.temp_kelvin = minimum_off_gas_temp
     ironmaking_device.first_output_containing_name('h2 rich gas').set(off_gas)
     
@@ -965,7 +965,7 @@ def add_eaf_flows_final(system: System):
     co.mols = 2 * num_co_reactions + c_reduction.mols
     co2 = species.create_co2_species()
     co2.mols = num_co2_reactions
-    off_gas = species.Mixture('carbon gas', [co, co2])
+    off_gas = species.OldMixture('carbon gas', [co, co2])
     off_gas.temp_kelvin = reaction_temp - 200.0
     steelmaking_device.outputs['carbon gas'].set(off_gas)
 
@@ -1078,7 +1078,7 @@ def add_plasma_flows_final(system: System):
     hydrogen_frac_in_plasma = 1.0 - 0.01 * argon_perc_in_plasma
     argon = species.create_ar_species()
     argon.mols = h2_total.mols / hydrogen_frac_in_plasma - h2_total.mols
-    h2_rich_gas = species.Mixture('h2 rich gas', [h2_total, argon])
+    h2_rich_gas = species.OldMixture('h2 rich gas', [h2_total, argon])
 
     # the amount of h2 in the in gas
     # input H2 temp to the plasma torch may be adjusted later after we know 
@@ -1177,7 +1177,7 @@ def add_plasma_flows_final(system: System):
     co.mols = 2 * num_co_reactions + c_reduction.mols
     co2 = species.create_co2_species()
     co2.mols = num_co2_reactions
-    off_gas = species.Mixture('off gas', [co, co2, h2o, h2_excess, argon])
+    off_gas = species.OldMixture('off gas', [co, co2, h2o, h2_excess, argon])
 
     # Solve for the off gas temperature that balances the energy balance.
     # Solve iteratively. Use the maximum safe exit temp as the initial guess.
@@ -1230,16 +1230,16 @@ def find_consumed_h2_moles(system: System, hydrogen_consuming_device_names: List
     h2_mols = 0.0
     for device_name in hydrogen_consuming_device_names:
         device = system.devices[device_name]
-        if isinstance(device.first_input_containing_name('h2 rich gas'), species.Species):
+        if isinstance(device.first_input_containing_name('h2 rich gas'), species.OldSpecies):
             input_h2_mols = device.first_input_containing_name('h2 rich gas').mols
-        elif isinstance(device.first_input_containing_name('h2 rich gas'), species.Mixture):
+        elif isinstance(device.first_input_containing_name('h2 rich gas'), species.OldMixture):
             input_h2_mols = device.first_input_containing_name('h2 rich gas').species('H2').mols
         else:
             raise TypeError("Error: Unknown type for h2 rich gas input")
         
-        if isinstance(device.first_output_containing_name('h2 rich gas'), species.Species):
+        if isinstance(device.first_output_containing_name('h2 rich gas'), species.OldSpecies):
             output_h2_mols = device.first_output_containing_name('h2 rich gas').mols
-        elif isinstance(device.first_output_containing_name('h2 rich gas'), species.Mixture):
+        elif isinstance(device.first_output_containing_name('h2 rich gas'), species.OldMixture):
             output_h2_mols = device.first_output_containing_name('h2 rich gas').species('H2').mols
         else:
             raise TypeError("Error: Unknown type for h2 rich gas input")
@@ -1259,7 +1259,7 @@ def add_input_h2_flows(system: System):
 
     # add in the h2 input to the system
     device_name = system.system_vars['input h2 device name']
-    system.devices[device_name].inputs['h2 rich gas'].set(species.Mixture('h2 rich gas', [h2]))
+    system.devices[device_name].inputs['h2 rich gas'].set(species.OldMixture('h2 rich gas', [h2]))
 
 
 def add_electrolysis_flows(system: System):
@@ -1360,18 +1360,18 @@ def merge_join_flows(system: System, join_device_name: str):
     assert len(device.outputs) == 1
     output_flow_name = list(device.outputs.keys())[0]
 
-    if isinstance(device.outputs[output_flow_name], species.Species):
+    if isinstance(device.outputs[output_flow_name], species.OldSpecies):
 
         # pretty disgusting here. 
-        tmp_mixture = species.Mixture("temp", [])
+        tmp_mixture = species.OldMixture("temp", [])
         device.outputs[output_flow_name].mols = 0
         for flow in device.inputs.values():
-            assert isinstance(flow, species.Species)
+            assert isinstance(flow, species.OldSpecies)
             tmp_mixture.merge(flow)
         assert tmp_mixture.num_species() == 1
         device.outputs[output_flow_name].set(tmp_mixture._species[0])
             
-    elif isinstance(device.outputs[output_flow_name], species.Mixture):
+    elif isinstance(device.outputs[output_flow_name], species.OldMixture):
         device.outputs[output_flow_name]._species = [] # clear the ouput
         for flow in device.inputs.values():
             device.outputs[output_flow_name].merge(flow)
@@ -1401,8 +1401,8 @@ def balance_join3_flows(system: System):
         h2_loop_1.mols += device.first_input_containing_name('h2 rich gas').species('H2').mols \
                         - device.first_output_containing_name('h2 rich gas').species('H2').mols
     
-    join_3.outputs['h2 rich gas 1'].set(species.Mixture('h2 rich gas 1', [h2_loop_1]))
-    join_3.outputs['h2 rich gas 2'].set(species.Mixture('h2 rich gas 2', [h2_loop_2]))
+    join_3.outputs['h2 rich gas 1'].set(species.OldMixture('h2 rich gas 1', [h2_loop_1]))
+    join_3.outputs['h2 rich gas 2'].set(species.OldMixture('h2 rich gas 2', [h2_loop_2]))
     
     if abs(join_3.mass_balance()) > 1e-8 or abs(join_3.energy_balance()) > 1e-8:
         raise Exception("Error: Join 3 mass or energy balance not zero")
@@ -1538,7 +1538,7 @@ def add_condenser_and_scrubber_flows_final(system: System,     condenser_device_
     try:
         co_out = copy.deepcopy(condenser_in_gas.species('CO'))
         co2_out = copy.deepcopy(condenser_in_gas.species('CO2'))
-        carbon_mixture = species.Mixture('carbon gas', [co_out, co2_out])
+        carbon_mixture = species.OldMixture('carbon gas', [co_out, co2_out])
         carbon_mixture.temp_kelvin = condenser_temp
         condenser.outputs['carbon gas'].set(carbon_mixture)
     except:
@@ -1577,7 +1577,7 @@ def add_h2_heater_flows(system: System):
             elif output_gas.mass > input_gas.mass:
                 system.devices[heater_name].first_input_containing_name('h2 rich gas').mass = output_gas.mass
             else:
-                if isinstance(system.devices[heater_name].first_output_containing_name('h2 rich gas'), species.Mixture):
+                if isinstance(system.devices[heater_name].first_output_containing_name('h2 rich gas'), species.OldMixture):
                     system.devices[heater_name].first_output_containing_name('h2 rich gas').species('H2').mass = input_gas.mass
                 else: # probs an instance of the Species class
                     system.devices[heater_name].first_output_containing_name('h2 rich gas').mass = input_gas.mass
@@ -1647,11 +1647,11 @@ def add_bof_flows(system: System):
     feo_slag.mass = feo_in_slag_perc * 0.01 * total_slag_mass
     hot_metal.species('Fe').mols += feo_slag.mols
 
-    flux = species.Mixture('flux', [cao_flux, mgo_flux])
+    flux = species.OldMixture('flux', [cao_flux, mgo_flux])
     flux.temp_kelvin = celsius_to_kelvin(25)
     bof.inputs['flux'].set(flux)
 
-    slag = species.Mixture('slag', [sio2_slag, cao_slag, mgo_slag, feo_slag])
+    slag = species.OldMixture('slag', [sio2_slag, cao_slag, mgo_slag, feo_slag])
     slag.temp_kelvin = hot_metal.temp_kelvin
     bof.outputs['slag'].set(slag)
 
@@ -1659,7 +1659,7 @@ def add_bof_flows(system: System):
     # eaf furnaces. Add this later.
     co_emitted.mols = hot_metal.species('C').mols - steel.species('C').mols
     co_emitted.temp_kelvin = hot_metal.temp_kelvin - 200.0 # guess
-    carbon_gas = species.Mixture('carbon gas', [co_emitted])
+    carbon_gas = species.OldMixture('carbon gas', [co_emitted])
     carbon_gas.temp_kelvin = co_emitted.temp_kelvin
     bof.outputs['carbon gas'].set(carbon_gas)
 

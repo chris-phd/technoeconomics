@@ -170,8 +170,8 @@ class SpeciesThermoTest(TestCase):
         oxygen = species.create_o2_species()
         oxygen.mass = 1
         oxygen.temp_kelvin = 1200
-        steam_mixture = species.Mixture('steam', [steam])
-        oxygen_mixture = species.Mixture('oxygen', [oxygen])
+        steam_mixture = species.OldMixture('steam', [steam])
+        oxygen_mixture = species.OldMixture('oxygen', [oxygen])
         steam_mixture.merge(oxygen_mixture)
         self.assertAlmostEqual(steam_mixture.mass, 2)
         self.assertAlmostEqual(steam_mixture.temp_kelvin, 1066.3, places=1)

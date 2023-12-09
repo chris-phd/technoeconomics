@@ -3,7 +3,7 @@
 import graphviz
 from typing import Optional, Type, Union, Dict, Callable, Any
 
-from species import Species, Mixture
+from species import OldSpecies, OldMixture
 from utils import celsius_to_kelvin
 
 class EnergyFlow:
@@ -103,12 +103,12 @@ class Device:
     def device_vars(self):
         return self._device_vars
 
-    def add_input(self, flow: Union[Species, Mixture, EnergyFlow]):
+    def add_input(self, flow: Union[OldSpecies, OldMixture, EnergyFlow]):
         if flow.name in self._inputs:
             raise ValueError(f"Input flow with name {flow.name} already exists")
         self._inputs[flow.name] = flow
     
-    def add_output(self, flow: Union[Species, Mixture, EnergyFlow]):
+    def add_output(self, flow: Union[OldSpecies, OldMixture, EnergyFlow]):
         if flow.name in self._outputs:
             raise ValueError(f"Output flow with name {flow.name} already exists")
         self._outputs[flow.name] = flow
@@ -146,7 +146,7 @@ class Device:
 
         final_thermal_energy = 0.0
         for flow in self.outputs.values():
-            if not (isinstance(flow, Species) or isinstance(flow, Mixture)):
+            if not (isinstance(flow, OldSpecies) or isinstance(flow, OldMixture)):
                 continue
             # negative becuase heat_energy will calc energy required to cool
             # to the ref temp
@@ -154,7 +154,7 @@ class Device:
 
         initial_thermal_energy = 0.0
         for flow in self.inputs.values():
-            if not (isinstance(flow, Species) or isinstance(flow, Mixture)):
+            if not (isinstance(flow, OldSpecies) or isinstance(flow, OldMixture)):
                 continue
             initial_thermal_energy -= flow.heat_energy(ref_temp)
         
@@ -177,13 +177,13 @@ class Device:
     def mass_balance(self):
         mass_out = 0.0
         for flow in self._outputs.values():
-            if not (isinstance(flow, Species) or isinstance(flow, Mixture)):
+            if not (isinstance(flow, OldSpecies) or isinstance(flow, OldMixture)):
                 continue
             mass_out += flow.mass
 
         mass_in = 0.0
         for flow in self._inputs.values():
-            if not (isinstance(flow, Species) or isinstance(flow, Mixture)):
+            if not (isinstance(flow, OldSpecies) or isinstance(flow, OldMixture)):
                 continue
             mass_in += flow.mass
         return mass_out - mass_in
@@ -291,7 +291,7 @@ class System:
         self._graph_dot.remove_node(device_name + self._input_node_suffix)
         self._graph_dot.remove_node(device_name + self._output_node_suffix)
 
-    def add_flow(self, from_device_name: Optional[str], to_device_name: Optional[str], flow: Union[Species, Mixture, EnergyFlow]):
+    def add_flow(self, from_device_name: Optional[str], to_device_name: Optional[str], flow: Union[OldSpecies, OldMixture, EnergyFlow]):
         if from_device_name is None and to_device_name is None:
             raise ValueError("Cannot add flow without a source or destination")
 
@@ -331,10 +331,10 @@ class System:
             self._devices[to_device_name].add_input(flow)
             self._devices[from_device_name].add_output(flow)
         
-    def add_input(self, device: Type[Device], flow: Union[Species, Mixture, EnergyFlow]):
+    def add_input(self, device: Type[Device], flow: Union[OldSpecies, OldMixture, EnergyFlow]):
         self.add_flow(None, device, flow)
 
-    def add_output(self, device: Type[Device], flow: Union[Species, Mixture, EnergyFlow]):
+    def add_output(self, device: Type[Device], flow: Union[OldSpecies, OldMixture, EnergyFlow]):
         self.add_flow(device, None, flow)
 
     def get_flow(self, from_device_name: str, to_device_name: str, flow_name: str):
@@ -380,11 +380,11 @@ class System:
                 continue
             # Note; outputs of the dummy input devices are system inputs
             for flow in self._devices[device_name].outputs.values():
-                if isinstance(flow, Species) or isinstance(flow, Mixture):
+                if isinstance(flow, OldSpecies) or isinstance(flow, OldMixture):
                     if flow.name in ignore_flows_named:
                         continue
 
-                    if flow.name in separate_mixtures_named and isinstance(flow, Mixture):
+                    if flow.name in separate_mixtures_named and isinstance(flow, OldMixture):
                         for species in flow._species:
                             if species.name not in inputs:
                                 inputs[species.name] = 0.0
@@ -416,11 +416,11 @@ class System:
                 continue
             # Note; inputs of the dummy output devices are system outputs
             for flow in self._devices[device_name].inputs.values():
-                if isinstance(flow, Species) or isinstance(flow, Mixture):
+                if isinstance(flow, OldSpecies) or isinstance(flow, OldMixture):
                     if flow.name in ignore_flows_named:
                         continue
 
-                    if flow.name in separate_mixtures_named and isinstance(flow, Mixture):
+                    if flow.name in separate_mixtures_named and isinstance(flow, OldMixture):
                         for species in flow._species:
                             if species.name not in outputs:
                                 outputs[species.name] = 0.0
