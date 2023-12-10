@@ -465,15 +465,15 @@ def create_feo_species():
     fe = create_fe_species()
     o2 = create_o2_species()
 
-    heat_capacities = [SimpleHeatCapacity(273.15, 298.0, 49.93),
-                        ShomateEquation(298.0, 1650.0, 
+    heat_capacities = [ShomateEquation(298.0, 1650.0,
                                         (45.75120, 18.78553, -5.952201,
                                          0.852779, -0.081265, -286.7429, 110.3120, -272.0441)),
                         ShomateEquation(1650, 5000, 
-                                           (68.19920, 0.0, 0.0, 0.0, 0.0, 
-                                            -281.4326, 137.8377, -249.5321))
+                                           (68.19920, -4.501232e-10, 1.195227e-10,
+                                            -1.064302e-11, -3.092680e-10,
+                                            -281.4326, 137.8377, -249.5321)) # Liquid phase
     ]
-    latent_heats = [LatentHeat(1650.15, 24100.0)]
+    latent_heats = [LatentHeat(1644.15, 31189.13)] # latent heat from factsage
     thermo_data = ThermoData(heat_capacities, latent_heats)
     species = Species('FeO',
                         fe.mm + o2.mm * 0.5,
@@ -485,33 +485,34 @@ def create_fe3o4_species():
     fe = create_fe_species()
     o2 = create_o2_species()
 
-    # Plot of the ShomateEquations seems weird, but will run with it.
-    heat_capacities = [SimpleHeatCapacity(273.15, 298.0, 147.183),
-                        ShomateEquation(298, 900.0, 
+    heat_capacities = [ShomateEquation(298, 900.0,
                                         (104.2096, 178.5108, 10.61510,
                                          1.132534, -0.994202, -1163.336, 
                                          212.0585, -1120.894)),
-                        SimpleHeatCapacity(900.0, 3000.1, 200.823)
+                        ShomateEquation(900.0, 3000.1,
+                                        (200.8320, 1.586435e-7, -6.661682e-8,
+                                         9.452452e-9, 3.186020e-8, -1174.135, 388.0790, -1120.894))
     ]
     latent_heats = [LatentHeat(1870.15, 138000)]
     thermo_data = ThermoData(heat_capacities, latent_heats)
     species = Species('Fe3O4',
                         fe.mm * 3 + o2.mm * 2.0,
                         thermo_data,
-                        -1118.4e3)
+                        -1120.89)
     return species
 
 def create_fe2o3_species():
     fe = create_fe_species()
     o2 = create_o2_species()
 
-    heat_capacities = [SimpleHeatCapacity(273.15, 298.0, 103.7443),
-                        ShomateEquation(298.0, 950.0, 
+    heat_capacities = [ShomateEquation(298.0, 950.0,
                                         (93.43834, 108.3577, -50.86447,
                                          25.58683, -1.611330, -863.2094, 
                                          161.0719, -825.5032)),
-                        SimpleHeatCapacity(950.0, 1050, 150.6240),
-                        ShomateEquation(1050.0, 3000.1, # max was 2500, but extending to 3000k
+                        ShomateEquation(950.0, 1050,
+                                        (150.6240, 0.0, 0.0, 0.0, 0.0,
+                                         -875.6066, 252.8814, -825.5032)),
+                        ShomateEquation(1050.0, 2500.1,
                                         (110.9362, 32.04714, -9.192333,
                                          0.901506, 5.433677, -843.1471, 
                                          228.3548, -825.5032))
@@ -521,7 +522,7 @@ def create_fe2o3_species():
     species = Species('Fe2O3',
                         fe.mm * 2 + o2.mm * 1.5,
                         thermo_data,
-                        -824.2e3)
+                        -825.50e3)
     return species
 
 def create_c_species():

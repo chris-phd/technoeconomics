@@ -85,7 +85,8 @@ class SimpleHeatCapacity:
 
 class LatentHeat:
     """
-    Latent heat required for melting or boiling.
+    Latent heat required for a phase change. Typically melting (latent heat of fusion)
+    or boiling (latent heat of vaporisation).
     """
     def __init__(self, temp_kelvin: float, latent_heat: float):
         """

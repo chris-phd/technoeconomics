@@ -215,7 +215,7 @@ class SpeciesAndMixtureTest(TestCase):
         moles_composition = air.species_moles()
         self.assertAlmostEqual(moles_composition[1], 6.5471205, places=3)
 
-    def test_fe_species_data_data(self):
+    def test_fe_species_data(self):
         # Heat capacity of solid iron from NIST webbook.
         # Solid BCC phase, sensible heat, no phase change
         fe = species.create_fe_species()
@@ -246,6 +246,49 @@ class SpeciesAndMixtureTest(TestCase):
         delta_h = fe.standard_enthalpy()
         delta_h_factsage = 81161.23157409999
         self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.02 * abs(delta_h_factsage))
+
+    def test_fe2o3_species_data(self):
+        # Data from NIST Webbook
+        fe2o3 = species.create_fe2o3_species()
+        fe2o3.moles = 1.0
+        fe2o3.temp_kelvin = 900
+        delta_h = fe2o3.standard_enthalpy()
+        delta_h_factsage = 84027.0
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.02 * abs(delta_h_factsage))
+
+        fe2o3.temp_kelvin = 1500
+        delta_h = fe2o3.standard_enthalpy()
+        delta_h_factsage = 171430.0
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.02 * abs(delta_h_factsage))
+
+    def test_fe3o4_species_data(self):
+        # Data from NIST Webbook
+        fe3o4 = species.create_fe3o4_species()
+        fe3o4.moles = 1.0
+        fe3o4.temp_kelvin = 850
+        delta_h = fe3o4.standard_enthalpy()
+        delta_h_factsage = 116950.0
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.025 * abs(delta_h_factsage))
+
+        fe3o4.temp_kelvin = 1550
+        delta_h = fe3o4.standard_enthalpy()
+        delta_h_factsage = 258974.0
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.02 * abs(delta_h_factsage))
+
+    def test_feo_species_data(self):
+        # Data from NIST Webbook
+        feo = species.create_feo_species()
+        feo.temp_kelvin = 843.15
+        feo.moles = 2.3
+        delta_h = feo.delta_h(1550)
+        delta_h_factsage = 98429.0
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.025 * abs(delta_h_factsage))
+
+        # FeO(S) -> FeO(L)
+        delta_h = feo.delta_h(1700)
+        delta_h_factsage = 193525.0
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.025 * abs(delta_h_factsage))
+
 
     def test_h2o_heat_capacity(self):
         h2o = species.create_h2o_species()
