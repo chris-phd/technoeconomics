@@ -426,11 +426,20 @@ def create_ar_species():
 def create_fe_species():
     # NIST data is very conflicting for iron. 
     # Using simplified data
-    heat_capacities = [SimpleHeatCapacity(273.15, 298.0, 25.09),
-                        ShomateEquation(298.0, 1809.0,
-                                       (23.97449, 8.367750, 0.000277,
-                                        -0.000086, -0.000005, 0.268027, 62.06336, 7.788015)),
-                       SimpleHeatCapacity(1809.0, 3133.345, 46.02400)]
+    heat_capacities = [ShomateEquation(298, 700.0,
+                                       (18.42868, 24.64301, -8.913720,
+                                        9.664706, -0.012643, -6.573022, 42.51488,
+                                        0.0)),
+                        ShomateEquation(700.0, 1042.0,
+                                       (-57767.65, 137919.7, -122773.2,
+                                        38682.42, 3993.080, 24078.67, -87364.01, 0.0)),
+                       ShomateEquation(1042.0, 1100.0,
+                                       (-325.8859, 28.92876, 0.0,
+                                        0.0, 411.9629, 745.8231, 241.8766, 0.0)),
+                       ShomateEquation(1100, 1809,
+                                       (-776.7387, 919.4005, -383.7184,
+                                        57.08148, 242.1369, 697.6234, -558.3674, 0.0)),
+                       SimpleHeatCapacity(1809.0, 3133.345, 46.02400)] # liquid phase
     latent_heats = [LatentHeat(1811.15, 13810.0)]
     thermo_data = ThermoData(heat_capacities, latent_heats)
     species = Species('Fe',

@@ -115,25 +115,90 @@ class SystemTest(TestCase):
 
 
 class SpeciesThermoTest(TestCase):
-    def test_thermo_data(self):
-        heat_capacities = [thermo.SimpleHeatCapacity(273.15, 298.0, 44.57),
-                    thermo.ShomateEquation(298.0, 847.0,
-                                    (-6.076591, 251.6755, -324.7964,
-                                        168.5604, 0.002548, -917.6893,
-                                        -27.96962, -910.8568)),
-                    thermo.ShomateEquation(847.0, 1996.0,
-                                    (58.75340, 10.27925, -0.131384,
-                                        0.025210, 0.025601, -929.3292,
-                                        105.8092, -910.8568)),
-                    thermo.SimpleHeatCapacity(1996.0, 3000.0, 77.99) # NIST data didn't go higher, guessing
-        ]
-        latent_heats = [thermo.LatentHeat(1983.15, 9600)]
-        thermo_data = thermo.ThermoData(heat_capacities, latent_heats)
-        moles = 1.0
-        delta_h = thermo_data.delta_h(moles, utils.celsius_to_kelvin(25), utils.celsius_to_kelvin(2000))
-        factsage_delta_h = 153464.0
-        self.assertEqual(round(delta_h / 10000), 
-                         round(factsage_delta_h / 10000))
+    def test_gas_simple_heat_capacity_data(self):
+        # Argon data from NIST Webbook
+        heat_capacities = [thermo.SimpleHeatCapacity(273.15, 6000, 20.786)]
+        thermo_data = thermo.ThermoData(heat_capacities)
+        moles = 2.5
+        t_initial = 298.0
+        t_final = 1000.0
+        delta_h = thermo_data.delta_h(moles, t_initial, t_final)
+        delta_h_factsage = 36479.39504
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.01*abs(delta_h_factsage))
+
+    def test_gas_shomate_equation_heat_capacity_data(self):
+        # Nitrogen data from NIST Webbook
+        heat_capacities = [thermo.ShomateEquation(100.0, 500.0,
+                                           (28.98641, 1.853978, -9.647459,
+                                            16.63537, 0.000117, -8.671914, 226.4168, 0.0)),
+                           thermo.ShomateEquation(500.0, 2000.0,
+                                           (19.50583, 19.88705, -8.598535,
+                                            1.369784, 0.527601, -4.935202, 212.3900, 0.0)),
+                           thermo.ShomateEquation(2000.0, 6000.0,
+                                           (35.51872, 1.128728, -0.196103,
+                                            0.014662, -4.553760, -18.97091, 224.9810, 0.0))]
+        thermo_data = thermo.ThermoData(heat_capacities)
+        t_initial = 298.0
+        t_final = 2000.0
+        moles = 0.44
+        delta_h = thermo_data.delta_h(moles, t_initial, t_final)
+        delta_h_factsage = 24703.62302
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.025*abs(delta_h_factsage))
+
+    def test_condensed_shomate_equation_heat_capacity_data(self):
+        # Heat capacity of solid iron from NIST webbook.
+        # Solid BCC phase, sensible heat, no phase change
+        heat_capacities = [thermo.ShomateEquation(298, 700.0,
+                                           (18.42868, 24.64301, -8.913720,
+                                            9.664706, -0.012643, -6.573022, 42.51488,
+                                            0.0)),
+                           thermo.ShomateEquation(700.0, 1042.0,
+                                           (-57767.65, 137919.7, -122773.2,
+                                            38682.42, 3993.080, 24078.67, -87364.01, 0.0)),
+                           thermo.ShomateEquation(1042.0, 1100.0,
+                                           (-325.8859, 28.92876, 0.0,
+                                            0.0, 411.9629, 745.8231, 241.8766, 0.0)),
+                           thermo.ShomateEquation(1100, 1809,
+                                           (-776.7387, 919.4005, -383.7184,
+                                            57.08148, 242.1369, 697.6234, -558.3674, 0.0)),
+                           thermo.SimpleHeatCapacity(1809.0, 3133.345, 46.02400)]  # liquid phase
+        thermo_data = thermo.ThermoData(heat_capacities)
+        cp_298 = thermo_data.cp(298)
+        cp_298_webbook = 25.09
+        self.assertAlmostEqual(cp_298, cp_298_webbook, delta=0.02 * abs(cp_298_webbook))
+
+        cp_600 = thermo_data.cp(800)
+        cp_600_webbook = 37.85
+        self.assertAlmostEqual(cp_600, cp_600_webbook, delta=0.02 * abs(cp_600_webbook))
+
+        delta_h = thermo_data.delta_h(1.0, 298.15, 600)
+        delta_h_webbook = 8.61e3
+        self.assertAlmostEqual(delta_h, delta_h_webbook, delta=0.02 * abs(delta_h_webbook))
+
+        delta_h = thermo_data.delta_h(1.0, 298.15, 900)
+        delta_h_webbook = 19.50e3
+        self.assertAlmostEqual(delta_h, delta_h_webbook, delta=0.02 * abs(delta_h_webbook))
+
+    def test_fe_species_data_data(self):
+        # Heat capacity of solid iron from NIST webbook.
+        # Solid BCC phase, sensible heat, no phase change
+        fe = species.create_fe_species()
+        fe.temp_kelvin = 600
+        fe.moles = 1.0
+        delta_h = fe.standard_enthalpy()
+        delta_h_factsage = 8486.4466
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.02 * abs(delta_h_factsage))
+
+        fe.temp_kelvin = 1100
+        delta_h = fe.standard_enthalpy()
+        delta_h_factsage = 29856.5266
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.02 * abs(delta_h_factsage))
+
+        # Solid FCC phase, sensible heat + BCC -> FCC phase change
+        fe.temp_kelvin = 1200
+        delta_h = fe.standard_enthalpy()
+        delta_h_factsage = 35057.9266
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.02 * abs(delta_h_factsage))
 
     def test_h2o_heat_capacity(self):
         h2o = species.create_h2o_species()
@@ -152,14 +217,6 @@ class SpeciesThermoTest(TestCase):
         delta_h = air.delta_h(air.temp_kelvin + 700)
         print(f'delta_h: {delta_h}')
         self.assertAlmostEqual(delta_h, 732417.1, places=1)
-
-    def test_iron_delta_h(self): 
-        fe = species.create_fe_species()
-        fe.mass = 0.001 # kg
-        fe.temp_kelvin = utils.celsius_to_kelvin(1000)
-        delta_h = fe.delta_h(fe.temp_kelvin + 1)
-        print(f'delta_h: {delta_h}')
-        self.assertAlmostEqual(delta_h, 0.62, places=1)
 
     def test_mixture_merge(self):
         steam = species.create_h2o_species()

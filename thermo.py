@@ -23,17 +23,30 @@ class ShomateEquation:
                f"G={self.coeffs[6]}, H={self.coeffs[7]})"
 
     def delta_h(self, moles: float, t_initial: float, t_final: float) -> float:
+        """
+        The change in enthalpy [J]
+        """
         if not (self.min_kelvin <= t_initial <= self.max_kelvin) or \
             not (self.min_kelvin <= t_final <= self.max_kelvin):
             raise Exception("ShomateEquation::delta_h: temperatures must be within the range of the heat capacity")
         t_initial /= 1000
         t_final /= 1000
-        energy_kJ = moles * (self.coeffs[0] * (t_final - t_initial) + \
-                       self.coeffs[1] / 2 * (t_final**2 - t_initial**2) + \
-                       self.coeffs[2] / 3 * (t_final**3 - t_initial**3) + \
-                       self.coeffs[3] / 4 * (t_final**4 - t_initial**4) + \
-                       self.coeffs[4] / t_final - self.coeffs[4] / t_initial)
+        energy_kJ = moles * (self.coeffs[0] * (t_final - t_initial)
+                       + self.coeffs[1] / 2 * (t_final**2 - t_initial**2)
+                       + self.coeffs[2] / 3 * (t_final**3 - t_initial**3)
+                       + self.coeffs[3] / 4 * (t_final**4 - t_initial**4)
+                       - self.coeffs[4] * (t_final**-1 - t_initial**-1))
         return energy_kJ * 1000
+
+    def cp(self, t):
+        """
+        The heat capacity [J / mol K]
+        """
+        if not (self.min_kelvin <= t <= self.max_kelvin):
+            raise Exception("ShomateEquation::cp: temperatures must be within the range of the heat capacity")
+        t /= 1000
+        val = self.coeffs[0]  + self.coeffs[1]*t  + self.coeffs[2]*t**2 + self.coeffs[3]*t**3 + self.coeffs[4]*t**(-2)
+        return val
 
 
 class SimpleHeatCapacity:
@@ -53,10 +66,21 @@ class SimpleHeatCapacity:
         return f"SimpleHeatCapacity({self.min_kelvin}-{self.max_kelvin}K, cp={self.cp})"
     
     def delta_h(self, moles: float, t_initial: float, t_final: float) -> float:
+        """
+        The change in enthalpy [J]
+        """
         if not (self.min_kelvin <= t_initial <= self.max_kelvin) or \
             not (self.min_kelvin <= t_final <= self.max_kelvin):
             raise Exception("SimpleHeatCapacity::delta_h: temperatures must be within the range of the heat capacity")
         return moles * self.cp * (t_final - t_initial)
+
+    def cp(self, t):
+        """
+        The heat capacity [J / mol K]
+        """
+        if not (self.min_kelvin <= t <= self.max_kelvin):
+            raise Exception("SimpleHeatCapacity::cp: temperatures must be within the range of the heat capacity")
+        return self.cp
 
 
 class LatentHeat:
@@ -119,6 +143,9 @@ class ThermoData:
         return f"ThermoData({self.heat_capacities}, {self.latent_heats})"
     
     def delta_h(self, moles: float, t_initial: float, t_final: float) -> float:
+        """
+        The change in enthalpy [J]
+        """
         if not (self.min_kelvin <= t_initial <= self.max_kelvin) or \
             not (self.min_kelvin <= t_final <= self.max_kelvin):
             s = f"ThermoData::delta_h: temperatures must be within the range of the heat capacity ({self.min_kelvin}K - {self.max_kelvin}K)"
@@ -157,4 +184,11 @@ class ThermoData:
             delta_h *= -1
         return delta_h
 
-#TODO: Understand if there are special requirements for plasmas
+    def cp(self, t_kelvin) -> float:
+        """
+        The heat capacity [J / mol K]
+        """
+        for heat_capacity in self.heat_capacities:
+            if heat_capacity.min_kelvin <= t_kelvin <= heat_capacity.max_kelvin:
+                return heat_capacity.cp(t_kelvin)
+        raise Exception(f"ThermoData::cp: No heat capacity data available at temp {t_kelvin}")
