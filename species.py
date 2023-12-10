@@ -404,7 +404,7 @@ def create_h2o_species():
                           ShomateEquation(1700.0, 6000.0,
                                           (41.96426, 8.622053, -1.499780,
                                           0.098119, -11.15764, -272.1797, 219.7809, -241.8264))]
-    latent_heats = [LatentHeat(373.15, 40660.0)]
+    latent_heats = [LatentHeat(373.5, 35556.0)]
     thermo_data = ThermoData(heat_capacities, latent_heats)
     species = Species('H2O',
                       h2.mm + o2.mm * 0.5,
@@ -827,7 +827,7 @@ def delta_h_feo_c_fe_co(temp_kelvin: float = 298.15) -> float: # Check delta h t
     products = [fe, co]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
-def delta_h_3fe2o3_h2_2fe3o4_h2o(temp_kelvin: float = 298.15) -> float: # TODO! Check with another source. Seems wrong
+def delta_h_3fe2o3_h2_2fe3o4_h2o(temp_kelvin: float = 298.15) -> float:
     """
     3 Fe2O3 + H2 -> 2 Fe3O4 + H2O
     """

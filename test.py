@@ -289,14 +289,38 @@ class SpeciesAndMixtureTest(TestCase):
         delta_h_factsage = 193525.0
         self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.025 * abs(delta_h_factsage))
 
-
-    def test_h2o_heat_capacity(self):
+    def test_h2o_species_data(self):
         h2o = species.create_h2o_species()
+        h2o.moles = 1.0
         h2o.temp_kelvin = utils.celsius_to_kelvin(25)
         molar_cp = h2o.cp()
         specific_cp = h2o.cp(False)
         self.assertAlmostEqual(molar_cp, 75.4, places=1)
-        self.assertAlmostEqual(specific_cp, 4.18, places=1)
+        self.assertAlmostEqual(specific_cp, 4.18e3, delta=5)
+
+        h2o.temp_kelvin = 373
+        delta_h = h2o.standard_enthalpy()
+        delta_h_factsage = 5660.0
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.01*abs(delta_h_factsage))
+
+        h2o.temp_kelvin = 1000
+        calculated_molar_cp = h2o.cp()
+        expected_molar_cp = 41.27
+        self.assertAlmostEqual(calculated_molar_cp, expected_molar_cp, places=1)
+
+        delta_h = h2o.standard_enthalpy()
+        delta_h_factsage = 70007.0
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.01*abs(delta_h_factsage))
+
+        h2o.temp_kelvin = 1650
+        delta_h = h2o.standard_enthalpy()
+        delta_h_factsage = 99524.0
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.01*abs(delta_h_factsage))
+
+        h2o.temp_kelvin = 2000
+        delta_h = h2o.standard_enthalpy()
+        delta_h_factsage = 118665.0
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.015*abs(delta_h_factsage))
 
     def test_sensible_heat_of_air_mixture(self):
         mass = 1.0 # kg
@@ -325,6 +349,12 @@ class SpeciesAndMixtureTest(TestCase):
 
 
 class ReactionsTest(TestCase):
+    def test_enthalpy_of_direct_reduction(self):
+        temp_kelvin = 973.15
+        delta_h = species.delta_h_3fe2o3_h2_2fe3o4_h2o(temp_kelvin)
+        factsage_delta_h = -5.30e3
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.05*abs(factsage_delta_h))
+
     def test_enthalpy_of_reaction(self):
         # Enthalpies of reaction were verified using FactSage. Accuracy 
         # isn't great. Need to improve or use a third party thermochemistry package.
@@ -332,7 +362,7 @@ class ReactionsTest(TestCase):
         delta_h = species.delta_h_3fe2o3_h2_2fe3o4_h2o(temp_kelvin)
         factsage_delta_h = -3341.1
         # Failing
-        # self.assertAlmostEqual(delta_h, 
+        # self.assertAlmostEqual(delta_h,
         #                        factsage_delta_h)
 
         temp_kelvin = 800.0
