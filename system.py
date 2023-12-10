@@ -148,15 +148,15 @@ class Device:
         for flow in self.outputs.values():
             if not (isinstance(flow, Species) or isinstance(flow, Mixture)):
                 continue
-            # negative becuase heat_energy will calc energy required to cool
+            # negative becuase delta_h will calc energy required to cool
             # to the ref temp
-            final_thermal_energy -= flow.heat_energy(ref_temp)
+            final_thermal_energy -= flow.delta_h(ref_temp)
 
         initial_thermal_energy = 0.0
         for flow in self.inputs.values():
             if not (isinstance(flow, Species) or isinstance(flow, Mixture)):
                 continue
-            initial_thermal_energy -= flow.heat_energy(ref_temp)
+            initial_thermal_energy -= flow.delta_h(ref_temp)
         
         return final_thermal_energy - initial_thermal_energy
 

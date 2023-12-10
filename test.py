@@ -149,19 +149,19 @@ class SpeciesThermoTest(TestCase):
         mass = 1.0 # kg
         air = species.create_air_mixture(mass)
         air.temp_kelvin = utils.celsius_to_kelvin(100)
-        heat_energy = air.heat_energy(air.temp_kelvin + 1)
-        self.assertAlmostEqual(heat_energy, 1015.4, places=1)
-        heat_energy = air.heat_energy(air.temp_kelvin + 700)
-        print(f'heat_energy: {heat_energy}')
-        self.assertAlmostEqual(heat_energy, 732417.1, places=1)
+        delta_h = air.delta_h(air.temp_kelvin + 1)
+        self.assertAlmostEqual(delta_h, 1015.4, places=1)
+        delta_h = air.delta_h(air.temp_kelvin + 700)
+        print(f'delta_h: {delta_h}')
+        self.assertAlmostEqual(delta_h, 732417.1, places=1)
 
-    def test_iron_heat_energy(self): 
+    def test_iron_delta_h(self): 
         fe = species.create_fe_species()
         fe.mass = 0.001 # kg
         fe.temp_kelvin = utils.celsius_to_kelvin(1000)
-        heat_energy = fe.heat_energy(fe.temp_kelvin + 1)
-        print(f'heat_energy: {heat_energy}')
-        self.assertAlmostEqual(heat_energy, 0.62, places=1)
+        delta_h = fe.delta_h(fe.temp_kelvin + 1)
+        print(f'delta_h: {delta_h}')
+        self.assertAlmostEqual(delta_h, 0.62, places=1)
 
     def test_mixture_merge(self):
         steam = species.create_h2o_species()
@@ -284,29 +284,29 @@ class SpeciesThermoTest(TestCase):
         h2.temp_kelvin = 300.0
 
         # only accurate to the second significant figure
-        delta_h_900K = h2.heat_energy(900.0)
+        delta_h_900K = h2.delta_h(900.0)
         factsage_delta_h = 1.76235E+04
         self.assertAlmostEqual(delta_h_900K / 10000, factsage_delta_h / 10000, places=0)
 
         # as above, only accurate to one significant figure
-        delta_h_1500K = h2.heat_energy(1500.0)
+        delta_h_1500K = h2.delta_h(1500.0)
         factsage_delta_h = 3.62382E+04
         self.assertAlmostEqual(delta_h_1500K / 10000, factsage_delta_h / 10000, places=0)
 
         # As above, reasonably close
-        delta_h_2100K = h2.heat_energy(2100.0)
+        delta_h_2100K = h2.delta_h(2100.0)
         factsage_delta_h = 5.70480E+04
         self.assertAlmostEqual(delta_h_2100K / 10000, factsage_delta_h / 10000, places=0)
 
         # Failing, very inaccurate
         # This is the first temp where monoatomic hydrogen is present in meaningful quantities.
-        delta_h_3000K = h2.heat_energy(3000.0)
+        delta_h_3000K = h2.delta_h(3000.0)
         factsage_delta_h = 1.24667E+05
         # self.assertAlmostEqual(delta_h_3000K / 10000, factsage_delta_h / 10000, places=1)
 
         # Failing, again very inaccurate.
         # Hydrogen has completely dissociated into monoatomic hydrogen.
-        delta_h_5000K = h2.heat_energy(5000.0)
+        delta_h_5000K = h2.delta_h(5000.0)
         factsage_delta_h = 6.10239E+05
         # self.assertAlmostEqual(delta_h_5000K / 10000, factsage_delta_h / 10000, places=1)
 

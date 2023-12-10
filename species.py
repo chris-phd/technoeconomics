@@ -26,21 +26,30 @@ class Species:
     def __repr__(self):
         return f"Species({self._name}, {self.mass:.2f} kg, {self._temp_kelvin} K)"
     
-    def heat_energy(self, t_final_kelvin: float) -> float:
+    def delta_h(self, t_final_kelvin: float) -> float:
         """
         Calculates the enthalpy change in J required to heat the species to the final temperature.
         Intial temperature of each species must be set. 
         Does not modify the temperature of the species.
         """
         if not self._temp_kelvin:
-            raise Exception("Species::heat_energy: initial temperature is not set")
+            raise Exception("Species::delta_h: initial temperature is not set")
         return self._thermo_data.delta_h(self._mols, self._temp_kelvin, t_final_kelvin)
+    
+    def standard_enthalpy(self) -> float:
+        """
+        Enthalpy change relative to standard conditions (298.15K, 1 atm) [J]
+        Includes any latent heat of phase changes that may occur.
+        """
+        return -self.delta_h(298.15)
 
     def cp(self, return_molar_cp: bool = True) -> float:
         """
         Return the molar heat capacity at the current temperature.
         return_molar_cp: If true, return the molar heat capacity. [J / mol K] 
             If false, return the specific (mass) heat capacity. [J / g K]
+        TODO: Fix issue here.. the delta_h function includes the latent heat of phase changes
+            but the cp should only be concerned with sensible heat. Same as in Mixture
         """
         if not self._temp_kelvin:
             raise Exception("Species::cp: temperature is not set")
@@ -51,7 +60,7 @@ class Species:
         else:
             self_copy.mass = 0.001
 
-        return self_copy.heat_energy(self.temp_kelvin + 1)
+        return self_copy.delta_h(self.temp_kelvin + 1)
 
     @property
     def name(self) -> str:
@@ -228,7 +237,7 @@ class Mixture:
             
             # negative because we are usually cooling down to the reference temp and we want
             # enthalpy to be positive here 
-            dH = -s.heat_energy(ref_temp)
+            dH = -s.delta_h(ref_temp)
             total_dh += dH
             total_mols_times_molar_heat_capacity += dH / (s.temp_kelvin - ref_temp)
     
@@ -241,10 +250,10 @@ class Mixture:
         i = 0
         max_iter = 10
         while True:
-            mols_times_molar_heat_capacity = self.heat_energy(self.temp_kelvin + 1)
+            mols_times_molar_heat_capacity = self.delta_h(self.temp_kelvin + 1)
 
-            energy_in_input_mixtures = -self_initial.heat_energy(ref_temp) - mixture_or_species.heat_energy(ref_temp)
-            energy_in_output_mixtures = -self.heat_energy(ref_temp)
+            energy_in_input_mixtures = -self_initial.delta_h(ref_temp) - mixture_or_species.delta_h(ref_temp)
+            energy_in_output_mixtures = -self.delta_h(ref_temp)
             assert energy_in_input_mixtures >= 0 and energy_in_output_mixtures >= 0
 
             if abs((energy_in_input_mixtures - energy_in_output_mixtures) / energy_in_input_mixtures) < 1e-13:
@@ -257,7 +266,7 @@ class Mixture:
             if i > max_iter:
                 raise Exception(f'Mixture::merge temp calc did not converge after {max_iter} iterations')
 
-    def heat_energy(self, t_final_kelvin: float) -> float:
+    def delta_h(self, t_final_kelvin: float) -> float:
         """
         Calculates the enthalpy in J required to heat the mixture to the final temperature.
         Intial temperature of each species must be set.
@@ -265,9 +274,16 @@ class Mixture:
         """
         energy_joules= 0.0
         for species in self._species:
-            energy_joules += species.heat_energy(t_final_kelvin)
+            energy_joules += species.delta_h(t_final_kelvin)
         return energy_joules
     
+    def standard_enthalpy(self) -> float:
+        """
+        Enthalpy change relative to standard conditions (298.15K, 1 atm) [J]
+        Includes the latent heat of phase changes that may occur. 
+        """
+        return -self.delta_h(298.15)
+
     def is_same_as(self, other_mixture) -> bool:
         """
         Not an ideal check of equivalence. Should be fine for now but need to fix later.
@@ -290,6 +306,8 @@ class Mixture:
         Return the molar heat capacity at the current temperature.
         return_molar_cp: If true, return the molar heat capacity. [J / mol K] 
             If false, return the specific (mass) heat capacity. [J / g K]
+        TODO: Fix issue here.. the delta_h function includes the latent heat of phase changes
+            but the cp should only be concerned with sensible heat. Same as in Species. 
         """
         self_copy = copy.deepcopy(self)
         if return_molar_cp:
@@ -297,7 +315,7 @@ class Mixture:
         else:
             self_copy.mass = 0.001
 
-        return self_copy.heat_energy(self.temp_kelvin + 1)
+        return self_copy.delta_h(self.temp_kelvin + 1)
 
 # Species - Master copies
 # Shomate Equation data from the NIST Chemistry Webbook
@@ -663,11 +681,11 @@ def compute_reaction_enthalpy(reactants, products, temp_kelvin):
     reactant_enthalpy = 0.0
     for reactant in reactants:
         reactant_enthalpy += reactant.mols * reactant.delta_h_formation
-        reactant_enthalpy += reactant.heat_energy(temp_kelvin)
+        reactant_enthalpy += reactant.delta_h(temp_kelvin)
     product_enthalpy = 0.0
     for product in products:
         product_enthalpy += product.mols * product.delta_h_formation
-        product_enthalpy += product.heat_energy(temp_kelvin)
+        product_enthalpy += product.delta_h(temp_kelvin)
     return product_enthalpy - reactant_enthalpy
 
 def delta_h_2fe_o2_2feo(temp_kelvin: float = 298.15) -> float:

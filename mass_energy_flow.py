@@ -1187,7 +1187,7 @@ def add_plasma_flows_final(system: System):
     off_gas = plasma_smelter.first_output_containing_name('h2 rich gas')
 
     plasma_to_melt_efficiency = system.system_vars['plasma energy to melt eff percent'] * 0.01
-    plasma_to_melt_losses = (1 - plasma_to_melt_efficiency) * off_gas.heat_energy(initial_working_gas_temp)
+    plasma_to_melt_losses = (1 - plasma_to_melt_efficiency) * off_gas.delta_h(initial_working_gas_temp)
     # plasma_to_melt_losses = 0.0
 
     # TODO reduce repetition with the Mixture::merge function and with the heat exchanger calculation
@@ -1198,7 +1198,7 @@ def add_plasma_flows_final(system: System):
         if abs(reactor_energy_balance) < 2e-5:
             break # could not seem to converge smaller than this.
 
-        mols_times_molar_heat_capacity = off_gas.heat_energy(off_gas.temp_kelvin + 1)
+        mols_times_molar_heat_capacity = off_gas.delta_h(off_gas.temp_kelvin + 1)
         dT = -reactor_energy_balance / mols_times_molar_heat_capacity
         new_off_gas_temp = off_gas.temp_kelvin + dT
 
@@ -1206,7 +1206,7 @@ def add_plasma_flows_final(system: System):
             raise IncreaseExcessHydrogenPlasma("Error: Plasma smelter off gas temp is too low.")
 
         off_gas.temp_kelvin += dT
-        plasma_to_melt_losses = (1 - plasma_to_melt_efficiency) * off_gas.heat_energy(initial_working_gas_temp)
+        plasma_to_melt_losses = (1 - plasma_to_melt_efficiency) * off_gas.delta_h(initial_working_gas_temp)
 
         # Update the losses
         i += 1
@@ -1463,14 +1463,14 @@ def add_heat_exchanger_flows_final(system: System, heat_exchanger_device_name: s
     final_hot_gas_temp = celsius_to_kelvin(101.0)
     if final_hot_gas_temp > initial_hot_gas_temp:
         raise ValueError("Heat exchanger hot gas exit temp is higher than the inlet temp")
-    heat_exchanged = -hot_gas_in.heat_energy(final_hot_gas_temp) * heat_exchanger_eff
+    heat_exchanged = -hot_gas_in.delta_h(final_hot_gas_temp) * heat_exchanger_eff
     hot_gas_in.temp_kelvin = final_hot_gas_temp
     heat_exchanger.outputs['recycled h2 rich gas'].set(hot_gas_in)
 
     # Get the initial estimate of the exit temp of the cold gas. This initial estimate assumes
     # that the heat capacity is constant over the temp range, which is in general not the case,
     # so we need to do some iterative calculations. replace this with cp()
-    mols_times_molar_heat_capacity = cold_gas_in.heat_energy(cold_gas_in.temp_kelvin + 1)
+    mols_times_molar_heat_capacity = cold_gas_in.delta_h(cold_gas_in.temp_kelvin + 1)
     final_cold_gas_temp = cold_gas_in.temp_kelvin + heat_exchanged / (mols_times_molar_heat_capacity)
     cold_gas_in.temp_kelvin = final_cold_gas_temp 
 
@@ -1480,9 +1480,9 @@ def add_heat_exchanger_flows_final(system: System, heat_exchanger_device_name: s
     i = 0
     max_iter = 100
     while True:
-        mols_times_molar_heat_capacity = cold_gas_in.heat_energy(cold_gas_in.temp_kelvin + 1)
+        mols_times_molar_heat_capacity = cold_gas_in.delta_h(cold_gas_in.temp_kelvin + 1)
 
-        energy_gained_by_cold_gas = -cold_gas_in.heat_energy(initial_cold_gas_temp)
+        energy_gained_by_cold_gas = -cold_gas_in.delta_h(initial_cold_gas_temp)
         energy_lost_by_hot_gas = heat_exchanged
         assert energy_gained_by_cold_gas >= 0 and energy_lost_by_hot_gas >= 0
         
@@ -1505,8 +1505,8 @@ def add_heat_exchanger_flows_final(system: System, heat_exchanger_device_name: s
         cold_gas_in.temp_kelvin = initial_hot_gas_temp
 
     
-    energy_gained_by_cold_gas = -cold_gas_in.heat_energy(initial_cold_gas_temp)
-    energy_lost_by_hot_gas = hot_gas_in.heat_energy(initial_hot_gas_temp)
+    energy_gained_by_cold_gas = -cold_gas_in.delta_h(initial_cold_gas_temp)
+    energy_lost_by_hot_gas = hot_gas_in.delta_h(initial_hot_gas_temp)
     # print(f"System = {system.name}")
     # print(f"  Target Efficiency = {heat_exchanger_eff * 100}")
     # print(f"  Actual Efficiency = {100 + (energy_gained_by_cold_gas - energy_lost_by_hot_gas)/energy_lost_by_hot_gas * 100}")
