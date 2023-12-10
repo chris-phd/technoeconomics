@@ -17,7 +17,7 @@ class Species:
             Only used for elements.
         """
         self._name = name
-        self._mols = 0.0
+        self._moles = 0.0
         self._temp_kelvin = None
         self._mm = molecular_mass_kg_mol
         self._thermo_data = thermo_data
@@ -34,7 +34,7 @@ class Species:
         """
         if not self._temp_kelvin:
             raise Exception("Species::delta_h: initial temperature is not set")
-        return self._thermo_data.delta_h(self._mols, self._temp_kelvin, t_final_kelvin)
+        return self._thermo_data.delta_h(self._moles, self._temp_kelvin, t_final_kelvin)
     
     def standard_enthalpy(self) -> float:
         """
@@ -56,7 +56,7 @@ class Species:
         
         self_copy = copy.deepcopy(self)
         if return_molar_cp:
-            self_copy.mols = 1.0
+            self_copy.moles = 1.0
         else:
             self_copy.mass = 0.001
 
@@ -71,18 +71,18 @@ class Species:
         self._name = value
 
     @property
-    def mols(self) -> float:
-        return self._mols
+    def moles(self) -> float:
+        return self._moles
     
-    @mols.setter
-    def mols(self, value: float):
+    @moles.setter
+    def moles(self, value: float):
         if value < 0.0:
-            raise Exception("Species::mols: Cannot set mols to a negative value")
-        self._mols = value
+            raise Exception("Species::moles: Cannot set moles to a negative value")
+        self._moles = value
 
     @property
     def mass(self):
-        return self._mols * self._mm
+        return self._moles * self._mm
     
     @mass.setter
     def mass(self, value: float):
@@ -90,7 +90,7 @@ class Species:
             value = 0.0
         if value < 0.0:
             raise Exception("Species::mass: Cannot set mass to a negative value")
-        self._mols = value / self._mm
+        self._moles = value / self._mm
 
     @property
     def temp_kelvin(self) -> float:
@@ -117,7 +117,7 @@ class Species:
         TODO: Not an ideal check of equivalence. Should be fine but fix later.
         """
         try:
-            equivalent = math.isclose(self.mols, other_species.mols) and \
+            equivalent = math.isclose(self.moles, other_species.moles) and \
                math.isclose(self.temp_kelvin, other_species.temp_kelvin) and \
                 math.isclose(self.mm, other_species.mm)
         except:
@@ -127,7 +127,7 @@ class Species:
 
     def set(self, other_species):
         self._name = other_species._name
-        self._mols = other_species._mols
+        self._moles = other_species._moles
         self._temp_kelvin = other_species._temp_kelvin
         self._mm = other_species._mm
         self._thermo_data = copy.deepcopy(other_species._thermo_data)
@@ -216,7 +216,7 @@ class Mixture:
         """
         new_species = {}
         total_dh = 0.0
-        total_mols_times_molar_heat_capacity = 0.0
+        total_moles_times_molar_heat_capacity = 0.0
         ref_temp = 298.0 
 
         if math.isclose(mixture_or_species.mass, 0):
@@ -228,7 +228,7 @@ class Mixture:
 
         for s in self._species + mixture_or_species._species:
             if s.name in new_species:
-                new_species[s.name].mols += s.mols
+                new_species[s.name].moles += s.moles
             else:
                 new_species[s.name] = copy.deepcopy(s)
             
@@ -239,10 +239,10 @@ class Mixture:
             # enthalpy to be positive here 
             dH = -s.delta_h(ref_temp)
             total_dh += dH
-            total_mols_times_molar_heat_capacity += dH / (s.temp_kelvin - ref_temp)
+            total_moles_times_molar_heat_capacity += dH / (s.temp_kelvin - ref_temp)
     
         self._species = list(new_species.values()) 
-        self.temp_kelvin = ref_temp + total_dh / total_mols_times_molar_heat_capacity
+        self.temp_kelvin = ref_temp + total_dh / total_moles_times_molar_heat_capacity
 
         # adjust the final cold gas temp iterativly to reduce error caused by assuming the
         # molar heat capcity is constant. (which was done above)
@@ -250,7 +250,7 @@ class Mixture:
         i = 0
         max_iter = 10
         while True:
-            mols_times_molar_heat_capacity = self.delta_h(self.temp_kelvin + 1)
+            moles_times_molar_heat_capacity = self.delta_h(self.temp_kelvin + 1)
 
             energy_in_input_mixtures = -self_initial.delta_h(ref_temp) - mixture_or_species.delta_h(ref_temp)
             energy_in_output_mixtures = -self.delta_h(ref_temp)
@@ -260,7 +260,7 @@ class Mixture:
                 break
 
             dH = energy_in_input_mixtures - energy_in_output_mixtures
-            dT = dH / mols_times_molar_heat_capacity
+            dT = dH / moles_times_molar_heat_capacity
             self.temp_kelvin += dT
             i += 1
             if i > max_iter:
@@ -311,7 +311,7 @@ class Mixture:
         """
         self_copy = copy.deepcopy(self)
         if return_molar_cp:
-            self_copy.mols = 1.0
+            self_copy.moles = 1.0
         else:
             self_copy.mass = 0.001
 
@@ -325,7 +325,7 @@ def create_dummy_species(name):
     heat_capacities = [SimpleHeatCapacity(273.15, 6000.0, 1.0)]
     thermo_data = ThermoData(heat_capacities)
     s = Species(name, 1.0, thermo_data)
-    s.mols = 0.0
+    s.moles = 0.0
     s.temp_kelvin = 298.15
     return s
 
@@ -680,11 +680,11 @@ def compute_reaction_enthalpy(reactants, products, temp_kelvin):
         species.temp_kelvin = standard_temp
     reactant_enthalpy = 0.0
     for reactant in reactants:
-        reactant_enthalpy += reactant.mols * reactant.delta_h_formation
+        reactant_enthalpy += reactant.moles * reactant.delta_h_formation
         reactant_enthalpy += reactant.delta_h(temp_kelvin)
     product_enthalpy = 0.0
     for product in products:
-        product_enthalpy += product.mols * product.delta_h_formation
+        product_enthalpy += product.moles * product.delta_h_formation
         product_enthalpy += product.delta_h(temp_kelvin)
     return product_enthalpy - reactant_enthalpy
 
@@ -693,12 +693,12 @@ def delta_h_2fe_o2_2feo(temp_kelvin: float = 298.15) -> float:
     2Fe + O2 -> 2FeO
     """
     fe = create_fe_species()
-    fe.mols = 2
+    fe.moles = 2
     o2 = create_o2_species()
-    o2.mols = 1
+    o2.moles = 1
     reactants = [fe, o2]
     feo = create_feo_species()
-    feo.mols = 2
+    feo.moles = 2
     products = [feo]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
@@ -707,12 +707,12 @@ def delta_h_c_o2_co2(temp_kelvin: float = 298.15) -> float:
     C + O2 -> CO2
     """
     c = create_c_species()
-    c.mols = 1
+    c.moles = 1
     o2 = create_o2_species()
-    o2.mols = 1
+    o2.moles = 1
     reactants = [c, o2]
     co2 = create_co2_species()
-    co2.mols = 1
+    co2.moles = 1
     products = [co2]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
@@ -721,12 +721,12 @@ def delta_h_2c_o2_2co(temp_kelvin: float = 298.15) -> float:
     2C + O2 -> 2CO
     """
     c = create_c_species()
-    c.mols = 2
+    c.moles = 2
     o2 = create_o2_species()
-    o2.mols = 1
+    o2.moles = 1
     reactants = [c, o2]
     co = create_co_species()
-    co.mols = 2
+    co.moles = 2
     products = [co]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
@@ -735,12 +735,12 @@ def delta_h_c_2h2_ch4(temp_kelvin: float = 298.15) -> float:
     C + 2H2 -> CH4
     """
     c = create_c_species()
-    c.mols = 1
+    c.moles = 1
     h2 = create_h2_species()
-    h2.mols = 2
+    h2.moles = 2
     reactants = [c, h2]
     ch4 = create_ch4_species()
-    ch4.mols = 1
+    ch4.moles = 1
     products = [ch4]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
@@ -749,12 +749,12 @@ def delta_h_si_o2_sio2(temp_kelvin: float = 298.15) -> float:
     Si + O2 -> SiO2
     """
     si = create_si_species()
-    si.mols = 1
+    si.moles = 1
     o2 = create_o2_species()
-    o2.mols = 1
+    o2.moles = 1
     reactants = [si, o2]
     sio2 = create_sio2_species()
-    sio2.mols = 1
+    sio2.moles = 1
     products = [sio2]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
@@ -763,14 +763,14 @@ def delta_h_sio2_h2_si_h2o(temp_kelvin: float = 298.15) -> float:
     SiO2 + 2H2 -> Si + 2H2O
     """
     sio2 = create_sio2_species()
-    sio2.mols = 1
+    sio2.moles = 1
     h2 = create_h2_species()
-    h2.mols = 2
+    h2.moles = 2
     reactants = [sio2, h2]
     si = create_si_species()
-    si.mols = 1
+    si.moles = 1
     h2o = create_h2o_species()
-    h2o.mols = 2
+    h2o.moles = 2
     products = [si, h2o]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
@@ -779,12 +779,12 @@ def delta_h_2fe_o2_2feo(temp_kelvin: float = 298.15) -> float:
     2Fe + O2 -> 2FeO
     """
     fe = create_fe_species()
-    fe.mols = 2
+    fe.moles = 2
     o2 = create_o2_species()
-    o2.mols = 1
+    o2.moles = 1
     reactants = [fe, o2]
     feo = create_feo_species()
-    feo.mols = 2
+    feo.moles = 2
     products = [feo]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
@@ -793,14 +793,14 @@ def delta_h_feo_c_fe_co(temp_kelvin: float = 298.15) -> float: # Check delta h t
     FeO + C -> Fe + CO
     """
     feo = create_feo_species()
-    feo.mols = 1
+    feo.moles = 1
     c = create_c_species()
-    c.mols = 1
+    c.moles = 1
     reactants = [feo, c]
     fe = create_fe_species()
-    fe.mols = 1
+    fe.moles = 1
     co = create_co_species()
-    co.mols = 1
+    co.moles = 1
     products = [fe, co]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
@@ -809,14 +809,14 @@ def delta_h_3fe2o3_h2_2fe3o4_h2o(temp_kelvin: float = 298.15) -> float: # TODO! 
     3 Fe2O3 + H2 -> 2 Fe3O4 + H2O
     """
     fe2o3 = create_fe2o3_species()
-    fe2o3.mols = 3
+    fe2o3.moles = 3
     h2 = create_h2_species()
-    h2.mols = 1
+    h2.moles = 1
     reactants = [fe2o3, h2]
     fe3o4 = create_fe3o4_species()
-    fe3o4.mols = 2
+    fe3o4.moles = 2
     h2o = create_h2o_species()
-    h2o.mols = 1
+    h2o.moles = 1
     products = [fe3o4, h2o]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
@@ -825,14 +825,14 @@ def delta_h_fe3o4_h2_3feo_h2o(temp_kelvin: float = 298.15) -> float: # TODO! Che
     Fe3O4 + H2 -> 3 FeO + H2O
     """
     fe3o4 = create_fe3o4_species()
-    fe3o4.mols = 1
+    fe3o4.moles = 1
     h2 = create_h2_species()
-    h2.mols = 1
+    h2.moles = 1
     reactants = [fe3o4, h2]
     feo = create_feo_species()
-    feo.mols = 3
+    feo.moles = 3
     h2o = create_h2o_species()
-    h2o.mols = 1
+    h2o.moles = 1
     products = [feo, h2o]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
@@ -841,14 +841,14 @@ def delta_h_feo_h2_fe_h2o(temp_kelvin: float = 298.15) -> float: # TODO! Check w
     FeO + H2 -> Fe + H2O
     """
     feo = create_feo_species()
-    feo.mols = 1
+    feo.moles = 1
     h2 = create_h2_species()
-    h2.mols = 1
+    h2.moles = 1
     reactants = [feo, h2]
     fe = create_fe_species()
-    fe.mols = 1
+    fe.moles = 1
     h2o = create_h2o_species()
-    h2o.mols = 1
+    h2o.moles = 1
     products = [fe, h2o]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
@@ -858,14 +858,14 @@ def delta_h_3fe2o3_2h_2fe3o4_h2o(temp_kelvin: float = 298.15) -> float: # TODO! 
     Note: Monatomic hydrogen reduction.
     """
     fe2o3 = create_fe2o3_species()
-    fe2o3.mols = 3
+    fe2o3.moles = 3
     h = create_h_species()
-    h.mols = 2
+    h.moles = 2
     reactants = [fe2o3, h]
     fe3o4 = create_fe3o4_species()
-    fe3o4.mols = 2
+    fe3o4.moles = 2
     h2o = create_h2o_species()
-    h2o.mols = 1
+    h2o.moles = 1
     products = [fe3o4, h2o]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
@@ -875,14 +875,14 @@ def delta_h_fe3o4_2h_3feo_h2o(temp_kelvin: float = 298.15) -> float: # TODO! Che
     Note: Monatomic hydrogen reduction.
     """
     fe3o4 = create_fe3o4_species()
-    fe3o4.mols = 1
+    fe3o4.moles = 1
     h = create_h_species()
-    h.mols = 2
+    h.moles = 2
     reactants = [fe3o4, h]
     feo = create_feo_species()
-    feo.mols = 3
+    feo.moles = 3
     h2o = create_h2o_species()
-    h2o.mols = 1
+    h2o.moles = 1
     products = [feo, h2o]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
@@ -892,14 +892,14 @@ def delta_h_feo_2h_fe_h2o(temp_kelvin: float = 298.15) -> float: # TODO! Check w
     Note: Monatomic hydrogen reduction.
     """
     feo = create_feo_species()
-    feo.mols = 1
+    feo.moles = 1
     h = create_h_species()
-    h.mols = 2
+    h.moles = 2
     reactants = [feo, h]
     fe = create_fe_species()
-    fe.mols = 1
+    fe.moles = 1
     h2o = create_h2o_species()
-    h2o.mols = 1
+    h2o.moles = 1
     products = [fe, h2o]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
@@ -909,14 +909,14 @@ def delta_h_fe2o3_3h2_3fe_3h2o(temp_kelvin: float = 298.15) -> float:
     Fe2O3 + 3 H2 -> 2 Fe + 3 H2O
     """
     fe2o3 = create_fe2o3_species()
-    fe2o3.mols = 1
+    fe2o3.moles = 1
     h2 = create_h2_species()
-    h2.mols = 3
+    h2.moles = 3
     reactants = [fe2o3, h2]
     fe = create_fe_species()
-    fe.mols = 2
+    fe.moles = 2
     h2o = create_h2o_species()
-    h2o.mols = 3
+    h2o.moles = 3
     products = [fe, h2o]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
@@ -925,11 +925,11 @@ def delta_h_2h2o_2h2_o2(temp_kelvin: float = 298.15) -> float:
     2 H2O + 474.2 kJ/mol electricity + 97.2 kJ/mol heat -> 2 H2 + O2
     """
     h2o = create_h2o_species()
-    h2o.mols = 2
+    h2o.moles = 2
     reactants = [h2o]
     h2 = create_h2_species()
-    h2.mols = 2
+    h2.moles = 2
     o2 = create_o2_species()
-    o2.mols = 1
+    o2.moles = 1
     products = [h2, o2]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)

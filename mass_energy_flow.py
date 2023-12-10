@@ -525,7 +525,7 @@ def add_slag_and_flux_mass(system: System):
         final_reduction_degree = system.system_vars['plasma reduction percent'] * 0.01
     else:
         final_reduction_degree = system.system_vars['fluidized beds reduction percent'] * 0.01
-    o2_injection_mols = system.system_vars['o2 injection kg'] / species.create_o2_species().mm
+    o2_injection_moles = system.system_vars['o2 injection kg'] / species.create_o2_species().mm
     max_feo_in_slag_perc = system.system_vars['feo soluble in slag percent']
     use_mgo_slag_weight_perc = system.system_vars.get('use mgo slag weight perc', False) # or \
 
@@ -549,35 +549,35 @@ def add_slag_and_flux_mass(system: System):
     except:
         si_in_steel = species.create_si_species()
 
-    if si_in_steel.mols > 0.1:
+    if si_in_steel.moles > 0.1:
         pass # yeet
 
     # iterative solve for the ore and slag mass
     ore_mass = 1666.0 # kg, initial guess
     for _ in range(10):
         _, feo_after_reduction, _, _ = iron_species_from_reduction_degree(final_reduction_degree, ore_mass, ore_composition_simple)
-        feo_slag.mass = feo_after_reduction.mass + feo_slag.mm * 2 * o2_injection_mols
+        feo_slag.mass = feo_after_reduction.mass + feo_slag.mm * 2 * o2_injection_moles
         
         sio2_gangue.mass = ore_mass * ore_composition_simple['SiO2'] * 0.01
         al2o3_gangue.mass = ore_mass * ore_composition_simple['Al2O3'] * 0.01
         cao_gangue.mass = ore_mass * ore_composition_simple['CaO'] * 0.01
         mgo_gangue.mass = ore_mass * ore_composition_simple['MgO'] * 0.01
 
-        if si_in_steel.mols > sio2_gangue.mols:
+        if si_in_steel.moles > sio2_gangue.moles:
             raise DecreaseSiInHotMetal
 
-        sio2_slag.mols = sio2_gangue.mols - si_in_steel.mols
-        al2o3_slag.mols = al2o3_gangue.mols
+        sio2_slag.moles = sio2_gangue.moles - si_in_steel.moles
+        al2o3_slag.moles = al2o3_gangue.moles
 
         cao_flux_mass = b2_basicity * sio2_slag.mass - cao_gangue.mass
         cao_flux.mass = max(cao_flux_mass, 0.0)
-        cao_slag.mols = cao_gangue.mols + cao_flux.mols
+        cao_slag.moles = cao_gangue.moles + cao_flux.moles
 
         if not use_mgo_slag_weight_perc:
             # Use B4 basicity to calculate the required MgO
             mgo_flux_mass = b4_basicity * (al2o3_slag.mass + sio2_slag.mass) - cao_gangue.mass - cao_flux.mass - mgo_gangue.mass
             mgo_flux.mass = max(mgo_flux_mass, 0.0)
-            mgo_slag.mols = mgo_gangue.mols + mgo_flux.mols
+            mgo_slag.moles = mgo_gangue.moles + mgo_flux.moles
 
         for _ in range(10):
             if not use_mgo_slag_weight_perc:
@@ -589,7 +589,7 @@ def add_slag_and_flux_mass(system: System):
                             + cao_slag.mass + feo_slag.mass) / \
                             (1.0 - mgo_in_slag_perc * 0.01)
                 mgo_slag.mass = max(slag_mass * mgo_in_slag_perc * 0.01, mgo_gangue.mass)
-                mgo_flux.mols = mgo_slag.mols - mgo_gangue.mols
+                mgo_flux.moles = mgo_slag.moles - mgo_gangue.moles
                 
             if feo_slag.mass > max_feo_in_slag_perc * slag_mass * 0.01:
                 # Need another interation to get the correct slag mass, since feo saturates
@@ -659,7 +659,7 @@ def add_ore(system: System):
     try:
         # if some silicon ended up in the hot metal (BOF systems)
         si_in_steel = steelmaking_device.outputs['steel'].species('Si')
-        sio2_gangue.mols += si_in_steel.mols
+        sio2_gangue.moles += si_in_steel.moles
     except:
         pass
     
@@ -731,16 +731,16 @@ def iron_species_from_reduction_degree(reduction_degree: float, initial_ore_mass
     # before any metallic Fe forms.
     if (1/3) <= reduction_degree <= 1:
         # Mix of wustite and metallic Fe
-        feo.mols = 3 * n_hem_i * (1 - reduction_degree)
-        fe.mols = n_fe_t - feo.mols
+        feo.moles = 3 * n_hem_i * (1 - reduction_degree)
+        fe.moles = n_fe_t - feo.moles
     elif (1/9) <= reduction_degree < (1/3):
         # Mix of magnetite and wustite
-        fe3o4.mols = 3 * n_hem_i * (1 - reduction_degree) - n_fe_t
-        feo.mols = 3 * n_hem_i * (1 - reduction_degree) - 4 * fe3o4.mols
+        fe3o4.moles = 3 * n_hem_i * (1 - reduction_degree) - n_fe_t
+        feo.moles = 3 * n_hem_i * (1 - reduction_degree) - 4 * fe3o4.moles
     elif 0 <= reduction_degree < (1/9):
         # Mix of hematite and magnetite
-        fe2o3.mols = 9 * n_hem_i * (1 - reduction_degree) - 4*n_fe_t
-        fe3o4.mols = (3*n_hem_i * (1 - reduction_degree) - 3 * fe2o3.mols) / 4
+        fe2o3.moles = 9 * n_hem_i * (1 - reduction_degree) - 4*n_fe_t
+        fe3o4.moles = (3*n_hem_i * (1 - reduction_degree) - 3 * fe2o3.moles) / 4
     
     return fe, feo, fe3o4, fe2o3
 
@@ -774,9 +774,9 @@ def add_fluidized_bed_flows(system: System):
     ironmaking_device.outputs['dri'].set(dri)
 
     # TODO: Reduce repeition with the same logic in the plasma smelter. 
-    delta_fe = fe_dri.mols - ore.species('Fe').mols
-    delta_feo = feo_dri.mols - ore.species('FeO').mols
-    delta_fe3o4 = fe3o4_dri.mols - ore.species('Fe3O4').mols
+    delta_fe = fe_dri.moles - ore.species('Fe').moles
+    delta_feo = feo_dri.moles - ore.species('FeO').moles
+    delta_fe3o4 = fe3o4_dri.moles - ore.species('Fe3O4').moles
 
     num_fe_formations = delta_fe
     num_feo_formations = (num_fe_formations + delta_feo) / 3
@@ -788,21 +788,21 @@ def add_fluidized_bed_flows(system: System):
     ironmaking_device.inputs['chemical'].set(chemical_energy)
 
     h2_consumed = species.create_h2_species()
-    h2_consumed.mols = 1.5 * fe_dri.mols + 0.5 * feo_dri.mols + 0.5 * fe3o4_dri.mols
+    h2_consumed.moles = 1.5 * fe_dri.moles + 0.5 * feo_dri.moles + 0.5 * fe3o4_dri.moles
 
     h2o = species.create_h2o_species()
-    h2o.mols = h2_consumed.mols
+    h2o.moles = h2_consumed.moles
 
     try: 
-        h2o.mols += ore.species('H2O').mols # the LOI (loss on ignition) species in the ore
+        h2o.moles += ore.species('H2O').moles # the LOI (loss on ignition) species in the ore
     except:
         pass # no LOI species in the ore
 
     h2_excess = copy.deepcopy(h2_consumed)
-    h2_excess.mols = (excess_h2_ratio - 1) * h2_consumed.mols
+    h2_excess.moles = (excess_h2_ratio - 1) * h2_consumed.moles
 
     h2_total = species.create_h2_species()
-    h2_total.mols = h2_consumed.mols + h2_excess.mols
+    h2_total.moles = h2_consumed.moles + h2_excess.moles
 
     hydrogen = species.Mixture('H2', [h2_total])
     hydrogen.temp_kelvin = in_gas_temp 
@@ -896,8 +896,8 @@ def add_eaf_flows_final(system: System):
     steel_bath_temp_K = system.system_vars['steel exit temp K']
     reaction_temp = steel_bath_temp_K
 
-    if steelmaking_device.inputs['hbi'].species('Fe3O4').mols > 0 or \
-        steelmaking_device.inputs['hbi'].species('Fe2O3').mols > 0:
+    if steelmaking_device.inputs['hbi'].species('Fe3O4').moles > 0 or \
+        steelmaking_device.inputs['hbi'].species('Fe2O3').moles > 0:
         # could potentially just add the unreduced hematite and magnetite to the slag?
         raise Exception("add_eaf_mass_flow_final: HBI contains Fe3O4 or Fe2O3, which EAF cannot reduce.")
 
@@ -912,16 +912,16 @@ def add_eaf_flows_final(system: System):
     c_reduction = species.create_c_species()
 
     chemical_energy = 0.0
-    if feo_slag.mols > feo_dri.mols:
+    if feo_slag.moles > feo_dri.moles:
         # metallic fe is oxidised by injected O2
-        o2_oxidation.mols = 0.5 * (feo_slag.mols - feo_dri.mols)
-        num_feo_formation_reactions = o2_oxidation.mols
+        o2_oxidation.moles = 0.5 * (feo_slag.moles - feo_dri.moles)
+        num_feo_formation_reactions = o2_oxidation.moles
         chemical_energy = -num_feo_formation_reactions * species.delta_h_2fe_o2_2feo(reaction_temp)
     else:
         # feo is reduced by the injected carbon.
         # we assume all reduction is by pure carbon, non is by CO gas. 
-        c_reduction.mols = (feo_dri.mols - feo_slag.mols)
-        num_feo_c_reduction_reactions = c_reduction.mols
+        c_reduction.moles = (feo_dri.moles - feo_slag.moles)
+        num_feo_c_reduction_reactions = c_reduction.moles
         chemical_energy = -num_feo_c_reduction_reactions * species.delta_h_feo_c_fe_co(reaction_temp)
 
     # Add the target amount of O2 and calculate the required
@@ -940,7 +940,7 @@ def add_eaf_flows_final(system: System):
     # don't include the CO formed from the reduction of FeO by C.
     o2_combustion = species.create_o2_species()
     o2_combustion.mass = total_o2_injected_mass - o2_oxidation.mass # some o2 may already be used in fe oxidation
-    n_reactions = o2_combustion.mols
+    n_reactions = o2_combustion.moles
     num_co_reactions = n_reactions / 2.348
     num_co2_reactions = n_reactions - num_co_reactions
 
@@ -949,22 +949,22 @@ def add_eaf_flows_final(system: System):
     steelmaking_device.inputs['chemical'].energy = chemical_energy
 
     c_combustion = species.create_c_species()
-    c_combustion.mols = 2*num_co_reactions + num_co2_reactions
+    c_combustion.moles = 2*num_co_reactions + num_co2_reactions
 
     c_injected = species.create_c_species()
-    c_injected.mols = c_combustion.mols + c_reduction.mols + c_alloy.mols - steelmaking_device.inputs['electrode'].mols
+    c_injected.moles = c_combustion.moles + c_reduction.moles + c_alloy.moles - steelmaking_device.inputs['electrode'].moles
     c_injected.temp_kelvin = celsius_to_kelvin(25) # assume room temp
     steelmaking_device.inputs['carbon'].set(c_injected)
 
     o2_injected = species.create_o2_species()
-    o2_injected.mols = o2_combustion.mols + o2_oxidation.mols
+    o2_injected.moles = o2_combustion.moles + o2_oxidation.moles
     o2_injected.temp_kelvin = celsius_to_kelvin(25) # assume room temp
     steelmaking_device.inputs['O2'].set(o2_injected)
 
     co = species.create_co_species()
-    co.mols = 2 * num_co_reactions + c_reduction.mols
+    co.moles = 2 * num_co_reactions + c_reduction.moles
     co2 = species.create_co2_species()
-    co2.mols = num_co2_reactions
+    co2.moles = num_co2_reactions
     off_gas = species.Mixture('carbon gas', [co, co2])
     off_gas.temp_kelvin = reaction_temp - 200.0
     steelmaking_device.outputs['carbon gas'].set(off_gas)
@@ -1031,13 +1031,13 @@ def add_plasma_flows_final(system: System):
     ore_mass = iron_making_device.inputs['ore'].mass
     fe_target, feo_target, fe3o4_target, fe2o3_target = iron_species_from_reduction_degree(reduction_degree, ore_mass, ore_composition_simple)
 
-    if not math.isclose(fe3o4_target.mols, 0, abs_tol=1e-12) or not math.isclose(fe2o3_target.mols, 0, abs_tol=1e-12):
+    if not math.isclose(fe3o4_target.moles, 0, abs_tol=1e-12) or not math.isclose(fe2o3_target.moles, 0, abs_tol=1e-12):
         raise Exception("Error: Expect plasma hydrogen reduction to completly reduce magnetite and hematite")
 
     # TODO! Reduce repetition with the same logic dri function
-    delta_fe = fe_target.mols - ironbearing_material.species('Fe').mols
-    delta_feo = feo_target.mols - ironbearing_material.species('FeO').mols
-    delta_fe3o4 = fe3o4_target.mols - ironbearing_material.species('Fe3O4').mols
+    delta_fe = fe_target.moles - ironbearing_material.species('Fe').moles
+    delta_feo = feo_target.moles - ironbearing_material.species('FeO').moles
+    delta_fe3o4 = fe3o4_target.moles - ironbearing_material.species('Fe3O4').moles
 
     # assert delta_fe >= 0 and delta_feo >= 0 and delta_fe3o4 >= 0, "Error: Plasma reduction degree should be higher than prereduction during ironmaking"
 
@@ -1049,7 +1049,7 @@ def add_plasma_flows_final(system: System):
 
     try:
         si_in_steel = plasma_smelter.outputs['steel'].species('Si')
-        num_si_formations = si_in_steel.mols
+        num_si_formations = si_in_steel.moles
     except:
         num_si_formations = 0.0
 
@@ -1064,20 +1064,20 @@ def add_plasma_flows_final(system: System):
 
     # determine the mass of h2o in the off gas
     h2o = species.create_h2o_species()
-    h2o.mols = num_fe_formations + num_feo_formations + num_fe3o4_formations + 2*num_si_formations
-    h2_consumed_mols = h2o.mols
+    h2o.moles = num_fe_formations + num_feo_formations + num_fe3o4_formations + 2*num_si_formations
+    h2_consumed_moles = h2o.moles
 
     h2_excess = species.create_h2_species()
     assert excess_h2_ratio >= 1
-    h2_excess.mols = h2_consumed_mols * (excess_h2_ratio - 1)
+    h2_excess.moles = h2_consumed_moles * (excess_h2_ratio - 1)
 
     h2_total = species.create_h2_species()
-    h2_total.mols = h2_consumed_mols + h2_excess.mols
+    h2_total.moles = h2_consumed_moles + h2_excess.moles
 
     # convert to a mixture
     hydrogen_frac_in_plasma = 1.0 - 0.01 * argon_perc_in_plasma
     argon = species.create_ar_species()
-    argon.mols = h2_total.mols / hydrogen_frac_in_plasma - h2_total.mols
+    argon.moles = h2_total.moles / hydrogen_frac_in_plasma - h2_total.moles
     h2_rich_gas = species.Mixture('h2 rich gas', [h2_total, argon])
 
     # the amount of h2 in the in gas
@@ -1108,18 +1108,18 @@ def add_plasma_flows_final(system: System):
     o2_oxidation = species.create_o2_species()
     c_reduction = species.create_c_species()
 
-    if math.isclose(feo_slag.mols - feo_target.mols, 0.0, abs_tol=1e-9):
+    if math.isclose(feo_slag.moles - feo_target.moles, 0.0, abs_tol=1e-9):
         # no oxidation or reduction of feo required
         pass
-    elif feo_slag.mols > feo_target.mols:
+    elif feo_slag.moles > feo_target.moles:
         # metallic fe is oxidised by injected O2
-        o2_oxidation.mols = 0.5 * (feo_slag.mols - feo_target.mols)
-        num_feo_formation_reactions = o2_oxidation.mols
+        o2_oxidation.moles = 0.5 * (feo_slag.moles - feo_target.moles)
+        num_feo_formation_reactions = o2_oxidation.moles
         plasma_smelter.inputs['chemical'].energy += -num_feo_formation_reactions * species.delta_h_2fe_o2_2feo(plasma_temp)
     else:
         # feo is reduced by the injected carbon
-        c_reduction.mols = (feo_target.mols - feo_slag.mols)
-        num_feo_c_reduction_reactions = c_reduction.mols
+        c_reduction.moles = (feo_target.moles - feo_slag.moles)
+        num_feo_c_reduction_reactions = c_reduction.moles
         chemical_energy += -num_feo_c_reduction_reactions * species.delta_h_feo_c_fe_co(plasma_temp)
 
     total_o2_injected_mass = system.system_vars['o2 injection kg']
@@ -1136,7 +1136,7 @@ def add_plasma_flows_final(system: System):
     # don't include the CO formed from the reduction of FeO by C.
     o2_combustion = species.create_o2_species()
     o2_combustion.mass = total_o2_injected_mass - o2_oxidation.mass # some o2 may already be used in fe oxidation
-    n_reactions = o2_combustion.mols
+    n_reactions = o2_combustion.moles
     num_co_reactions = n_reactions / 2.348
     num_co2_reactions = n_reactions - num_co_reactions
 
@@ -1146,20 +1146,20 @@ def add_plasma_flows_final(system: System):
     plasma_smelter.inputs['chemical'].energy += chemical_energy
 
     c_combustion = species.create_c_species()
-    c_combustion.mols = 2*num_co_reactions + num_co2_reactions
+    c_combustion.moles = 2*num_co_reactions + num_co2_reactions
 
     c_injected = species.create_c_species()
-    c_injected.mols = c_combustion.mols + c_reduction.mols + c_alloy.mols
+    c_injected.moles = c_combustion.moles + c_reduction.moles + c_alloy.moles
     c_injected.temp_kelvin = celsius_to_kelvin(25) # assume room temp
     plasma_smelter.inputs['carbon'].set(c_injected)
 
     o2_injected = species.create_o2_species()
-    o2_injected.mols = o2_combustion.mols + o2_oxidation.mols
+    o2_injected.moles = o2_combustion.moles + o2_oxidation.moles
     o2_injected.temp_kelvin = celsius_to_kelvin(25) # assume room temp
     plasma_smelter.inputs['O2'].set(o2_injected)
 
     try: # does this do something weird to the heat balance??
-        h2o.mols += ironbearing_material.species('H2O').mols # the LOI (loss on ignition) species in the ore
+        h2o.moles += ironbearing_material.species('H2O').moles # the LOI (loss on ignition) species in the ore
     except:
         pass # no LOI species in the ore / dri
 
@@ -1174,9 +1174,9 @@ def add_plasma_flows_final(system: System):
     plasma_smelter.outputs['losses'].energy = bath_radiation_losses
     
     co = species.create_co_species()
-    co.mols = 2 * num_co_reactions + c_reduction.mols
+    co.moles = 2 * num_co_reactions + c_reduction.moles
     co2 = species.create_co2_species()
-    co2.mols = num_co2_reactions
+    co2.moles = num_co2_reactions
     off_gas = species.Mixture('off gas', [co, co2, h2o, h2_excess, argon])
 
     # Solve for the off gas temperature that balances the energy balance.
@@ -1198,8 +1198,8 @@ def add_plasma_flows_final(system: System):
         if abs(reactor_energy_balance) < 2e-5:
             break # could not seem to converge smaller than this.
 
-        mols_times_molar_heat_capacity = off_gas.delta_h(off_gas.temp_kelvin + 1)
-        dT = -reactor_energy_balance / mols_times_molar_heat_capacity
+        moles_times_molar_heat_capacity = off_gas.delta_h(off_gas.temp_kelvin + 1)
+        dT = -reactor_energy_balance / moles_times_molar_heat_capacity
         new_off_gas_temp = off_gas.temp_kelvin + dT
 
         if new_off_gas_temp < steel_bath_temp_K:
@@ -1227,27 +1227,27 @@ def add_plasma_flows_final(system: System):
 
 
 def find_consumed_h2_moles(system: System, hydrogen_consuming_device_names: List[str]) -> float:
-    h2_mols = 0.0
+    h2_moles = 0.0
     for device_name in hydrogen_consuming_device_names:
         device = system.devices[device_name]
         if isinstance(device.first_input_containing_name('h2 rich gas'), species.Species):
-            input_h2_mols = device.first_input_containing_name('h2 rich gas').mols
+            input_h2_moles = device.first_input_containing_name('h2 rich gas').moles
         elif isinstance(device.first_input_containing_name('h2 rich gas'), species.Mixture):
-            input_h2_mols = device.first_input_containing_name('h2 rich gas').species('H2').mols
+            input_h2_moles = device.first_input_containing_name('h2 rich gas').species('H2').moles
         else:
             raise TypeError("Error: Unknown type for h2 rich gas input")
         
         if isinstance(device.first_output_containing_name('h2 rich gas'), species.Species):
-            output_h2_mols = device.first_output_containing_name('h2 rich gas').mols
+            output_h2_moles = device.first_output_containing_name('h2 rich gas').moles
         elif isinstance(device.first_output_containing_name('h2 rich gas'), species.Mixture):
-            output_h2_mols = device.first_output_containing_name('h2 rich gas').species('H2').mols
+            output_h2_moles = device.first_output_containing_name('h2 rich gas').species('H2').moles
         else:
             raise TypeError("Error: Unknown type for h2 rich gas input")
         
-        h2_consumed = input_h2_mols - output_h2_mols
+        h2_consumed = input_h2_moles - output_h2_moles
         assert h2_consumed >= 0
-        h2_mols += h2_consumed
-    return h2_mols
+        h2_moles += h2_consumed
+    return h2_moles
 
 
 def add_input_h2_flows(system: System):
@@ -1255,7 +1255,7 @@ def add_input_h2_flows(system: System):
     h2 = species.create_h2_species()
     h2.temp_kelvin = celsius_to_kelvin(25)
     hydrogen_consuming_device_names = system.system_vars['h2 consuming device names']
-    h2.mols = find_consumed_h2_moles(system, hydrogen_consuming_device_names)
+    h2.moles = find_consumed_h2_moles(system, hydrogen_consuming_device_names)
 
     # add in the h2 input to the system
     device_name = system.system_vars['input h2 device name']
@@ -1271,17 +1271,17 @@ def add_electrolysis_flows(system: System):
 
     h2 = species.create_h2_species()
     h2.temp_kelvin = gas_output_temp
-    h2.mols = find_consumed_h2_moles(system, hydrogen_consuming_device_names)
+    h2.moles = find_consumed_h2_moles(system, hydrogen_consuming_device_names)
     electrolyser.outputs['h2 rich gas'].set(h2)
     assert 20.0 < h2.mass < 70.0, "Expect around 55kg of H2, but can be lower if scrap is used."
     
     o2 = species.create_o2_species()
-    o2.mols = h2.mols * 0.5
+    o2.moles = h2.moles * 0.5
     o2.temp_kelvin = gas_output_temp
     electrolyser.outputs['O2'].set(o2)
 
     h2o = species.create_h2o_species()
-    h2o.mols = h2.mols
+    h2o.moles = h2.moles
     h2o.temp_kelvin = water_input_temp
     electrolyser.inputs['H2O'].set(h2o)
 
@@ -1364,7 +1364,7 @@ def merge_join_flows(system: System, join_device_name: str):
 
         # pretty disgusting here. 
         tmp_mixture = species.Mixture("temp", [])
-        device.outputs[output_flow_name].mols = 0
+        device.outputs[output_flow_name].moles = 0
         for flow in device.inputs.values():
             assert isinstance(flow, species.Species)
             tmp_mixture.merge(flow)
@@ -1391,15 +1391,15 @@ def balance_join3_flows(system: System):
     h2_loop_2 = species.create_h2_species()
     h2_loop_2.temp_kelvin = join_3.first_input_containing_name('h2 rich gas').temp_kelvin
     steelmaking_device = system.devices[steelmaking_device_name]
-    h2_loop_2.mols = steelmaking_device.first_input_containing_name('h2 rich gas').species('H2').mols \
-                     - steelmaking_device.first_output_containing_name('h2 rich gas').species('H2').mols
+    h2_loop_2.moles = steelmaking_device.first_input_containing_name('h2 rich gas').species('H2').moles \
+                     - steelmaking_device.first_output_containing_name('h2 rich gas').species('H2').moles
 
     h2_loop_1 = species.create_h2_species()
     h2_loop_1.temp_kelvin = join_3.first_input_containing_name('h2 rich gas').temp_kelvin
     for device_name in ironmaking_device_names:
         device = system.devices[device_name]
-        h2_loop_1.mols += device.first_input_containing_name('h2 rich gas').species('H2').mols \
-                        - device.first_output_containing_name('h2 rich gas').species('H2').mols
+        h2_loop_1.moles += device.first_input_containing_name('h2 rich gas').species('H2').moles \
+                        - device.first_output_containing_name('h2 rich gas').species('H2').moles
     
     join_3.outputs['h2 rich gas 1'].set(species.Mixture('h2 rich gas 1', [h2_loop_1]))
     join_3.outputs['h2 rich gas 2'].set(species.Mixture('h2 rich gas 2', [h2_loop_2]))
@@ -1470,8 +1470,8 @@ def add_heat_exchanger_flows_final(system: System, heat_exchanger_device_name: s
     # Get the initial estimate of the exit temp of the cold gas. This initial estimate assumes
     # that the heat capacity is constant over the temp range, which is in general not the case,
     # so we need to do some iterative calculations. replace this with cp()
-    mols_times_molar_heat_capacity = cold_gas_in.delta_h(cold_gas_in.temp_kelvin + 1)
-    final_cold_gas_temp = cold_gas_in.temp_kelvin + heat_exchanged / (mols_times_molar_heat_capacity)
+    moles_times_molar_heat_capacity = cold_gas_in.delta_h(cold_gas_in.temp_kelvin + 1)
+    final_cold_gas_temp = cold_gas_in.temp_kelvin + heat_exchanged / (moles_times_molar_heat_capacity)
     cold_gas_in.temp_kelvin = final_cold_gas_temp 
 
     # adjust the final cold gas temp iterativly to reduce error caused by assuming the
@@ -1480,7 +1480,7 @@ def add_heat_exchanger_flows_final(system: System, heat_exchanger_device_name: s
     i = 0
     max_iter = 100
     while True:
-        mols_times_molar_heat_capacity = cold_gas_in.delta_h(cold_gas_in.temp_kelvin + 1)
+        moles_times_molar_heat_capacity = cold_gas_in.delta_h(cold_gas_in.temp_kelvin + 1)
 
         energy_gained_by_cold_gas = -cold_gas_in.delta_h(initial_cold_gas_temp)
         energy_lost_by_hot_gas = heat_exchanged
@@ -1490,7 +1490,7 @@ def add_heat_exchanger_flows_final(system: System, heat_exchanger_device_name: s
             break
 
         dH = energy_lost_by_hot_gas - energy_gained_by_cold_gas
-        dT = dH / mols_times_molar_heat_capacity
+        dT = dH / moles_times_molar_heat_capacity
         cold_gas_in.temp_kelvin += dT
         i += 1
         if i > max_iter:
@@ -1625,10 +1625,10 @@ def add_bof_flows(system: System):
     si_hot_metal.temp_kelvin = hot_metal.temp_kelvin
     hot_metal.merge(si_hot_metal)
 
-    sio2_slag.mols = si_hot_metal.mols
+    sio2_slag.moles = si_hot_metal.moles
     sio2_slag.temp_kelvin = hot_metal.temp_kelvin
-    cao_flux.mols = b2*sio2_slag.mols
-    cao_slag.mols = cao_flux.mols
+    cao_flux.moles = b2*sio2_slag.moles
+    cao_slag.moles = cao_flux.moles
 
     if use_mgo_slag_weight_perc:
         # Use MgO% in slag to determine MgO flux.
@@ -1636,16 +1636,16 @@ def add_bof_flows(system: System):
         mgo_slag.mass = mgo_in_slag_perc * 0.01 * total_slag_mass
     else:
         # use B4 basicity to determine MgO in slag 
-        mgo_slag.mols = b4*sio2_slag.mols
+        mgo_slag.moles = b4*sio2_slag.moles
         total_slag_mass = (cao_slag.mass + sio2_slag.mass) / (1 - feo_in_slag_perc * 0.01)
 
-    mgo_flux.mols = mgo_slag.mols
+    mgo_flux.moles = mgo_slag.moles
 
     cao_flux.temp_kelvin = mgo_flux.temp_kelvin = celsius_to_kelvin(25)
     cao_slag.temp_kelvin = mgo_slag.temp_kelvin = hot_metal.temp_kelvin
     
     feo_slag.mass = feo_in_slag_perc * 0.01 * total_slag_mass
-    hot_metal.species('Fe').mols += feo_slag.mols
+    hot_metal.species('Fe').moles += feo_slag.moles
 
     flux = species.Mixture('flux', [cao_flux, mgo_flux])
     flux.temp_kelvin = celsius_to_kelvin(25)
@@ -1657,13 +1657,13 @@ def add_bof_flows(system: System):
 
     # TODO: would expect it to form a ratio of CO and CO2 as in the plasma and
     # eaf furnaces. Add this later.
-    co_emitted.mols = hot_metal.species('C').mols - steel.species('C').mols
+    co_emitted.moles = hot_metal.species('C').moles - steel.species('C').moles
     co_emitted.temp_kelvin = hot_metal.temp_kelvin - 200.0 # guess
     carbon_gas = species.Mixture('carbon gas', [co_emitted])
     carbon_gas.temp_kelvin = co_emitted.temp_kelvin
     bof.outputs['carbon gas'].set(carbon_gas)
 
-    o2_injected.mols = 0.5 * co_emitted.mols + 0.5 * feo_slag.mols + sio2_slag.mols
+    o2_injected.moles = 0.5 * co_emitted.moles + 0.5 * feo_slag.moles + sio2_slag.moles
     o2_injected.temp_kelvin = celsius_to_kelvin(25)
     bof.inputs['O2'].set(o2_injected)
 
@@ -1676,9 +1676,9 @@ def add_bof_flows(system: System):
     
     # Add the energy from the oxidation reactions
     reaction_temp = hot_metal.temp_kelvin
-    chemical_energy = -species.delta_h_2c_o2_2co(reaction_temp) * co_emitted.mols * 0.5 \
-                      -species.delta_h_2fe_o2_2feo(reaction_temp) * feo_slag.mols * 0.5 \
-                      -species.delta_h_si_o2_sio2(reaction_temp) * sio2_slag.mols
+    chemical_energy = -species.delta_h_2c_o2_2co(reaction_temp) * co_emitted.moles * 0.5 \
+                      -species.delta_h_2fe_o2_2feo(reaction_temp) * feo_slag.moles * 0.5 \
+                      -species.delta_h_si_o2_sio2(reaction_temp) * sio2_slag.moles
     
     bof.inputs['chemical'].energy = chemical_energy
 

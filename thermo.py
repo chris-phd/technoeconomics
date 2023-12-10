@@ -22,13 +22,13 @@ class ShomateEquation:
                f"C={self.coeffs[2]}, D={self.coeffs[3]}, E={self.coeffs[4]}, F={self.coeffs[5]} "\
                f"G={self.coeffs[6]}, H={self.coeffs[7]})"
 
-    def delta_h(self, mols: float, t_initial: float, t_final: float) -> float:
+    def delta_h(self, moles: float, t_initial: float, t_final: float) -> float:
         if not (self.min_kelvin <= t_initial <= self.max_kelvin) or \
             not (self.min_kelvin <= t_final <= self.max_kelvin):
             raise Exception("ShomateEquation::delta_h: temperatures must be within the range of the heat capacity")
         t_initial /= 1000
         t_final /= 1000
-        energy_kJ = mols * (self.coeffs[0] * (t_final - t_initial) + \
+        energy_kJ = moles * (self.coeffs[0] * (t_final - t_initial) + \
                        self.coeffs[1] / 2 * (t_final**2 - t_initial**2) + \
                        self.coeffs[2] / 3 * (t_final**3 - t_initial**3) + \
                        self.coeffs[3] / 4 * (t_final**4 - t_initial**4) + \
@@ -52,11 +52,11 @@ class SimpleHeatCapacity:
     def __repr__(self):
         return f"SimpleHeatCapacity({self.min_kelvin}-{self.max_kelvin}K, cp={self.cp})"
     
-    def delta_h(self, mols: float, t_initial: float, t_final: float) -> float:
+    def delta_h(self, moles: float, t_initial: float, t_final: float) -> float:
         if not (self.min_kelvin <= t_initial <= self.max_kelvin) or \
             not (self.min_kelvin <= t_final <= self.max_kelvin):
             raise Exception("SimpleHeatCapacity::delta_h: temperatures must be within the range of the heat capacity")
-        return mols * self.cp * (t_final - t_initial)
+        return moles * self.cp * (t_final - t_initial)
 
 
 class LatentHeat:
@@ -73,8 +73,8 @@ class LatentHeat:
     def __repr__(self):
         return f"LatentHeat({self.temp_kelvin} K, latent_heat={self.latent_heat} J/mol)"
     
-    def delta_h(self, mols: float):
-        return mols * self.latent_heat
+    def delta_h(self, moles: float):
+        return moles * self.latent_heat
 
 
 class ThermoData:
@@ -118,14 +118,14 @@ class ThermoData:
     def __repr__(self):
         return f"ThermoData({self.heat_capacities}, {self.latent_heats})"
     
-    def delta_h(self, mols: float, t_initial: float, t_final: float) -> float:
+    def delta_h(self, moles: float, t_initial: float, t_final: float) -> float:
         if not (self.min_kelvin <= t_initial <= self.max_kelvin) or \
             not (self.min_kelvin <= t_final <= self.max_kelvin):
             s = f"ThermoData::delta_h: temperatures must be within the range of the heat capacity ({self.min_kelvin}K - {self.max_kelvin}K)"
             s += f" t_initial={t_initial}K, t_final={t_final}K"
             raise Exception(s)
         
-        if math.isclose(mols, 0.0):
+        if math.isclose(moles, 0.0):
             return 0.0
 
         # ensure initial temp is always less than final, then flip if needed
@@ -139,18 +139,18 @@ class ThermoData:
         # Add the contributions from the latent heats
         for latent_heat in self.latent_heats:
             if t_initial <= latent_heat.temp_kelvin < t_final:
-                delta_h += latent_heat.delta_h(mols)
+                delta_h += latent_heat.delta_h(moles)
 
         # Find the heat capacity that covers the initial temperature
         for heat_capacity in self.heat_capacities:
             if heat_capacity.min_kelvin <= t_initial <= heat_capacity.max_kelvin:
                 if heat_capacity.min_kelvin <= t_final <= heat_capacity.max_kelvin:
                     # Result is entirlly within one heat capacity range
-                    delta_h += heat_capacity.delta_h(mols, t_initial, t_final)
+                    delta_h += heat_capacity.delta_h(moles, t_initial, t_final)
                     break
                 else:
                     # Result spans multiple heat capacity ranges
-                    delta_h += heat_capacity.delta_h(mols, t_initial, heat_capacity.max_kelvin)
+                    delta_h += heat_capacity.delta_h(moles, t_initial, heat_capacity.max_kelvin)
                     t_initial = heat_capacity.max_kelvin              
 
         if flip_result:
