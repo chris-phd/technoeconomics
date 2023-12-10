@@ -829,8 +829,9 @@ def add_fluidized_bed_flows(system: System):
         if i > max_iter:
             raise Exception(f"Failed to converge on the out gas temp with excess h2 ratio = {excess_h2_ratio}. Reached max interation")
 
-        cp = ironmaking_device.first_output_containing_name('h2 rich gas').cp()
-        new_out_temp = ironmaking_device.first_output_containing_name('h2 rich gas').temp_kelvin - energy_balance / cp
+        h2_rich_gas = ironmaking_device.first_output_containing_name('h2 rich gas')
+        joules_per_kelvin = h2_rich_gas.cp(False) * h2_rich_gas.mass
+        new_out_temp = h2_rich_gas.temp_kelvin - energy_balance / joules_per_kelvin
 
         if new_out_temp < minimum_off_gas_temp:
             raise IncreaseExcessHydrogenFluidizedBeds
@@ -1198,8 +1199,8 @@ def add_plasma_flows_final(system: System):
         if abs(reactor_energy_balance) < 2e-5:
             break # could not seem to converge smaller than this.
 
-        moles_times_molar_heat_capacity = off_gas.delta_h(off_gas.temp_kelvin + 1)
-        dT = -reactor_energy_balance / moles_times_molar_heat_capacity
+        joules_per_kelvin = off_gas.cp(False) * off_gas.mass
+        dT = -reactor_energy_balance / joules_per_kelvin
         new_off_gas_temp = off_gas.temp_kelvin + dT
 
         if new_off_gas_temp < steel_bath_temp_K:
@@ -1470,8 +1471,8 @@ def add_heat_exchanger_flows_final(system: System, heat_exchanger_device_name: s
     # Get the initial estimate of the exit temp of the cold gas. This initial estimate assumes
     # that the heat capacity is constant over the temp range, which is in general not the case,
     # so we need to do some iterative calculations. replace this with cp()
-    moles_times_molar_heat_capacity = cold_gas_in.delta_h(cold_gas_in.temp_kelvin + 1)
-    final_cold_gas_temp = cold_gas_in.temp_kelvin + heat_exchanged / (moles_times_molar_heat_capacity)
+    joules_per_kelvin = cold_gas_in.cp(False) * cold_gas_in.mass
+    final_cold_gas_temp = cold_gas_in.temp_kelvin + heat_exchanged / (joules_per_kelvin)
     cold_gas_in.temp_kelvin = final_cold_gas_temp 
 
     # adjust the final cold gas temp iterativly to reduce error caused by assuming the
@@ -1480,7 +1481,7 @@ def add_heat_exchanger_flows_final(system: System, heat_exchanger_device_name: s
     i = 0
     max_iter = 100
     while True:
-        moles_times_molar_heat_capacity = cold_gas_in.delta_h(cold_gas_in.temp_kelvin + 1)
+        joules_per_kelvin = cold_gas_in.cp(False) * cold_gas_in.mass
 
         energy_gained_by_cold_gas = -cold_gas_in.delta_h(initial_cold_gas_temp)
         energy_lost_by_hot_gas = heat_exchanged
@@ -1490,7 +1491,7 @@ def add_heat_exchanger_flows_final(system: System, heat_exchanger_device_name: s
             break
 
         dH = energy_lost_by_hot_gas - energy_gained_by_cold_gas
-        dT = dH / moles_times_molar_heat_capacity
+        dT = dH / joules_per_kelvin
         cold_gas_in.temp_kelvin += dT
         i += 1
         if i > max_iter:

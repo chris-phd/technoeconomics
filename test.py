@@ -145,6 +145,31 @@ class ThermoTest(TestCase):
         delta_h_factsage = 24703.62302
         self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.025*abs(delta_h_factsage))
 
+        # Hydrogen data from NIST Webbook
+        heat_capacities = [species.ShomateEquation(298, 1000.0,
+                            (33.066178, -11.363417, 11.432816, 
+                            -2.772874, -0.158558, -9.980797, 172.707974, 0.0)),
+                            species.ShomateEquation(1000.0, 2500.0,
+                            (18.563083, 12.257357, -2.859786,
+                            0.268238, 1.977990, -1.147438, 156.288133, 0.0)),
+                            species.ShomateEquation(2500.0, 6000.0,
+                            (43.413560, -4.293079, 1.272428,
+                            -0.096876, -20.533862, -38.515158, 162.081354, 0.0))
+                            ]
+        thermo_data = species.ThermoData(heat_capacities)
+        t_kelvin = 800
+        calculated = thermo_data.cp(t_kelvin)
+        expected = 29.62
+        self.assertAlmostEqual(calculated, expected, delta=0.01*abs(expected))
+
+        h2 = species.create_h2_species()
+        h2.mass = 1
+        h2.temp_kelvin = t_kelvin
+        calculated = h2.cp()
+        self.assertAlmostEqual(calculated, expected, delta=0.01*abs(expected))
+
+
+
     def test_condensed_shomate_equation_heat_capacity_data(self):
         # Heat capacity of solid iron from NIST webbook.
         # Solid BCC phase, sensible heat, no phase change
