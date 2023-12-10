@@ -291,8 +291,8 @@ class Mixture:
 # Unless otherwise stated, thermodynamic data is obtained from the following sources:
 # Heat capacity data is provided by the nasa gas and nasa condensed databases, provided through cantera
 # Latent Heat Data is from the CRC Handbook of Chemistry and Physics, Enthalpy of Fusion, 6-146
-# Enthalpy of Formation data is from the CRC Handbook of Chemistry and Physics, Enthalpy of Formation, 5-1,
-# and checked against the NIST webbook.
+# Enthalpy of Formation data is from the NIST webbook and checked against the CRC Handbook of Chemistry
+# and Physics, Enthalpy of Formation, 5-1
 def create_dummy_mixture(name):
     return Mixture(name)
 
@@ -328,6 +328,52 @@ def create_h2o_l_mixture():
                      delta_h_formation=-285.83e3)
     return Mixture(name, [species])
 
+def create_fe_a_mixture():
+    """
+    Iron, BCC ferrite phase
+    """
+    name = 'Fe(a)'
+    quantity = Species.quantity_from_database_name(name, moles=0.0)
+    species = Species(name,
+                     quantity,
+                     delta_h_formation=-0.0)
+    return Mixture(name, [species])
+
+def create_fe_c_mixture():
+    """
+    Iron, FCC austentie phase
+    """
+    name = 'Fe(c)'
+    quantity = Species.quantity_from_database_name(name, moles=0.0)
+    species = Species(name,
+                     quantity,
+                     delta_h_formation=-0.0)
+    return Mixture(name, [species])
+
+def create_fe2o3_s_mixture():
+    name = 'Fe2O3(s)'
+    quantity = Species.quantity_from_database_name(name, moles=0.0)
+    species = Species(name,
+                     quantity,
+                     delta_h_formation=-825.50e3)
+    return Mixture(name, [species])
+
+def create_fe3o4_s_mixture():
+    name = 'Fe3O4(s)'
+    quantity = Species.quantity_from_database_name(name, moles=0.0)
+    species = Species(name,
+                     quantity,
+                     delta_h_formation=-1120.89e3)
+    return Mixture(name, [species])
+
+def create_feo_s_mixture():
+    name = 'FeO(s)'
+    quantity = Species.quantity_from_database_name(name, moles=0.0)
+    species = Species(name,
+                     quantity,
+                     delta_h_formation=-272.04e3)
+    return Mixture(name, [species])
+
 def create_n2_species():
     heat_capacities = [ShomateEquation(100.0, 500.0,
                                             (28.98641, 1.853978, -9.647459,
@@ -350,22 +396,6 @@ def create_ar_species():
     species = OldSpecies('Ar',
                          0.039948,
                          thermo_data)
-    return species
-
-def create_fe_species():
-    # NIST data is very conflicting for iron. 
-    # Using simplified data
-    heat_capacities = [SimpleHeatCapacity(273.15, 298.0, 25.09),
-                        ShomateEquation(298.0, 1809.0,
-                                       (23.97449, 8.367750, 0.000277,
-                                        -0.000086, -0.000005, 0.268027, 62.06336, 7.788015)),
-                       SimpleHeatCapacity(1809.0, 3133.345, 46.02400)]
-    latent_heats = [LatentHeat(1811.15, 13810.0)]
-    thermo_data = ThermoData(heat_capacities, latent_heats)
-    species = OldSpecies('Fe',
-                         0.055845,
-                         thermo_data,
-                         0.0)
     return species
 
 def create_feo_species():

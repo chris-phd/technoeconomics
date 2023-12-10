@@ -131,14 +131,26 @@ class SpeciesThermoTest(TestCase):
 
     def test_enthalpy_of_reaction_h2_combustion(self):
         T = 600.0
-        delta_h = reactions.enthalpy_2h2_o2_to_2h2o(T)
+        delta_h = reactions.delta_h_2h2_o2_to_2h2o(T)
         delta_h_factsage = -489531.3
         self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.01*abs(delta_h_factsage))
 
         T = 1000.0
-        delta_h = reactions.enthalpy_2h2_o2_to_2h2o(T)
+        delta_h = reactions.delta_h_2h2_o2_to_2h2o(T)
         delta_h_factsage =  -503164.9
         self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.015*abs(delta_h_factsage))
+
+    def test_enthalpy_of_reaction_h2_direct_reduction(self):
+        T = 298.15
+        delta_h = reactions.delta_h_3fe2o3_h2_to_2fe3o4_h2o(T)
+        delta_h_factsage = -43274.1
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.01*abs(delta_h_factsage))
+
+        T = 973.15
+        delta_h = reactions.delta_h_3fe2o3_h2_to_2fe3o4_h2o(T)
+        delta_h_factsage = -2.17e3
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.01*abs(delta_h_factsage))
+
 
     def test_iron_heat_energy(self): 
         fe = species.create_fe_species()
