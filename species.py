@@ -7,7 +7,7 @@ from typing import List
 from thermo import ShomateEquation, SimpleHeatCapacity, ThermoData, LatentHeat
 
 class Species:
-    def __init__(self, name: str, molecular_mass_kg_mol: float, thermo_data: ThermoData, delta_h_formation: float = None):
+    def __init__(self, name: str, molecular_mass_kg_per_mol: float, thermo_data: ThermoData, delta_h_formation: float = None):
         """
         An element or compound or ion (SO4[2-], H[+], electron[-]).
         name: The name of the species, e.g. H2, FeO, H2O, etc.
@@ -19,7 +19,7 @@ class Species:
         self._name = name
         self._moles = 0.0
         self._temp_kelvin = None
-        self._mm = molecular_mass_kg_mol
+        self._mm = molecular_mass_kg_per_mol
         self._thermo_data = thermo_data
         self._delta_h_formation = delta_h_formation
 
@@ -45,22 +45,18 @@ class Species:
 
     def cp(self, return_molar_cp: bool = True) -> float:
         """
-        Return the molar heat capacity at the current temperature.
+        The heat capacity and latent heat
         return_molar_cp: If true, return the molar heat capacity. [J / mol K] 
-            If false, return the specific (mass) heat capacity. [J / g K]
-        TODO: Fix issue here.. the delta_h function includes the latent heat of phase changes
-            but the cp should only be concerned with sensible heat. Same as in Mixture
+            If false, return the specific (mass) heat capacity. [J / kg K]
         """
         if not self._temp_kelvin:
             raise Exception("Species::cp: temperature is not set")
-        
-        self_copy = copy.deepcopy(self)
-        if return_molar_cp:
-            self_copy.moles = 1.0
-        else:
-            self_copy.mass = 0.001
 
-        return self_copy.delta_h(self.temp_kelvin + 1)
+        val = self._thermo_data.cp(self._temp_kelvin)
+        if not return_molar_cp:
+            val /= self._mm
+
+        return val
 
     @property
     def name(self) -> str:
@@ -301,21 +297,37 @@ class Mixture:
         self._name = other_mixture._name
         self._species = copy.deepcopy(other_mixture._species)
 
-    def cp(self, return_molar_cp: bool = True):
+    def species_moles(self) -> List[float]:
         """
-        Return the molar heat capacity at the current temperature.
-        return_molar_cp: If true, return the molar heat capacity. [J / mol K] 
-            If false, return the specific (mass) heat capacity. [J / g K]
-        TODO: Fix issue here.. the delta_h function includes the latent heat of phase changes
-            but the cp should only be concerned with sensible heat. Same as in Species. 
+        The moles of each species in the mixture
         """
-        self_copy = copy.deepcopy(self)
-        if return_molar_cp:
-            self_copy.moles = 1.0
-        else:
-            self_copy.mass = 0.001
+        return [s.moles for s in self._species]
 
-        return self_copy.delta_h(self.temp_kelvin + 1)
+    def species_mass(self) -> List[float]:
+        """
+        The mass of each species in the mixture
+        """
+        return [s.mass for s in self._species]
+
+    def cp(self, return_molar_cp: bool = True) -> float:
+        """
+        Return the average molar heat capacity at the current temperature.
+        return_molar_cp: If true, return the molar heat capacity. [J / mol K] 
+            If false, return the specific (mass) heat capacity. [J / kg K]
+        """
+        cps = [s.cp(return_molar_cp) for s in self._species]
+        if return_molar_cp:
+            weights = self.species_moles()
+        else:
+            weights = self.species_mass()
+        total = sum(weights)
+        weights = [w / total for w in weights]
+
+        weighted_average_cp = 0.0
+        for c, w in zip(cps, weights):
+            weighted_average_cp += c * w
+
+        return weighted_average_cp
 
 # Species - Master copies
 # Shomate Equation data from the NIST Chemistry Webbook
@@ -333,7 +345,7 @@ def create_dummy_mixture(name):
     return Mixture(name, [create_dummy_species('a species')])
 
 def create_h2_species():
-    heat_capacities = [ShomateEquation(273.15, 1000.0, # modify the start temp slightly
+    heat_capacities = [ShomateEquation(298, 1000.0,
                               (33.066178, -11.363417, 11.432816, 
                                -2.772874, -0.158558, -9.980797, 172.707974, 0.0)),
                                 ShomateEquation(1000.0, 2500.0,
@@ -351,7 +363,7 @@ def create_h2_species():
     return species
 
 def create_h_species():
-    heat_capacities = [SimpleHeatCapacity(273.15, 6000.0, 20.78603)]
+    heat_capacities = [SimpleHeatCapacity(298, 6000.0, 20.78603)]
     thermo_data = ThermoData(heat_capacities)
     species = Species('H',
                       0.00100794,
@@ -383,20 +395,21 @@ def create_h2o_species():
     o2 = create_o2_species()
     h2 = create_h2_species()
 
-    heat_capacities = [SimpleHeatCapacity(273.15, 373.15, 75.36), # liquid water
-                       SimpleHeatCapacity(373.15, 500.0, 36.57),
-                              ShomateEquation(500.0, 1700.0, # Why does the gas phase data end here???
-                                              (30.09200, 6.832514, 6.793435,
-                                              -2.534480, 0.082139, -250.8810, 223.3967, -241.8264)),
-                              ShomateEquation(1700.0, 6000.0,
-                                              (41.96426, 8.622053, -1.499780,
-                                              0.098119, -11.15764, -272.1797, 219.7809, -241.8264))]
+    heat_capacities = [ShomateEquation(298.0, 500.0,
+                                       (-203.6060, 1523.290, -3196.413,
+                                        2474.455, 3.855326, -256.5478, -488.7163, -285.8304)), # liquid water
+                          ShomateEquation(500.0, 1700.0, # steam
+                                          (30.09200, 6.832514, 6.793435,
+                                          -2.534480, 0.082139, -250.8810, 223.3967, -241.8264)),
+                          ShomateEquation(1700.0, 6000.0,
+                                          (41.96426, 8.622053, -1.499780,
+                                          0.098119, -11.15764, -272.1797, 219.7809, -241.8264))]
     latent_heats = [LatentHeat(373.15, 40660.0)]
     thermo_data = ThermoData(heat_capacities, latent_heats)
     species = Species('H2O',
                       h2.mm + o2.mm * 0.5,
                       thermo_data,
-                      -285.83e3) # liquid water enthalpy of formation
+                      -285.83e3) # liquid water enthalpy of formation, -241.83e3 for gas phase
     return species
 
 def create_n2_species():
@@ -440,7 +453,7 @@ def create_fe_species():
                                        (-776.7387, 919.4005, -383.7184,
                                         57.08148, 242.1369, 697.6234, -558.3674, 0.0)),
                        SimpleHeatCapacity(1809.0, 3133.345, 46.02400)] # liquid phase
-    latent_heats = [LatentHeat(1811.15, 13810.0)]
+    latent_heats = [LatentHeat(1811.15, 13810.0)] # Fe(delta) -> Fe(Liquid), CRC Handbook
     thermo_data = ThermoData(heat_capacities, latent_heats)
     species = Species('Fe',
                       0.055845,
@@ -565,7 +578,7 @@ def create_al2o3_species():
                                         (106.9180, 36.62190, -13.97590,
                                          2.157990, -3.157761, -1710.500,
                                          151.7920, -1666.490)),
-                        SimpleHeatCapacity(2327.0, 4000.0, 
+                        ShomateEquation(2327.0, 4000.0,
                                            (192.4640, 0.0, 0.0, 0.0, 0.0,
                                             -1773.50, 177.1008, -1620.568))]
     # Adding flux should reduce the melting point. Possibly effect

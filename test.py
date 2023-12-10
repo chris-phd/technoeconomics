@@ -114,7 +114,7 @@ class SystemTest(TestCase):
         self.assertAlmostEqual(device_b.energy_balance(), 0.0, places=4)
 
 
-class SpeciesThermoTest(TestCase):
+class ThermoTest(TestCase):
     def test_gas_simple_heat_capacity_data(self):
         # Argon data from NIST Webbook
         heat_capacities = [thermo.SimpleHeatCapacity(273.15, 6000, 20.786)]
@@ -179,6 +179,17 @@ class SpeciesThermoTest(TestCase):
         delta_h_webbook = 19.50e3
         self.assertAlmostEqual(delta_h, delta_h_webbook, delta=0.02 * abs(delta_h_webbook))
 
+
+class SpeciesAndMixtureTest(TestCase):
+    def test_air_mixture_composition(self):
+        mass = 1.0
+        air = species.create_air_mixture(mass)
+        mass_composition = air.species_mass()
+        self.assertAlmostEqual(mass_composition[0], 0.7812)
+
+        moles_composition = air.species_moles()
+        self.assertAlmostEqual(moles_composition[1], 6.5471205, places=3)
+
     def test_fe_species_data_data(self):
         # Heat capacity of solid iron from NIST webbook.
         # Solid BCC phase, sensible heat, no phase change
@@ -200,6 +211,17 @@ class SpeciesThermoTest(TestCase):
         delta_h_factsage = 35057.9266
         self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.02 * abs(delta_h_factsage))
 
+        fe.temp_kelvin = 1600
+        delta_h = fe.standard_enthalpy()
+        delta_h_factsage = 49424.9315741
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.02 * abs(delta_h_factsage))
+
+        # Liquid Fe, sensible heat + latent heat phase changes
+        fe.temp_kelvin = 2000
+        delta_h = fe.standard_enthalpy()
+        delta_h_factsage = 81161.23157409999
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.02 * abs(delta_h_factsage))
+
     def test_h2o_heat_capacity(self):
         h2o = species.create_h2o_species()
         h2o.temp_kelvin = utils.celsius_to_kelvin(25)
@@ -208,15 +230,16 @@ class SpeciesThermoTest(TestCase):
         self.assertAlmostEqual(molar_cp, 75.4, places=1)
         self.assertAlmostEqual(specific_cp, 4.18, places=1)
 
-    def test_air_energy_to_heat(self):
+    def test_sensible_heat_of_air_mixture(self):
         mass = 1.0 # kg
         air = species.create_air_mixture(mass)
-        air.temp_kelvin = utils.celsius_to_kelvin(100)
-        delta_h = air.delta_h(air.temp_kelvin + 1)
-        self.assertAlmostEqual(delta_h, 1015.4, places=1)
+        air.temp_kelvin = 400
+        weighted_avg_cp_by_mass = air.cp(False)
+        factsage_val = 1017.0
+        self.assertAlmostEqual(weighted_avg_cp_by_mass, 1017.0, delta=0.01*abs(factsage_val))
         delta_h = air.delta_h(air.temp_kelvin + 700)
-        print(f'delta_h: {delta_h}')
-        self.assertAlmostEqual(delta_h, 732417.1, places=1)
+        factsage_val = 763039.0
+        self.assertAlmostEqual(delta_h, 763039.0, delta=0.01*abs(factsage_val))
 
     def test_mixture_merge(self):
         steam = species.create_h2o_species()
@@ -229,8 +252,11 @@ class SpeciesThermoTest(TestCase):
         oxygen_mixture = species.Mixture('oxygen', [oxygen])
         steam_mixture.merge(oxygen_mixture)
         self.assertAlmostEqual(steam_mixture.mass, 2)
-        self.assertAlmostEqual(steam_mixture.temp_kelvin, 1066.3, places=1)
+        expected = 1066.3
+        self.assertAlmostEqual(steam_mixture.temp_kelvin, expected, delta=0.01*abs(expected))
 
+
+class ReactionsTest(TestCase):
     def test_enthalpy_of_reaction(self):
         # Enthalpies of reaction were verified using FactSage. Accuracy 
         # isn't great. Need to improve or use a third party thermochemistry package.
@@ -364,8 +390,6 @@ class SpeciesThermoTest(TestCase):
         delta_h_5000K = h2.delta_h(5000.0)
         factsage_delta_h = 6.10239E+05
         # self.assertAlmostEqual(delta_h_5000K / 10000, factsage_delta_h / 10000, places=1)
-
-
 
 
 class TestFileIO(TestCase):

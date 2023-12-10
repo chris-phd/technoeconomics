@@ -60,7 +60,7 @@ class SimpleHeatCapacity:
         assert min_kelvin < max_kelvin
         self.min_kelvin = min_kelvin
         self.max_kelvin = max_kelvin
-        self.cp = cp
+        self._cp = cp
 
     def __repr__(self):
         return f"SimpleHeatCapacity({self.min_kelvin}-{self.max_kelvin}K, cp={self.cp})"
@@ -72,7 +72,7 @@ class SimpleHeatCapacity:
         if not (self.min_kelvin <= t_initial <= self.max_kelvin) or \
             not (self.min_kelvin <= t_final <= self.max_kelvin):
             raise Exception("SimpleHeatCapacity::delta_h: temperatures must be within the range of the heat capacity")
-        return moles * self.cp * (t_final - t_initial)
+        return moles * self._cp * (t_final - t_initial)
 
     def cp(self, t):
         """
@@ -80,7 +80,7 @@ class SimpleHeatCapacity:
         """
         if not (self.min_kelvin <= t <= self.max_kelvin):
             raise Exception("SimpleHeatCapacity::cp: temperatures must be within the range of the heat capacity")
-        return self.cp
+        return self._cp
 
 
 class LatentHeat:
