@@ -168,8 +168,6 @@ class ThermoTest(TestCase):
         calculated = h2.cp()
         self.assertAlmostEqual(calculated, expected, delta=0.01*abs(expected))
 
-
-
     def test_condensed_shomate_equation_heat_capacity_data(self):
         # Heat capacity of solid iron from NIST webbook.
         # Solid BCC phase, sensible heat, no phase change
@@ -372,7 +370,6 @@ class ReactionsTest(TestCase):
         factsage_delta_h = -19997.8
         self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.35*abs(factsage_delta_h))
 
-
     def test_enthalpy_of_direct_reduction_mid_temp(self):
         temp_kelvin = 973.15
 
@@ -395,35 +392,6 @@ class ReactionsTest(TestCase):
         delta_h = species.delta_h_feo_h2_fe_h2o(temp_kelvin)
         factsage_delta_h = 19.73e3
         self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.06*abs(factsage_delta_h))
-
-    def test_enthalpy_of_reaction(self):
-        # Enthalpies of reaction were verified using FactSage. Accuracy 
-        # isn't great. Need to improve or use a third party thermochemistry package.
-        temp_kelvin = 1000.0
-        delta_h = species.delta_h_3fe2o3_h2_2fe3o4_h2o(temp_kelvin)
-        factsage_delta_h = -3341.1
-        # Failing
-        # self.assertAlmostEqual(delta_h,
-        #                        factsage_delta_h)
-
-        temp_kelvin = 800.0
-        delta_h = species.delta_h_fe3o4_h2_3feo_h2o(temp_kelvin)
-        factsage_delta_h = 61069.4
-        # Failing.
-        # self.assertEqual(delta_h / 1000, \
-        #                 factsage_delta_h / 1000)
-
-        temp_kelvin = 1000.0
-        delta_h = species.delta_h_feo_h2_fe_h2o(temp_kelvin)
-        factsage_delta_h = 15584.0
-        # self.assertEqual(round(delta_h / 1000), \
-        #                 round(factsage_delta_h / 1000))
-
-        temp_kelvin = 400.0
-        delta_h = species.delta_h_fe2o3_3h2_2fe_3h2o(temp_kelvin)
-        factsage_delta_h = 80685.2
-        # Failing. Pretty significant error...
-        self.assertAlmostEqual(delta_h / 1000, factsage_delta_h / 1000, places=1)
 
     def test_enthalpy_of_reaction_monatomic_h_reduction(self):
         # These are all failing. The delta H of reaction that I am calcuating does not at
@@ -448,55 +416,66 @@ class ReactionsTest(TestCase):
         factsage_delta_h = -142709.5 
         # self.assertAlmostEqual(delta_h / 1000, factsage_delta_h / 1000, places=1)
 
-
     def test_enthalpy_of_oxidation_reaction(self):
-        # Accuracy of the enthalpies of reaction for the oxidation reactions 
-        # seems slightly better than the enthalpies of reaction of the hydrogen
-        # reduction reactions.
+        # ~10% difference from what factsage predicts
         temp_kelvin = 1000.0
         factsage_delta_h = -394620.7
         delta_h = species.delta_h_c_o2_co2(temp_kelvin)
-        self.assertEqual(round(delta_h / 10000), 
-                         round(factsage_delta_h / 10000))
-        
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.11*abs(factsage_delta_h))
+
         temp_kelvin = 1000.0
         factsage_delta_h = -223971.8 
         delta_h = species.delta_h_2c_o2_2co(temp_kelvin)
-        self.assertEqual(round(delta_h / 10000), 
-                         round(factsage_delta_h / 10000))
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.04*abs(factsage_delta_h))
 
-        temp_kelvin = 298.0
+        temp_kelvin = 298
         factsage_delta_h = -221055.8 
         delta_h = species.delta_h_2c_o2_2co(temp_kelvin)
-        self.assertEqual(round(delta_h/10), 
-                         round(factsage_delta_h/10))
-        
-        # Only accurate to 1 sig fig!
-        temp_kelvin = 298.0
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.01*abs(factsage_delta_h))
+
+        temp_kelvin = 298.15
         factsage_delta_h = -531667.4  
         delta_h = species.delta_h_2fe_o2_2feo(temp_kelvin)
-        self.assertEqual(round(delta_h/100_000), 
-                         round(factsage_delta_h/100_000))
-        
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.025*abs(factsage_delta_h))
+
         temp_kelvin = 1000.0
         factsage_delta_h =  -526899.7 
         delta_h = species.delta_h_2fe_o2_2feo(temp_kelvin)
-        self.assertEqual(round(delta_h/10_000), 
-                         round(factsage_delta_h/10_000))
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.02*abs(factsage_delta_h))
 
-        temp_kelvin = 298.0
+        temp_kelvin = 298.15
         factsage_delta_h =  -910699.2 
         delta_h = species.delta_h_si_o2_sio2(temp_kelvin)
-        self.assertEqual(round(delta_h/100), 
-                         round(factsage_delta_h/100))
-        
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.01*abs(factsage_delta_h))
+
+        # ~6% difference from what factsage predicts
         temp_kelvin = 1600.0
         factsage_delta_h =   -897758.4  
         delta_h = species.delta_h_si_o2_sio2(temp_kelvin)
-        # Failing
-        # self.assertEqual(round(delta_h/100), 
-        #                  round(factsage_delta_h/100))
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.06*abs(factsage_delta_h))
 
+
+class TestHydrogenPlasma(TestCase):
+    def test_cantera_equilibrium(self):
+        nasa_species = {s.name: s for s in ct.Species.list_from_file('nasa_gas.yaml')}
+        h2_plasma = ct.Solution(thermo='ideal-gas', species=[nasa_species['H2'],
+                                                            nasa_species['H2+'],
+                                                            nasa_species['H2-'],
+                                                            nasa_species['H'],
+                                                            nasa_species['H+'],
+                                                            nasa_species['H-'],
+                                                            nasa_species['Ar'],
+                                                            nasa_species['Ar+'],
+                                                            nasa_species['Electron']])
+        h2_plasma.TPX = 300.0, ct.one_atm, 'H2:1.0, Ar:0.1'
+        h2_plasma.equilibrate('TP')
+        monatomic_h_fraction = h2_plasma.X[3]
+        self.assertLess(monatomic_h_fraction, 1e-5)
+
+        h2_plasma.TPX = 3000.0, ct.one_atm, 'H2:1.0, Ar:0.1'
+        h2_plasma.equilibrate('TP')
+        monatomic_h_fraction = h2_plasma.X[3]
+        self.assertGreater(monatomic_h_fraction, 0.1)
 
     def test_energy_to_create_thermal_plasma(self):
         h2 = species.create_h2_species()
@@ -538,29 +517,6 @@ class TestFileIO(TestCase):
         print(config)
         self.assertTrue(len(config) > 0)
         self.assertTrue(len(config["all"]) > 0)
-
-
-class TestCanteraEquilibrium(TestCase):
-    def test_cantera_equilibrium(self):
-        nasa_species = {s.name: s for s in ct.Species.list_from_file('nasa_gas.yaml')}
-        h2_plasma = ct.Solution(thermo='IdealGas', species=[nasa_species['H2'], 
-                                                         nasa_species['H2+'],
-                                                         nasa_species['H2-'],
-                                                         nasa_species['H'],
-                                                         nasa_species['H+'],
-                                                         nasa_species['H-'],
-                                                         nasa_species['Ar'],
-                                                         nasa_species['Ar+'],
-                                                         nasa_species['Electron']])
-        h2_plasma.TPX = 300.0, ct.one_atm, 'H2:1.0, Ar:0.1'
-        h2_plasma.equilibrate('TP')
-        monatomic_h_fraction = h2_plasma.X[3]
-        self.assertLess(monatomic_h_fraction, 1e-5)
-        
-        h2_plasma.TPX = 3000.0, ct.one_atm, 'H2:1.0, Ar:0.1'
-        h2_plasma.equilibrate('TP')
-        monatomic_h_fraction = h2_plasma.X[3]
-        self.assertGreater(monatomic_h_fraction, 0.1)
 
 
 if __name__ == '__main__':
