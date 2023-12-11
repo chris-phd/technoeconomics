@@ -498,7 +498,7 @@ def create_fe3o4_species():
     species = Species('Fe3O4',
                         fe.mm * 3 + o2.mm * 2.0,
                         thermo_data,
-                        -1120.89)
+                        -1120.89e3)
     return species
 
 def create_fe2o3_species():
@@ -698,17 +698,16 @@ def create_air_mixture(mass_kg):
 
 # Chemical reaction master copies
 def compute_reaction_enthalpy(reactants, products, temp_kelvin):
-    standard_temp = 298.15
     for species in reactants + products:
-        species.temp_kelvin = standard_temp
+        species.temp_kelvin = temp_kelvin
     reactant_enthalpy = 0.0
     for reactant in reactants:
         reactant_enthalpy += reactant.moles * reactant.delta_h_formation
-        reactant_enthalpy += reactant.delta_h(temp_kelvin)
+        reactant_enthalpy += reactant.standard_enthalpy()
     product_enthalpy = 0.0
     for product in products:
         product_enthalpy += product.moles * product.delta_h_formation
-        product_enthalpy += product.delta_h(temp_kelvin)
+        product_enthalpy += product.standard_enthalpy()
     return product_enthalpy - reactant_enthalpy
 
 def delta_h_2fe_o2_2feo(temp_kelvin: float = 298.15) -> float:
@@ -927,7 +926,7 @@ def delta_h_feo_2h_fe_h2o(temp_kelvin: float = 298.15) -> float: # TODO! Check w
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
 
-def delta_h_fe2o3_3h2_3fe_3h2o(temp_kelvin: float = 298.15) -> float:
+def delta_h_fe2o3_3h2_2fe_3h2o(temp_kelvin: float = 298.15) -> float:
     """
     Fe2O3 + 3 H2 -> 2 Fe + 3 H2O
     """

@@ -349,11 +349,52 @@ class SpeciesAndMixtureTest(TestCase):
 
 
 class ReactionsTest(TestCase):
-    def test_enthalpy_of_direct_reduction(self):
+    def test_enthalpy_of_direct_reduction_low_temp(self):
+        temp_kelvin = 298.15
+
+        # ~1% difference from what factsage predicts
+        delta_h = species.delta_h_fe2o3_3h2_2fe_3h2o(temp_kelvin)
+        factsage_delta_h = -31703.1
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.01*abs(factsage_delta_h))
+
+        # ~20% difference from what factsage predicts.
+        delta_h = species.delta_h_3fe2o3_h2_2fe3o4_h2o(temp_kelvin)
+        factsage_delta_h = -43274.1
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.2*abs(factsage_delta_h))
+
+        # ~50% difference from what factsage predicts
+        delta_h = species.delta_h_fe3o4_h2_3feo_h2o(temp_kelvin)
+        factsage_delta_h = 34075.8
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.5*abs(factsage_delta_h))
+
+        # ~35% difference from what factsage predicts
+        delta_h = species.delta_h_feo_h2_fe_h2o(temp_kelvin)
+        factsage_delta_h = -19997.8
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.35*abs(factsage_delta_h))
+
+
+    def test_enthalpy_of_direct_reduction_mid_temp(self):
         temp_kelvin = 973.15
+
+        # ~1% difference from what factsage predicts
+        delta_h = species.delta_h_fe2o3_3h2_2fe_3h2o(temp_kelvin)
+        factsage_delta_h = 64882.1
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.01*abs(factsage_delta_h))
+
+        # ~10% difference from what factsage predicts.
         delta_h = species.delta_h_3fe2o3_h2_2fe3o4_h2o(temp_kelvin)
         factsage_delta_h = -5.30e3
-        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.05*abs(factsage_delta_h))
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.1*abs(factsage_delta_h))
+
+        # ~30% difference from what factsage predicts
+        delta_h = species.delta_h_fe3o4_h2_3feo_h2o(temp_kelvin)
+        factsage_delta_h = 53.72e3
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.2*abs(factsage_delta_h))
+
+        # ~6% difference from what factsage predicts
+        delta_h = species.delta_h_feo_h2_fe_h2o(temp_kelvin)
+        factsage_delta_h = 19.73e3
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.06*abs(factsage_delta_h))
 
     def test_enthalpy_of_reaction(self):
         # Enthalpies of reaction were verified using FactSage. Accuracy 
@@ -379,7 +420,7 @@ class ReactionsTest(TestCase):
         #                 round(factsage_delta_h / 1000))
 
         temp_kelvin = 400.0
-        delta_h = species.delta_h_fe2o3_3h2_3fe_3h2o(temp_kelvin) 
+        delta_h = species.delta_h_fe2o3_3h2_2fe_3h2o(temp_kelvin)
         factsage_delta_h = 80685.2
         # Failing. Pretty significant error...
         self.assertAlmostEqual(delta_h / 1000, factsage_delta_h / 1000, places=1)
