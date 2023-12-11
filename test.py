@@ -455,18 +455,20 @@ class ReactionsTest(TestCase):
         self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.06*abs(factsage_delta_h))
 
 
-class TestHydrogenPlasma(TestCase):
+class HydrogenPlasmaTest(TestCase):
+    def setUp(self):
+        self.nasa_species = {s.name: s for s in ct.Species.list_from_file('nasa_gas.yaml')}
+
     def test_cantera_equilibrium(self):
-        nasa_species = {s.name: s for s in ct.Species.list_from_file('nasa_gas.yaml')}
-        h2_plasma = ct.Solution(thermo='ideal-gas', species=[nasa_species['H2'],
-                                                            nasa_species['H2+'],
-                                                            nasa_species['H2-'],
-                                                            nasa_species['H'],
-                                                            nasa_species['H+'],
-                                                            nasa_species['H-'],
-                                                            nasa_species['Ar'],
-                                                            nasa_species['Ar+'],
-                                                            nasa_species['Electron']])
+        h2_plasma = ct.Solution(thermo='ideal-gas', species=[self.nasa_species['H2'],
+                                                            self.nasa_species['H2+'],
+                                                            self.nasa_species['H2-'],
+                                                            self.nasa_species['H'],
+                                                            self.nasa_species['H+'],
+                                                            self.nasa_species['H-'],
+                                                            self.nasa_species['Ar'],
+                                                            self.nasa_species['Ar+'],
+                                                            self.nasa_species['Electron']])
         h2_plasma.TPX = 300.0, ct.one_atm, 'H2:1.0, Ar:0.1'
         h2_plasma.equilibrate('TP')
         monatomic_h_fraction = h2_plasma.X[3]
@@ -477,37 +479,44 @@ class TestHydrogenPlasma(TestCase):
         monatomic_h_fraction = h2_plasma.X[3]
         self.assertGreater(monatomic_h_fraction, 0.1)
 
-    def test_energy_to_create_thermal_plasma(self):
-        h2 = species.create_h2_species()
-        h2.moles = 1.0
-        h2.temp_kelvin = 300.0
+    def test_cantera_thermo_data_low_to_mid_temps(self):
+        h2_plasma = ct.Solution(thermo='ideal-gas', species=[self.nasa_species['H2'],
+                                                             self.nasa_species['H2+'],
+                                                             self.nasa_species['H2-'],
+                                                             self.nasa_species['H'],
+                                                             self.nasa_species['H+'],
+                                                             self.nasa_species['H-'],
+                                                             self.nasa_species['Ar'],
+                                                             self.nasa_species['Ar+'],
+                                                             self.nasa_species['Electron']])
+        h2_plasma.TPX = 300.0, ct.one_atm, 'H2:1.0'
+        thermo_data = thermo.CanteraSolution(h2_plasma)
+        cp_calculated = thermo_data.cp(1000)
+        cp_expected = 30.20
+        self.assertAlmostEqual(cp_calculated, cp_expected, places=1)
 
-        # only accurate to the second significant figure
-        delta_h_900K = h2.delta_h(900.0)
-        factsage_delta_h = 1.76235E+04
-        self.assertAlmostEqual(delta_h_900K / 10000, factsage_delta_h / 10000, places=0)
+        delta_h_calculated = thermo_data.delta_h(1.0, 298.15, 2000.0)
+        delta_h_expected = 52.95e3
+        self.assertAlmostEqual(delta_h_calculated, delta_h_expected, delta=0.01*abs(delta_h_expected))
 
-        # as above, only accurate to one significant figure
-        delta_h_1500K = h2.delta_h(1500.0)
-        factsage_delta_h = 3.62382E+04
-        self.assertAlmostEqual(delta_h_1500K / 10000, factsage_delta_h / 10000, places=0)
+    def test_hydrogen_plasma_thermo_data_high_temps(self):
+        h2_plasma = species.create_h2_ar_plasma_species()
+        h2_plasma.moles = 1.0
 
-        # As above, reasonably close
-        delta_h_2100K = h2.delta_h(2100.0)
+        h2_plasma.temp_kelvin = 2100.0
+        delta_h_calculated = h2_plasma.standard_enthalpy()
         factsage_delta_h = 5.70480E+04
-        self.assertAlmostEqual(delta_h_2100K / 10000, factsage_delta_h / 10000, places=0)
+        self.assertAlmostEqual(delta_h_calculated, factsage_delta_h, delta=0.01*abs(factsage_delta_h))
 
-        # Failing, very inaccurate
-        # This is the first temp where monoatomic hydrogen is present in meaningful quantities.
-        delta_h_3000K = h2.delta_h(3000.0)
+        h2_plasma.temp_kelvin = 3000.0
+        delta_h_calculated = h2_plasma.standard_enthalpy()
         factsage_delta_h = 1.24667E+05
-        # self.assertAlmostEqual(delta_h_3000K / 10000, factsage_delta_h / 10000, places=1)
+        self.assertAlmostEqual(delta_h_calculated, factsage_delta_h, delta=0.01*abs(factsage_delta_h))
 
-        # Failing, again very inaccurate.
-        # Hydrogen has completely dissociated into monoatomic hydrogen.
-        delta_h_5000K = h2.delta_h(5000.0)
+        h2_plasma.temp_kelvin = 5000.0
+        delta_h_calculated = h2_plasma.standard_enthalpy()
         factsage_delta_h = 6.10239E+05
-        # self.assertAlmostEqual(delta_h_5000K / 10000, factsage_delta_h / 10000, places=1)
+        self.assertAlmostEqual(delta_h_calculated, factsage_delta_h, delta=0.01*abs(factsage_delta_h))
 
 
 class TestFileIO(TestCase):

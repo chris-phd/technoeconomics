@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
+import cantera as ct
 import copy
 import math
+from typing import List, Optional, Union
 
 
 class ShomateEquation:
@@ -63,7 +65,7 @@ class SimpleHeatCapacity:
         self._cp = cp
 
     def __repr__(self):
-        return f"SimpleHeatCapacity({self.min_kelvin}-{self.max_kelvin}K, cp={self.cp})"
+        return f"SimpleHeatCapacity({self.min_kelvin}-{self.max_kelvin}K, cp={self.cp((self.min_kelvin + self.min_kelvin*0.5))})"
     
     def delta_h(self, moles: float, t_initial: float, t_final: float) -> float:
         """
@@ -81,6 +83,59 @@ class SimpleHeatCapacity:
         if not (self.min_kelvin <= t <= self.max_kelvin):
             raise Exception("SimpleHeatCapacity::cp: temperatures must be within the range of the heat capacity")
         return self._cp
+
+
+class CanteraSolution:
+    """
+    Heat capacity data provided by cantera.
+    """
+    def __init__(self, solution: ct.Solution):
+        solution.TP = 300, ct.one_atm
+        self._quantity = ct.Quantity(solution, moles=1.0)
+        self.min_kelvin = self._quantity.min_temp
+        self.max_kelvin = self._quantity.max_temp
+
+    def __repr__(self):
+        return f"CanteraSolution({self._solution.species_names}, {self.min_kelvin}-{self.max_kelvin}K)"
+
+    def delta_h(self, moles: float, t_initial: float, t_final: float) -> float:
+        """
+        The change in enthalpy [J]
+        """
+        if not (self.min_kelvin <= t_initial <= self.max_kelvin) or \
+                not (self.min_kelvin <= t_final <= self.max_kelvin):
+            if 298 < t_initial <= 300.0 and 298 < self.min_kelvin <= 300.0:
+                # Special case for h2 plasma, check if the requested temp is close enough to the allowable range
+                t_initial = self.min_kelvin
+            elif 298 < t_final <= 300.0 and 298 < self.min_kelvin <= 300.0:
+                # As above, special case
+                t_final = self.min_kelvin
+            else:
+                raise Exception("CanteraSolution::delta_h: temperatures must be within the range of the heat capacity")
+
+        self._quantity.TP = t_final, ct.one_atm
+        self._quantity.equilibrate('TP')
+        h_final = moles * self._quantity.moles * self._quantity.enthalpy_mole * 0.001
+
+        self._quantity.TP = t_initial, ct.one_atm
+        self._quantity.equilibrate('TP')
+        h_initial = moles * self._quantity.moles * self._quantity.enthalpy_mole * 0.001
+
+        return h_final - h_initial
+
+    def cp(self, t) -> float:
+        """
+        The heat capacity [J / mol K]
+        """
+        if not (self.min_kelvin <= t <= self.max_kelvin):
+            if 298 < t <= 300.0 and 298 < self.min_kelvin <= 300.0:
+                # Special case for h2 plasma, check if the requested temp is close enough to the minimum
+                t = self.min_kelvin
+            else:
+                raise Exception("CanteraSolution::cp: temperatures must be within the range of the heat capacity")
+        self._quantity.TP = t, ct.one_atm
+        self._quantity.equilibrate('TP')
+        return self._quantity.cp_mole * self._quantity.moles * 0.001
 
 
 class LatentHeat:
@@ -107,38 +162,46 @@ class ThermoData:
     Contains a list HeatCapacity instances. Each must cover a different range,
     and be continuous (no gaps between the thermo data ranges).
     """
-    def __init__(self, heat_capacities: list, latent_heats: list = []):
+    def __init__(self, heat_capacities: List[Union[ShomateEquation, SimpleHeatCapacity, CanteraSolution]],
+                 latent_heats: Optional[List[LatentHeat]] = None):
         """
-        heat_capacities: a list of ShomateEquation or SimpleHeatCapacitys
-            with non-overlapping temperature ranges.
+        Args:
+            heat_capacities: a list of heat capacity classes with non-overlapping temperature ranges.
+                The provided list is NOT copied.
+            latent_heats: a list of latent heat data for phase changes. Must be within the temperature range
+                of the heat capacities. The provided list is NOT copied.
         """
 
         # Validate the input types
         for heat_capacity in heat_capacities:
-            if not isinstance(heat_capacity, (ShomateEquation, SimpleHeatCapacity)):
-                raise Exception("ThermoData::init: ThermoData must be initialised with a list of ShomateEquation or SimpleHeatCapacity instances")
-        
-        for latent_heat in latent_heats:
-            if not isinstance(latent_heat, LatentHeat):
-                raise Exception("ThermoData::init: ThermoData must be initialised with a list of LatentHeat instances")
+            if not isinstance(heat_capacity, (ShomateEquation, SimpleHeatCapacity, CanteraSolution)):
+                raise Exception("ThermoData must be initialised with a list of ShomateEquation, SimpleHeatCapacity or CanteraSolution instances")
+
+        if latent_heats:
+            for latent_heat in latent_heats:
+                if not isinstance(latent_heat, LatentHeat):
+                    raise Exception("ThermoData must be initialised with a list of LatentHeat instances")
 
         # Ensure non-overlapping continous heat capacity range
-        self.heat_capacities = copy.deepcopy(heat_capacities)
+        self.heat_capacities = heat_capacities
         self.heat_capacities.sort(key=lambda x: x.min_kelvin)
         for i in range(len(self.heat_capacities) - 1):
-            if not math.isclose(self.heat_capacities[i].max_kelvin, \
+            if not math.isclose(self.heat_capacities[i].max_kelvin,
                                  self.heat_capacities[i + 1].min_kelvin):
-                raise Exception("ThermoData::init: Non-continuous temperature ranges (gap or overlap detected)")
+                raise Exception("Non-continuous temperature ranges in ThermoData (gap or overlap detected)")
             
         self.min_kelvin = self.heat_capacities[0].min_kelvin
         self.max_kelvin = self.heat_capacities[-1].max_kelvin
 
-        # Ensure the latent heat values lie within the heat capacity range
-        self.latent_heats = copy.deepcopy(latent_heats)
-        self.latent_heats.sort(key=lambda x: x.temp_kelvin)
-        for latent_heat in self.latent_heats:
-            if not (self.min_kelvin <= latent_heat.temp_kelvin <= self.max_kelvin):
-                raise Exception("ThermoData::init: Latent heat temperature out of range")
+        if latent_heats:
+            # Ensure the latent heat values lie within the heat capacity range
+            self.latent_heats = latent_heats
+            self.latent_heats.sort(key=lambda x: x.temp_kelvin)
+            for latent_heat in self.latent_heats:
+                if not (self.min_kelvin <= latent_heat.temp_kelvin <= self.max_kelvin):
+                    raise Exception("Latent heat temperature out of range")
+        else:
+            self.latent_heats = []
             
     def __repr__(self):
         return f"ThermoData({self.heat_capacities}, {self.latent_heats})"
@@ -149,9 +212,16 @@ class ThermoData:
         """
         if not (self.min_kelvin <= t_initial <= self.max_kelvin) or \
             not (self.min_kelvin <= t_final <= self.max_kelvin):
-            s = f"ThermoData::delta_h: temperatures must be within the range of the heat capacity ({self.min_kelvin}K - {self.max_kelvin}K)"
-            s += f" t_initial={t_initial}K, t_final={t_final}K"
-            raise Exception(s)
+            if 298 < t_initial <= 300.0 and 298 < self.min_kelvin <= 300.0:
+                # Special case for h2 plasma, check if the requested temp is close enough to the allowable range
+                t_initial = self.min_kelvin
+            elif 298 < t_final <= 300.0 and 298 < self.min_kelvin <= 300.0:
+                # As above, special case
+                t_final = self.min_kelvin
+            else:
+                s = f"ThermoData::delta_h: temperatures must be within the range of the heat capacity ({self.min_kelvin}K - {self.max_kelvin}K)"
+                s += f" t_initial={t_initial}K, t_final={t_final}K"
+                raise Exception(s)
         
         if math.isclose(moles, 0.0):
             return 0.0

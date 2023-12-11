@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import graphviz
-from typing import Optional, Type, Union, Dict, Callable, Any
+from typing import Optional, Union, Dict, Callable, Any
 
 from species import Species, Mixture
 from utils import celsius_to_kelvin
@@ -54,10 +54,9 @@ class Device:
         self._device_vars = {}
 
     def __repr__(self):
-        s = f"Device({self.name}\n"
-        s += f"    thermal_energy_balance (excl. losses) = {self.thermal_energy_balance():.2e}\n"
-        s += f"    total_energy_balance (out - in) = {self.energy_balance():.2e}\n"
-        s += f"    mass_balance (out - in) = {self.mass_balance():.2f} )"
+        s = f"Device({self.name}"
+        s += f", total_energy_balance (out - in) = {self.energy_balance():.2e}"
+        s += f", mass_balance (out - in) = {self.mass_balance():.2f})"
         return s
 
     def report_flow(self):
@@ -273,7 +272,7 @@ class System:
     def lcop(self) -> float:
         return sum(self._lcop_breakdown.values())
 
-    def add_device(self, device: Type[Device]):
+    def add_device(self, device: Device):
         if device.name in self._devices:
             raise ValueError(f"Device with name {device.name} already exists")
         self._devices[device.name] = device
@@ -331,10 +330,10 @@ class System:
             self._devices[to_device_name].add_input(flow)
             self._devices[from_device_name].add_output(flow)
         
-    def add_input(self, device: Type[Device], flow: Union[Species, Mixture, EnergyFlow]):
+    def add_input(self, device: Device, flow: Union[Species, Mixture, EnergyFlow]):
         self.add_flow(None, device, flow)
 
-    def add_output(self, device: Type[Device], flow: Union[Species, Mixture, EnergyFlow]):
+    def add_output(self, device: Device, flow: Union[Species, Mixture, EnergyFlow]):
         self.add_flow(device, None, flow)
 
     def get_flow(self, from_device_name: str, to_device_name: str, flow_name: str):

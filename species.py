@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
+import cantera as ct
 import copy
 import math
 from typing import List
 
-from thermo import ShomateEquation, SimpleHeatCapacity, ThermoData, LatentHeat
+from thermo import ShomateEquation, SimpleHeatCapacity, CanteraSolution, LatentHeat, ThermoData
 
 class Species:
     def __init__(self, name: str, molecular_mass_kg_per_mol: float, thermo_data: ThermoData, delta_h_formation: float = None):
@@ -679,8 +680,36 @@ def create_ch4_species():
                         -74.6e3)
     return species
 
+def create_h2_ar_plasma_species(argon_molar_frac_in_h2_plasma:float = 0.0):
+    if not 0.0 <= argon_molar_frac_in_h2_plasma <= 1.0:
+        raise ValueError(f'Argon molar fraction must be between 0 and 1, not {argon_molar_frac_in_h2_plasma}')
+    h2 = create_h2_species()
+    ar = create_ar_species()
+    nasa_species = {s.name: s for s in ct.Species.list_from_file('nasa_gas.yaml')}
+
+    h2_plasma = ct.Solution(thermo='ideal-gas', species=[nasa_species['H2'],
+                                                         nasa_species['H2+'],
+                                                         nasa_species['H2-'],
+                                                         nasa_species['H'],
+                                                         nasa_species['H+'],
+                                                         nasa_species['H-'],
+                                                         nasa_species['Ar'],
+                                                         nasa_species['Ar+'],
+                                                         nasa_species['Electron']])
+    molar_composition = {
+        'H2':1.0 - argon_molar_frac_in_h2_plasma,
+        'Ar':argon_molar_frac_in_h2_plasma
+    }
+    h2_plasma.TPX = 300.0, ct.one_atm, molar_composition
+    heat_capacities = [CanteraSolution(h2_plasma)]
+    thermo_data = ThermoData(heat_capacities)
+    species = Species('H2-Ar Plasma',
+                        h2.mm * molar_composition['H2'] + ar.mm * molar_composition['Ar'],
+                        thermo_data,
+                        0.0)
+    return species
+
 def create_scrap_species():
-    # TODO. should get data for steel scrap
     species = create_fe_species()
     species.name = 'Scrap'
     return species
@@ -694,7 +723,6 @@ def create_air_mixture(mass_kg):
     ar.mass = mass_kg * 0.0093
     mixture = Mixture('Air', [n2, o2, ar])
     return mixture
-
 
 # Chemical reaction master copies
 def compute_reaction_enthalpy(reactants, products, temp_kelvin):
