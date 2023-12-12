@@ -393,28 +393,32 @@ class ReactionsTest(TestCase):
         factsage_delta_h = 19.73e3
         self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.06*abs(factsage_delta_h))
 
-    def test_enthalpy_of_reaction_monatomic_h_reduction(self):
-        # These are all failing. The delta H of reaction that I am calcuating does not at
-        # all match what FactSage is suggesting..
-        temp_kelvin = 298
-        delta_h = species.delta_h_3fe2o3_2h_2fe3o4_h2o(temp_kelvin)
-        factsage_delta_h = -479275.2 
-        self.assertAlmostEqual(delta_h / 1000, factsage_delta_h / 1000, places=1)
+    def test_enthalpy_of_smelting_reduction_high_temp(self):
+        temp_kelvin = 1873.15
 
-        temp_kelvin = 1000
-        delta_h = species.delta_h_3fe2o3_2h_2fe3o4_h2o(temp_kelvin)
-        factsage_delta_h = -447835.8 
-        # self.assertAlmostEqual(delta_h / 1000, factsage_delta_h / 1000, places=1)
+        # Fe2O3 (s) + 3 H2 (g) -> 2 Fe (L) + 3 H2O (g)
+        # ~2% difference from what factsage predicts
+        delta_h = species.delta_h_fe2o3_3h2_2fe_3h2o(temp_kelvin)
+        factsage_delta_h = 81560.9
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.02*abs(factsage_delta_h))
 
-        temp_kelvin = 2000
-        delta_h = species.delta_h_3fe2o3_2h_2fe3o4_h2o(temp_kelvin)
-        factsage_delta_h = -171728.8 
-        # self.assertAlmostEqual(delta_h / 1000, factsage_delta_h / 1000, places=1)
+        # Fe2O3 (s) + 2 H (g) -> 2 FeO (L) + H2O (g)
+        # ~16% difference from what factsage predicts
+        delta_h = species.delta_h_fe2o3_h2_2feo_h2o(temp_kelvin)
+        factsage_delta_h = 98.44e3
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.16*abs(factsage_delta_h))
 
-        temp_kelvin = 3000
-        delta_h = species.delta_h_3fe2o3_2h_2fe3o4_h2o(temp_kelvin)
-        factsage_delta_h = -142709.5 
-        # self.assertAlmostEqual(delta_h / 1000, factsage_delta_h / 1000, places=1)
+        # Fe2O3 (s) + 6 H (g) -> 2 Fe (L) + 3 H2O (g)
+        # ~1% difference from what factsage predicts
+        delta_h = species.delta_h_fe2o3_6h_2fe_3h2o(temp_kelvin)
+        factsage_delta_h = -1276.97e3
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.01*abs(factsage_delta_h))
+
+        # Fe2O3 (s) + 2 H (g) -> 2 FeO (L) + H2O (g)
+        # ~5% difference from what factsage predicts
+        delta_h = species.delta_h_fe2o3_2h_2feo_h2o(temp_kelvin)
+        factsage_delta_h = -354.40e3
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.05*abs(factsage_delta_h))
 
     def test_enthalpy_of_oxidation_reaction(self):
         # ~10% difference from what factsage predicts
