@@ -610,8 +610,7 @@ def create_sio2_species():
                                             105.8092, -910.8568)),
                         SimpleHeatCapacity(1996.0, 3000.1, 77.99) # NIST data didn't go higher, guessing
     ]
-    # Adding flux should reduce the melting point. Possibly effect
-    # the latent heat value as well?
+    # Adding flux should reduce the melting point.
     latent_heats = [LatentHeat(1983.15, 9600)]
     thermo_data = ThermoData(heat_capacities, latent_heats)
     species = Species('SiO2',
@@ -724,6 +723,11 @@ def create_air_mixture(mass_kg):
 
 # Chemical reaction master copies
 def compute_reaction_enthalpy(reactants, products, temp_kelvin):
+    """
+    Calculates the enthalpy of reaction.
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
+    """
     for species in reactants + products:
         species.temp_kelvin = temp_kelvin
     reactant_enthalpy = 0.0
@@ -739,6 +743,8 @@ def compute_reaction_enthalpy(reactants, products, temp_kelvin):
 def delta_h_2fe_o2_2feo(temp_kelvin: float = 298.15) -> float:
     """
     2Fe + O2 -> 2FeO
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
     """
     fe = create_fe_species()
     fe.moles = 2
@@ -753,6 +759,8 @@ def delta_h_2fe_o2_2feo(temp_kelvin: float = 298.15) -> float:
 def delta_h_c_o2_co2(temp_kelvin: float = 298.15) -> float:
     """
     C + O2 -> CO2
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
     """
     c = create_c_species()
     c.moles = 1
@@ -767,6 +775,8 @@ def delta_h_c_o2_co2(temp_kelvin: float = 298.15) -> float:
 def delta_h_2c_o2_2co(temp_kelvin: float = 298.15) -> float:
     """
     2C + O2 -> 2CO
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
     """
     c = create_c_species()
     c.moles = 2
@@ -781,6 +791,8 @@ def delta_h_2c_o2_2co(temp_kelvin: float = 298.15) -> float:
 def delta_h_c_2h2_ch4(temp_kelvin: float = 298.15) -> float:
     """
     C + 2H2 -> CH4
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
     """
     c = create_c_species()
     c.moles = 1
@@ -795,6 +807,8 @@ def delta_h_c_2h2_ch4(temp_kelvin: float = 298.15) -> float:
 def delta_h_si_o2_sio2(temp_kelvin: float = 298.15) -> float:
     """
     Si + O2 -> SiO2
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
     """
     si = create_si_species()
     si.moles = 1
@@ -809,6 +823,8 @@ def delta_h_si_o2_sio2(temp_kelvin: float = 298.15) -> float:
 def delta_h_sio2_h2_si_h2o(temp_kelvin: float = 298.15) -> float:
     """
     SiO2 + 2H2 -> Si + 2H2O
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
     """
     sio2 = create_sio2_species()
     sio2.moles = 1
@@ -825,6 +841,8 @@ def delta_h_sio2_h2_si_h2o(temp_kelvin: float = 298.15) -> float:
 def delta_h_2fe_o2_2feo(temp_kelvin: float = 298.15) -> float:
     """
     2Fe + O2 -> 2FeO
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
     """
     fe = create_fe_species()
     fe.moles = 2
@@ -839,6 +857,8 @@ def delta_h_2fe_o2_2feo(temp_kelvin: float = 298.15) -> float:
 def delta_h_feo_c_fe_co(temp_kelvin: float = 298.15) -> float: # Check delta h this gives to a source
     """
     FeO + C -> Fe + CO
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
     """
     feo = create_feo_species()
     feo.moles = 1
@@ -855,6 +875,8 @@ def delta_h_feo_c_fe_co(temp_kelvin: float = 298.15) -> float: # Check delta h t
 def delta_h_3fe2o3_h2_2fe3o4_h2o(temp_kelvin: float = 298.15) -> float:
     """
     3 Fe2O3 + H2 -> 2 Fe3O4 + H2O
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
     """
     fe2o3 = create_fe2o3_species()
     fe2o3.moles = 3
@@ -871,6 +893,8 @@ def delta_h_3fe2o3_h2_2fe3o4_h2o(temp_kelvin: float = 298.15) -> float:
 def delta_h_fe3o4_h2_3feo_h2o(temp_kelvin: float = 298.15) -> float: # TODO! Check with another source. Seems wrong
     """
     Fe3O4 + H2 -> 3 FeO + H2O
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
     """
     fe3o4 = create_fe3o4_species()
     fe3o4.moles = 1
@@ -887,6 +911,8 @@ def delta_h_fe3o4_h2_3feo_h2o(temp_kelvin: float = 298.15) -> float: # TODO! Che
 def delta_h_feo_h2_fe_h2o(temp_kelvin: float = 298.15) -> float: # TODO! Check with another source. Seems wrong
     """
     FeO + H2 -> Fe + H2O
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
     """
     feo = create_feo_species()
     feo.moles = 1
@@ -903,6 +929,8 @@ def delta_h_feo_h2_fe_h2o(temp_kelvin: float = 298.15) -> float: # TODO! Check w
 def delta_h_fe2o3_h2_2feo_h2o(temp_kelvin: float = 298.15) -> float:
     """
     Fe2O3 + H2 -> 2 FeO + H2O
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
     """
     fe2o3 = create_fe2o3_species()
     fe2o3.moles = 1
@@ -920,6 +948,8 @@ def delta_h_fe2o3_6h_2fe_3h2o(temp_kelvin: float = 298.15) -> float:
     """
     Fe2O3 + 6 H -> 2 Fe + 3 H2O
     Note: Monatomic hydrogen reduction
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
     """
     fe2o3 = create_fe2o3_species()
     fe2o3.moles = 1
@@ -937,6 +967,8 @@ def delta_h_fe2o3_2h_2feo_h2o(temp_kelvin: float = 298.15) -> float:
     """
     Fe2O3 + 2 H -> 2 FeO + H2O
     Note: Monatomic hydrogen reduction
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
     """
     fe2o3 = create_fe2o3_species()
     fe2o3.moles = 1
@@ -953,6 +985,8 @@ def delta_h_fe2o3_2h_2feo_h2o(temp_kelvin: float = 298.15) -> float:
 def delta_h_fe2o3_3h2_2fe_3h2o(temp_kelvin: float = 298.15) -> float:
     """
     Fe2O3 + 3 H2 -> 2 Fe + 3 H2O
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
     """
     fe2o3 = create_fe2o3_species()
     fe2o3.moles = 1
@@ -969,6 +1003,8 @@ def delta_h_fe2o3_3h2_2fe_3h2o(temp_kelvin: float = 298.15) -> float:
 def delta_h_2h2o_2h2_o2(temp_kelvin: float = 298.15) -> float:
     """
     2 H2O + 474.2 kJ/mol electricity + 97.2 kJ/mol heat -> 2 H2 + O2
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
     """
     h2o = create_h2o_species()
     h2o.moles = 2
@@ -979,3 +1015,47 @@ def delta_h_2h2o_2h2_o2(temp_kelvin: float = 298.15) -> float:
     o2.moles = 1
     products = [h2, o2]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
+
+def delta_h_c_c_dissolved() -> float:
+    """
+    C(gr) -> C (dissolved in Fe)
+    From: Madhavan, N., Brooks, G., Rhamdhani, M., Rout, B., & Overbosch, A. (2021). General heat balance
+    for oxygen steelmaking. Journal of Iron and Steel Research International, 28, 538–551.
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
+    """
+    return 24.21e3
+
+def delta_h_si_si_dissolved() -> float:
+    """
+    Si(L) -> Si (dissolved in Fe)
+    From: Madhavan, N., Brooks, G., Rhamdhani, M., Rout, B., & Overbosch, A. (2021). General heat balance
+    for oxygen steelmaking. Journal of Iron and Steel Research International, 28, 538–551.
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
+    """
+    return -135.30e3
+
+def delta_h_c_dissolved_o2_co2(temp_kelvin: float) -> float:
+    """
+    C(dissolved in Fe) + O2(g) -> CO2(g)
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
+    """
+    return delta_h_c_o2_co2(temp_kelvin) - delta_h_c_c_dissolved()
+
+def delta_h_2c_dissolved_o2_2co(temp_kelvin: float) -> float:
+    """
+    2 C(dissolved in Fe) + O2(g) -> 2 CO(g)
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
+    """
+    return delta_h_2c_o2_2co(temp_kelvin) - 2*delta_h_c_c_dissolved()
+
+def delta_h_si_dissolved_o2_sio2(temp_kelvin: float) -> float:
+    """
+    Si(dissolved in Fe) + O2(g) -> SiO2(g)
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
+    """
+    return delta_h_si_o2_sio2(temp_kelvin) - delta_h_si_si_dissolved()

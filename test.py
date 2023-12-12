@@ -447,6 +447,11 @@ class ReactionsTest(TestCase):
         delta_h = species.delta_h_2fe_o2_2feo(temp_kelvin)
         self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.02*abs(factsage_delta_h))
 
+        temp_kelvin = 1873.15
+        factsage_delta_h = -485751.9
+        delta_h = species.delta_h_2fe_o2_2feo(temp_kelvin)
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.03*abs(factsage_delta_h))
+
         temp_kelvin = 298.15
         factsage_delta_h =  -910699.2 
         delta_h = species.delta_h_si_o2_sio2(temp_kelvin)
@@ -527,7 +532,6 @@ class TestFileIO(TestCase):
     def test_load_config_from_csv(self):
         config_filename = "config/config_default.csv"
         config = load_config_from_csv(config_filename)
-        print(config)
         self.assertTrue(len(config) > 0)
         self.assertTrue(len(config["all"]) > 0)
 
