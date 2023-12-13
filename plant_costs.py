@@ -46,7 +46,10 @@ def add_steel_plant_lcop(system: System, prices: Dict[str, PriceEntry], print_de
     add_steel_plant_capex(system, prices)
 
     lcop_itemised = {
-        'capex': lcop_capex_only(system.capex(print_debug_messages), system.annual_capacity * system.system_vars["capacity factor"], system.lifetime_years)
+        'capex': lcop_capex_only(system.capex(print_debug_messages), 
+                                 system.system_vars["annual fixed opex USD"],
+                                 system.annual_capacity * system.system_vars["capacity factor"], 
+                                 system.lifetime_years)
     }
 
     inputs = system.system_inputs(ignore_flows_named=['infiltrated air'], separate_mixtures_named=['flux', 'h2 rich gas'], mass_flow_only=False)
@@ -182,35 +185,33 @@ def add_electrolyser_capex(system: System, prices: Dict[str, PriceEntry]):
     electrolyser_cap_in_kw = electrolyser_cap_in_kw_for_const_op * oversize_capacity # kW
     system.devices['water electrolysis'].capex = electrolyser_cap_in_kw * price.price_usd 
 
-def capex_direct_and_indirect(direct_capex: float) -> float:
+def capex_direct_and_indirect(capex_purchase_cost: float) -> float:
     r_contg = 0.1 # contingency cost coefficient
     r_cons = 0.09 # construction cost coefficient
-    c_direct = (1 + r_contg) * direct_capex
+    c_direct = (1 + r_contg) * capex_purchase_cost
     c_indirect = r_cons * c_direct
     return c_direct + c_indirect
 
 
-def annuity_factor(years: float) -> float:
+def cost_recovery_factor(years: float) -> float:
     r_nom = 0.07 # the constant nominal discount rate
     r_i = 0.025 # inflation rate
     r_real = (1+r_nom)/(1+r_i)-1 # the constant real discount rate
     n = years 
-
-    # TODO: verify this formula.
-    f = (r_real*(1+r_real**n))/((1+r_real)**n - 1) 
-    return f
+    crf = (r_real*(1+r_real)**n)/((1+r_real)**n - 1) 
+    return crf
 
 
-def lcop_capex_only(capex, annual_production, plant_lifetime_years):
-    return annuity_factor(plant_lifetime_years)*capex / (annual_production * plant_lifetime_years)
+def lcop_capex_only(capex, annual_fixed_opex, annual_production, plant_lifetime_years):
+    return (cost_recovery_factor(plant_lifetime_years)*capex_direct_and_indirect(capex) + annual_fixed_opex) / (annual_production)
 
 
-def lcop_opex_only(annual_operating_cost, annual_production):
+def lcop_variable_opex_only(annual_operating_cost, annual_production):
     return annual_operating_cost / annual_production
 
 
-def lcop_total(capex, annual_operating_cost, annual_production, plant_lifetime_years):
+def lcop_total(capex, annual_fixed_opex, annual_variable_opex, annual_production, plant_lifetime_years):
     # levelised cost of production will depend on the capacity factor of the plant.
     # It is up to the caller of this function to account for that in the annual_production var.
-    return lcop_capex_only(capex, annual_production, plant_lifetime_years) + \
-           lcop_opex_only(annual_operating_cost, annual_production)
+    return lcop_capex_only(capex, annual_fixed_opex, annual_production, plant_lifetime_years) + \
+           lcop_variable_opex_only(annual_variable_opex, annual_production)

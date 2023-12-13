@@ -1057,10 +1057,13 @@ def add_plasma_flows_final(system: System):
     h_reaction_frac = system.system_vars['plasma h fraction (excl. Ar and H2O)']
     h2_reaction_frac = 1 - h_reaction_frac * 0.5
 
-    chemical_energy = -num_fe_formations * (h2_reaction_frac * species.delta_h_feo_h2_fe_h2o(plasma_temp) + h_reaction_frac * species.delta_h_feo_2h_fe_h2o(plasma_temp)) \
-                      -num_feo_formations * (h2_reaction_frac * species.delta_h_fe3o4_h2_3feo_h2o(plasma_temp) + h_reaction_frac * species.delta_h_fe3o4_2h_3feo_h2o(plasma_temp)) \
-                      -num_fe3o4_formations * (h2_reaction_frac * species.delta_h_3fe2o3_h2_2fe3o4_h2o(plasma_temp) + h_reaction_frac * species.delta_h_3fe2o3_2h_2fe3o4_h2o(plasma_temp)) \
-                      -num_si_formations * species.delta_h_sio2_h2_si_h2o(plasma_temp)
+    chemical_energy = -num_fe_formations * (h2_reaction_frac * species.delta_h_feo_h2_fe_h2o(steel_bath_temp_K) 
+                                            + h_reaction_frac * species.delta_h_feo_2h_fe_h2o(steel_bath_temp_K)) \
+                      -num_feo_formations * (h2_reaction_frac * species.delta_h_fe3o4_h2_3feo_h2o(steel_bath_temp_K) 
+                                             + h_reaction_frac * species.delta_h_fe3o4_2h_3feo_h2o(steel_bath_temp_K)) \
+                      -num_fe3o4_formations * (h2_reaction_frac * species.delta_h_3fe2o3_h2_2fe3o4_h2o(steel_bath_temp_K) 
+                                               + h_reaction_frac * species.delta_h_3fe2o3_2h_2fe3o4_h2o(steel_bath_temp_K)) \
+                      -num_si_formations * species.delta_h_sio2_h2_si_h2o(steel_bath_temp_K)
 
 
     # determine the mass of h2o in the off gas
@@ -1084,8 +1087,7 @@ def add_plasma_flows_final(system: System):
     # the amount of h2 in the in gas
     # input H2 temp to the plasma torch may be adjusted later after we know 
     # the exact exit temp from the heat exchanger
-    h2_input_temp = system.system_vars['max heat exchanger temp K'] - 300.0
-    h2_rich_gas.temp_kelvin = h2_input_temp
+    h2_rich_gas.temp_kelvin = system.system_vars['max heat exchanger temp K'] - 300.0
 
     # Flows for the plasma torch device.
     plasma_torch.first_input_containing_name('h2 rich gas').set(h2_rich_gas)
@@ -1116,12 +1118,12 @@ def add_plasma_flows_final(system: System):
         # metallic fe is oxidised by injected O2
         o2_oxidation.moles = 0.5 * (feo_slag.moles - feo_target.moles)
         num_feo_formation_reactions = o2_oxidation.moles
-        plasma_smelter.inputs['chemical'].energy += -num_feo_formation_reactions * species.delta_h_2fe_o2_2feo(plasma_temp)
+        plasma_smelter.inputs['chemical'].energy += -num_feo_formation_reactions * species.delta_h_2fe_o2_2feo(steel_bath_temp_K)
     else:
         # feo is reduced by the injected carbon
         c_reduction.moles = (feo_target.moles - feo_slag.moles)
         num_feo_c_reduction_reactions = c_reduction.moles
-        chemical_energy += -num_feo_c_reduction_reactions * species.delta_h_feo_c_fe_co(plasma_temp)
+        chemical_energy += -num_feo_c_reduction_reactions * species.delta_h_feo_c_fe_co(steel_bath_temp_K)
 
     total_o2_injected_mass = system.system_vars['o2 injection kg']
     if total_o2_injected_mass < o2_oxidation.mass and not math.isclose(total_o2_injected_mass, o2_oxidation.mass):
@@ -1142,8 +1144,8 @@ def add_plasma_flows_final(system: System):
     num_co2_reactions = n_reactions - num_co_reactions
 
     # This reaction may occur at a lower temp, since it is not at the plasma steel interface?
-    chemical_energy += -num_co_reactions * species.delta_h_2c_o2_2co(plasma_temp) \
-                       -num_co2_reactions * species.delta_h_c_o2_co2(plasma_temp)
+    chemical_energy += -num_co_reactions * species.delta_h_2c_o2_2co(steel_bath_temp_K) \
+                       -num_co2_reactions * species.delta_h_c_o2_co2(steel_bath_temp_K)
     plasma_smelter.inputs['chemical'].energy += chemical_energy
 
     c_combustion = species.create_c_species()

@@ -1000,6 +1000,63 @@ def delta_h_fe2o3_3h2_2fe_3h2o(temp_kelvin: float = 298.15) -> float:
     products = [fe, h2o]
     return compute_reaction_enthalpy(reactants, products, temp_kelvin)
 
+def delta_h_feo_2h_fe_h2o(temp_kelvin: float = 298.15) -> float:
+    """
+    FeO + 2 H -> Fe + H2O
+    Note: Monatomic hydrogen reduction
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
+    """
+    feo = create_feo_species()
+    feo.moles = 1
+    h = create_h_species()
+    h.moles = 2
+    reactants = [feo, h]
+    fe = create_fe_species()
+    fe.moles = 1
+    h2o = create_h2o_species()
+    h2o.moles = 1
+    products = [fe, h2o]
+    return compute_reaction_enthalpy(reactants, products, temp_kelvin)
+
+def delta_h_fe3o4_2h_3feo_h2o(temp_kelvin: float = 298.15) -> float:
+    """
+    Fe3O4 + 2 H -> 3 FeO + H2O
+    Note: Monatomic hydrogen reduction
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
+    """
+    fe3o4 = create_fe3o4_species()
+    fe3o4.moles = 1
+    h = create_h_species()
+    h.moles = 2
+    reactants = [fe3o4, h]
+    feo = create_feo_species()
+    feo.moles = 3
+    h2o = create_h2o_species()
+    h2o.moles = 1
+    products = [feo, h2o]
+    return compute_reaction_enthalpy(reactants, products, temp_kelvin)
+
+def delta_h_3fe2o3_2h_2fe3o4_h2o(temp_kelvin: float = 298.15) -> float:
+    """
+    3 Fe2O3 + 2 H -> 2 Fe3O4 + H2O
+    Note: Monatomic hydrogen reduction
+    Returns:
+        enthalpy of reaction [J / mol of reaction]
+    """
+    fe2o3 = create_fe2o3_species()
+    fe2o3.moles = 3
+    h = create_h_species()
+    h.moles = 2
+    reactants = [fe2o3, h]
+    fe3o4 = create_fe3o4_species()
+    fe3o4.moles = 2
+    h2o = create_h2o_species()
+    h2o.moles = 1
+    products = [fe3o4, h2o]
+    return compute_reaction_enthalpy(reactants, products, temp_kelvin)
+
 def delta_h_2h2o_2h2_o2(temp_kelvin: float = 298.15) -> float:
     """
     2 H2O + 474.2 kJ/mol electricity + 97.2 kJ/mol heat -> 2 H2 + O2
