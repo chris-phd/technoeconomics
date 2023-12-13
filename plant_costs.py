@@ -202,7 +202,7 @@ def annuity_factor(years: float) -> float:
 
 
 def lcop_capex_only(capex, annual_production, plant_lifetime_years):
-    return annuity_factor(plant_lifetime_years)*capex / annual_production
+    return annuity_factor(plant_lifetime_years)*capex / (annual_production * plant_lifetime_years)
 
 
 def lcop_opex_only(annual_operating_cost, annual_production):
