@@ -363,7 +363,7 @@ def read_ore_composition_from_csv(filename: str, template_ore_composition: Dict[
 def add_ore_composition(system: System, print_debug_messages: bool=True):
     """
     Add 'ore composition' and 'ore composition simple' to the system variables.
-    Ore composition simple is the hematite ore with only SiO2, Al2O3, CaO and MgO
+    Ore composition simple is the hematite / goethite ore with only SiO2, Al2O3, CaO, MgO and TiO2
     impurities.
     """
     ore_name = system.system_vars.get('ore name', 'default')
@@ -458,9 +458,9 @@ def add_ore_composition(system: System, print_debug_messages: bool=True):
     ore_composition_complex['hematite'] = 100 - ore_composition_complex['gangue'] - ore_composition_complex.get('LOI', 0.0)
     ore_composition_complex = hematite_normalise(ore_composition_complex)
 
-    # Neglecting the gangue elements other than SiO2, Al2O3, CaO and MgO. Adding the mass of 
-    # ignored elements to the remaining impurities equally. Simplification for the mass flow
-    # calculations. Values are in mass / weight percent.
+    # Removing the gangue elements other than SiO2, Al2O3, CaO, MgO and TiO2. Adding the mass of 
+    # ignored elements to the mass of TiO2 since it doesn't contribute to the basicity / flux. Simplification 
+    # for the mass flow calculations. Values are in mass / weight percent.
     mass_of_neglected_species = sum(ore_composition_complex.values()) \
                                - ore_composition_complex['gangue'] \
                                - ore_composition_complex['hematite'] \
@@ -469,12 +469,14 @@ def add_ore_composition(system: System, print_debug_messages: bool=True):
                                 - ore_composition_complex['Al2O3'] \
                                 - ore_composition_complex['CaO'] \
                                 - ore_composition_complex['MgO'] \
+                                - ore_composition_complex.get('TiO2', 0.0) \
                                 - ore_composition_complex.get('LOI', 0.0)
     ore_composition_simple = {'Fe': ore_composition_complex['Fe'],
-                                'SiO2': ore_composition_complex['SiO2'] + mass_of_neglected_species * 0.25,
-                                'Al2O3': ore_composition_complex['Al2O3'] + mass_of_neglected_species * 0.25,
-                                'CaO': ore_composition_complex['CaO'] + mass_of_neglected_species * 0.25,
-                                'MgO': ore_composition_complex['MgO'] + mass_of_neglected_species * 0.25}
+                                'SiO2': ore_composition_complex['SiO2'],
+                                'Al2O3': ore_composition_complex['Al2O3'],
+                                'CaO': ore_composition_complex['CaO'],
+                                'MgO': ore_composition_complex['MgO'],
+                                'TiO2': ore_composition_complex.get('TiO2', 0.0) + mass_of_neglected_species}
     if 'LOI' in ore_composition_complex:
         ore_composition_simple['LOI'] = ore_composition_complex['LOI']
 
@@ -534,12 +536,14 @@ def add_slag_and_flux_mass(system: System):
     al2o3_gangue = species.create_al2o3_species()
     cao_gangue = species.create_cao_species()
     mgo_gangue = species.create_mgo_species()
+    tio2_gangue = species.create_tio2_species()
     cao_flux = species.create_cao_species()
     mgo_flux = species.create_mgo_species()
     sio2_slag = species.create_sio2_species()
     al2o3_slag = species.create_al2o3_species()
     cao_slag = species.create_cao_species()
     mgo_slag = species.create_mgo_species()
+    tio2_slag = species.create_tio2_species()
 
     steelmaking_device = system.devices[steelmaking_device_name]
     fe = steelmaking_device.outputs['steel'].species('Fe')
@@ -562,12 +566,14 @@ def add_slag_and_flux_mass(system: System):
         al2o3_gangue.mass = ore_mass * ore_composition_simple['Al2O3'] * 0.01
         cao_gangue.mass = ore_mass * ore_composition_simple['CaO'] * 0.01
         mgo_gangue.mass = ore_mass * ore_composition_simple['MgO'] * 0.01
+        tio2_gangue.mass = ore_mass * ore_composition_simple['TiO2'] * 0.01
 
         if si_in_steel.moles > sio2_gangue.moles:
             raise DecreaseSiInHotMetal
 
         sio2_slag.moles = sio2_gangue.moles - si_in_steel.moles
         al2o3_slag.moles = al2o3_gangue.moles
+        tio2_slag.moles = tio2_gangue.moles
 
         cao_flux_mass = b2_basicity * sio2_slag.mass - cao_gangue.mass
         cao_flux.mass = max(cao_flux_mass, 0.0)
@@ -583,10 +589,11 @@ def add_slag_and_flux_mass(system: System):
             if not use_mgo_slag_weight_perc:
                 slag_mass = sio2_slag.mass + al2o3_slag.mass \
                             + cao_slag.mass + mgo_slag.mass \
-                            + feo_slag.mass
+                            + tio2_slag.mass + feo_slag.mass
             else:
                 slag_mass = (sio2_slag.mass + al2o3_slag.mass \
-                            + cao_slag.mass + feo_slag.mass) / \
+                            + cao_slag.mass + feo_slag.mass
+                            + tio2_slag.mass) / \
                             (1.0 - mgo_in_slag_perc * 0.01)
                 mgo_slag.mass = max(slag_mass * mgo_in_slag_perc * 0.01, mgo_gangue.mass)
                 mgo_flux.moles = mgo_slag.moles - mgo_gangue.moles
@@ -604,7 +611,7 @@ def add_slag_and_flux_mass(system: System):
     flux.temp_kelvin = system.system_vars['steel exit temp K']
     steelmaking_device.inputs['flux'].set(flux)
 
-    slag = species.Mixture('slag', [feo_slag, sio2_slag, al2o3_slag, cao_slag, mgo_slag])
+    slag = species.Mixture('slag', [feo_slag, sio2_slag, al2o3_slag, cao_slag, mgo_slag, tio2_slag])
     slag.temp_kelvin = system.system_vars['steel exit temp K']
     steelmaking_device.outputs['slag'].set(slag)
 
@@ -655,6 +662,7 @@ def add_ore(system: System):
     mgo_gangue.mass = slag_mixture.species('MgO').mass - flux_mixtures.species('MgO').mass
     sio2_gangue = copy.deepcopy(slag_mixture.species('SiO2'))
     al2o3_gangue = copy.deepcopy(slag_mixture.species('Al2O3'))
+    tio2_gangue = copy.deepcopy(slag_mixture.species('TiO2'))
 
     try:
         # if some silicon ended up in the hot metal (BOF systems)
@@ -663,7 +671,7 @@ def add_ore(system: System):
     except:
         pass
     
-    gangue_mass = sio2_gangue.mass + al2o3_gangue.mass + cao_gangue.mass + mgo_gangue.mass
+    gangue_mass = sio2_gangue.mass + al2o3_gangue.mass + cao_gangue.mass + mgo_gangue.mass + tio2_gangue.mass
     ore_mass = gangue_mass / (ore_composition_simple['gangue'] * 0.01)
 
     fe2o3_ore = species.create_fe2o3_species()
@@ -677,7 +685,7 @@ def add_ore(system: System):
 
     ore = species.Mixture('ore', [fe2o3_ore, fe3o4, feo, fe,
                           cao_gangue, mgo_gangue, sio2_gangue, al2o3_gangue,
-                          water_loi])
+                          tio2_gangue, water_loi])
     ore.temp_kelvin = ore_initial_temp
 
     if ore_heater_device_name is not None:
@@ -687,7 +695,7 @@ def add_ore(system: System):
 
         goethite_dehydration_temp = celsius_to_kelvin(375)
         if ore_preheating_temp > goethite_dehydration_temp:
-            # Any water / LOI in the ore willq boil off
+            # Any water / LOI in the ore will boil off
             water_loi.temp_kelvin = goethite_dehydration_temp
             ore_preheating_device.outputs['h2o'].set(water_loi)
             ore.remove_species('H2O')
@@ -699,7 +707,6 @@ def add_ore(system: System):
         ore_preheating_device.outputs['ore'].set(ore)
 
         # Add electrical energy to heat the ore
-        # Assume no thermal losses for now.
         electrical_heat_eff = 0.98
         electrical_energy = EnergyFlow('base electricity', ore_preheating_device.energy_balance() / electrical_heat_eff)
         ore_preheating_device.inputs['base electricity'].set(electrical_energy)
@@ -769,7 +776,8 @@ def add_fluidized_bed_flows(system: System):
                                 copy.deepcopy(ore.species('CaO')),
                                 copy.deepcopy(ore.species('MgO')),
                                 copy.deepcopy(ore.species('SiO2')),
-                                copy.deepcopy(ore.species('Al2O3'))])
+                                copy.deepcopy(ore.species('Al2O3')),
+                                copy.deepcopy(ore.species('TiO2'))])
     dri.temp_kelvin = in_gas_temp - 50 # Assumption, TODO understand what the basis of this assumption is.
     ironmaking_device.outputs['dri'].set(dri)
 
