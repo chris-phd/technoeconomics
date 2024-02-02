@@ -619,6 +619,24 @@ def create_sio2_species():
                       -910.7e3)
     return species
 
+def create_tio2_species():
+    heat_capacities = [SimpleHeatCapacity(273.15, 298.0, 55.182),
+                        ShomateEquation(298.0, 2000.0,
+                                        (67.29830, 18.70940, -11.57900,
+                                            2.449561, -1.485471, -964.5140,
+                                            117.8630, -938.7220)),
+                        SimpleHeatCapacity(2000, 2130.0, 77.626), 
+                        SimpleHeatCapacity(2130.0, 4000.1, 100.4160) # liquid phase
+    ]
+    # Adding flux should reduce the melting point.
+    latent_heats = [LatentHeat(2130.0, 68e3)]
+    thermo_data = ThermoData(heat_capacities, latent_heats)
+    species = Species('TiO2', # rutile
+                      0.079866,
+                      thermo_data,
+                      -944.0e3)
+    return species
+
 def create_cao_species():
     heat_capacities = [SimpleHeatCapacity(273.15, 298.0, 42.09),
                        ShomateEquation(298.0, 3200.0, # solid phase
