@@ -44,6 +44,10 @@ def main():
     if not run_sensitivity_analysis:
         generate_lcop_report(systems)
 
+        if args.verbose:
+            for s in systems:
+                report_slag_composition(s)
+
     ## Sensitivity Analysis
     if run_sensitivity_analysis:
         output_dir = f"/tmp/TEA_SA_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}/"
@@ -82,7 +86,7 @@ def main():
     lcop_labels = histogram_labels_from_datasets(lcop_itemised_for_systems)
     _, lcop_ax = plt.subplots()
     add_stacked_histogram_data_to_axis(lcop_ax, system_names, lcop_labels, lcop_itemised_for_systems)
-    add_titles_to_axis(lcop_ax, 'Levelised Cost of Liquid Steel', '$USD / tonne liquid steel')
+    add_titles_to_axis(lcop_ax, 'Base Case Levelised Cost of Liquid Steel', '$USD / tonne liquid steel')
 
     plt.show()
 
@@ -122,8 +126,8 @@ def create_systems(config: Dict[str, Dict[str, Any]]) -> List[System]:
     systems = [dri_eaf_system,
                 plasma_system,
                 plasma_bof_system,
-                hybrid33_system,
-                hybrid55_system]
+                hybrid33_system]# ,
+                # hybrid55_system]
 
     # Overwrite system vars here to modify behaviour
     default_config = config.get("all", {})
@@ -149,6 +153,8 @@ def load_config_from_csv(filename: str) -> Dict[str, Dict[str, Any]]:
         reader = csv.reader(csvfile)
         next(reader)  # skip the title row
         for row in reader:
+            if not row:
+                continue
             system_name = row[0].strip().lower()
             variable_name = row[1].strip()
             variable_type = row[3].strip().lower()

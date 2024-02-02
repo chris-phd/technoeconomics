@@ -11,3 +11,4 @@
 - (feature) Add concept of fixed operating costs. 
 - (understand) How efficient is the condensing system? If it is inefficient, the hydrogen utilisation is important.
 - (feature) use pathlib instead of os.path.join. Avoid explicit use of /tmp directory. Want to make this cross platform. 
+- (feature) use the baur glassner diagram to set the initial excess h2 ratio in the direct reduction stages.

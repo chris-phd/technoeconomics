@@ -1,3 +1,0 @@
-system name,parameter name,parameter type,X max, X min,num increments,elasticity perc
-All,plasma reduction percent,SystemVar,98.0,90,11,2
-All,fluidized beds reduction percent,SystemVar,98.0,90,11,2
