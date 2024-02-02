@@ -849,7 +849,7 @@ def add_fluidized_bed_flows(system: System):
         i += 1
 
     # add the calculated thermal losses
-    ironmaking_device.outputs['losses'].set(EnergyFlow('thermal losses', thermal_losses))
+    ironmaking_device.outputs['losses'].set(EnergyFlow('losses', thermal_losses))
 
     for device_name in ironmaking_device_names[1:]:
         # Currently just a dummy reactors, since the calculation 

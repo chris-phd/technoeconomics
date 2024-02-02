@@ -60,6 +60,29 @@ def add_steel_plant_lcop(system: System, prices: Dict[str, PriceEntry], print_de
     system.lcop_breakdown = lcop_itemised
 
 
+def co2e_per_tonne_steel(system: System) -> float:
+    outputs = system.system_outputs(separate_mixtures_named=['carbon gas'], mass_flow_only=True)
+    co2_mass = outputs.get('CO2', 0.0)
+    co_mass = outputs.get('CO', 0.0)
+    # IPCC AR4, Working Group I: The Physical Science Basis (2007) to get the the
+    # global warming potential of CO.
+    co2_equivalents = co2_mass + co_mass * 1.9
+    return co2_equivalents
+
+
+def breakeven_co2e_price(system) -> float:
+    # TODO: Check these. Possibly configure then by an input file
+    lcop_bf_bof = 550 # USD / tonne steel
+    co2_equivalents_bf_bof = 1.7e3 # kg CO2e / tonne steel
+
+    lcop = system.lcop()
+    if abs(lcop) < 0.01:
+        raise Exception("Could not calculate the breakeven CO2e price. Must calculating LCOP first.") 
+    
+    breakeven_co2e_price = (lcop - lcop_bf_bof) / (co2_equivalents_bf_bof - co2e_per_tonne_steel(system))
+    return breakeven_co2e_price * 1e3 # convert from USD / kg to USD / tonne
+
+
 def operating_cost_per_tonne(inputs: Dict[str, float], prices: Dict[str, PriceEntry], 
                              spot_electricity_hours: float = 8.0, print_debug_messages:bool=True) -> Dict[str, float]:
     # TODO! Update the electrcity prices based on the location of the plant
