@@ -71,9 +71,10 @@ def co2e_per_tonne_steel(system: System) -> float:
 
 
 def breakeven_co2e_price(system) -> float:
-    # TODO: Check these. Possibly configure then by an input file
-    lcop_bf_bof = 550 # USD / tonne steel
-    co2_equivalents_bf_bof = 1.7e3 # kg CO2e / tonne steel
+    # LCOP and Emissions of the BF-BOF process obtained from (zang et al. 2023)
+    # "Cost and life cycle analysis for deep CO2 emissions reduction of steelmaking"
+    lcop_bf_bof = 439.0 # USD / tonne steel
+    co2_equivalents_bf_bof = 2.0e3 # kg CO2e / tonne steel
 
     lcop = system.lcop()
     if abs(lcop) < 0.01:
