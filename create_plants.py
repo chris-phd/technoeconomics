@@ -180,8 +180,6 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking',
     dri_eaf_system.add_device(h2_heat_exchanger)
     join_1 = Device('join 1')
     dri_eaf_system.add_device(join_1)
-    h2_heater_1 = Device('h2 heater 1')
-    dri_eaf_system.add_device(h2_heater_1)
     h2_heater_2 = Device('h2 heater 2')
     dri_eaf_system.add_device(h2_heater_2)
     condenser = Device('condenser and scrubber', 'condenser and scrubber')
@@ -190,10 +188,6 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking',
     dri_eaf_system.add_device(ore_heater)
     fluidized_bed_1 = Device('fluidized bed 1', 'fluidized bed')
     dri_eaf_system.add_device(fluidized_bed_1)
-    fluidized_bed_2 = Device('fluidized bed 2', 'fluidized bed')
-    dri_eaf_system.add_device(fluidized_bed_2)
-    fluidized_bed_3 = Device('fluidized bed 3', 'fluidized bed')
-    dri_eaf_system.add_device(fluidized_bed_3)
     briquetting = Device('briquetting','briquetting')
     dri_eaf_system.add_device(briquetting)
     eaf = Device('eaf', 'eaf')
@@ -213,7 +207,7 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking',
     dri_eaf_system.system_vars['slag mgo weight perc'] = 7.0 # Check what we expect in an EAF
     dri_eaf_system.system_vars['ore heater device name'] = ore_heater.name
     dri_eaf_system.system_vars['ore heater temp K'] = celsius_to_kelvin(800)
-    dri_eaf_system.system_vars['ironmaking device names'] = [fluidized_bed_1.name, fluidized_bed_2.name, fluidized_bed_3.name]
+    dri_eaf_system.system_vars['ironmaking device names'] = [fluidized_bed_1.name]
     dri_eaf_system.system_vars['fluidized beds h2 excess ratio'] = 4.0
     dri_eaf_system.system_vars['o2 injection kg'] = 20.0
     dri_eaf_system.system_vars['electrolysis lhv efficiency percent'] = 70.0
@@ -273,26 +267,9 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking',
 
     # fluidized bed 1
     dri_eaf_system.add_flow(ore_heater.name, fluidized_bed_1.name, create_dummy_mixture('ore'))
-    dri_eaf_system.add_flow(fluidized_bed_2.name, fluidized_bed_1.name, create_dummy_mixture('h2 rich gas'))
+    dri_eaf_system.add_flow(h2_heater_2.name, fluidized_bed_1.name, create_dummy_mixture('h2 rich gas'))
     dri_eaf_system.add_input(fluidized_bed_1.name, EnergyFlow('chemical'))
     dri_eaf_system.add_output(fluidized_bed_1.name, EnergyFlow('losses'))
-
-    # fluidized bed 2
-    dri_eaf_system.add_flow(fluidized_bed_1.name, fluidized_bed_2.name, create_dummy_mixture('dri'))
-    dri_eaf_system.add_flow(h2_heater_1.name, fluidized_bed_2.name, create_dummy_mixture('h2 rich gas'))
-    dri_eaf_system.add_input(fluidized_bed_2.name, EnergyFlow('chemical'))    
-    dri_eaf_system.add_output(fluidized_bed_2.name, EnergyFlow('losses'))
-
-    # heater 1
-    dri_eaf_system.add_flow(fluidized_bed_3.name, h2_heater_1.name, create_dummy_mixture('h2 rich gas'))
-    dri_eaf_system.add_input(h2_heater_1.name, EnergyFlow('base electricity'))
-    dri_eaf_system.add_output(h2_heater_1.name, EnergyFlow('losses'))
-
-    # fluidized bed 3
-    dri_eaf_system.add_flow(fluidized_bed_2.name, fluidized_bed_3.name, create_dummy_mixture('dri'))
-    dri_eaf_system.add_flow(h2_heater_2.name, fluidized_bed_3.name, create_dummy_mixture('h2 rich gas'))
-    dri_eaf_system.add_input(fluidized_bed_3.name, EnergyFlow('chemical'))
-    dri_eaf_system.add_output(fluidized_bed_3.name, EnergyFlow('losses'))
 
     # heater 2
     dri_eaf_system.add_flow(h2_heat_exchanger.name, h2_heater_2.name, create_dummy_mixture('h2 rich gas'))
@@ -300,7 +277,7 @@ def create_dri_eaf_system(system_name='dri eaf steelmaking',
     dri_eaf_system.add_output(h2_heater_2.name, EnergyFlow('losses'))
 
     # briquetting
-    dri_eaf_system.add_flow(fluidized_bed_3.name, briquetting.name, create_dummy_mixture('dri'))
+    dri_eaf_system.add_flow(fluidized_bed_1.name, briquetting.name, create_dummy_mixture('dri'))
 
     # eaf
     dri_eaf_system.add_flow(briquetting.name, eaf.name, create_dummy_mixture('hbi'))
@@ -340,18 +317,16 @@ def create_hybrid_system(system_name='hybrid steelmaking',
     hybrid_system.add_device(h2_heat_exchanger_1)
     h2_heat_exchanger_2 = Device('h2 heat exchanger 2', 'gas heat exchanger')
     hybrid_system.add_device(h2_heat_exchanger_2)
-    h2_heater_1 = Device('h2 heater 1', 'gas heater')
-    hybrid_system.add_device(h2_heater_1)
     condenser_1 = Device('condenser and scrubber 1', 'condenser and scrubber')
     hybrid_system.add_device(condenser_1)
     condenser_2 = Device('condenser and scrubber 2', 'condenser and scrubber')
     hybrid_system.add_device(condenser_2)
     ore_heater = Device('ore heater', 'ore heater')
     hybrid_system.add_device(ore_heater)
+    h2_heater_2 = Device('h2 heater 2', 'gas heater')
+    hybrid_system.add_device(h2_heater_2)
     fluidized_bed_1 = Device('fluidized bed 1', 'fluidized bed')
     hybrid_system.add_device(fluidized_bed_1)
-    fluidized_bed_2 = Device('fluidized bed 2', 'fluidized bed')
-    hybrid_system.add_device(fluidized_bed_2)
     briquetting = Device('briquetting')
     hybrid_system.add_device(briquetting)
     plasma_torch = Device('plasma torch')
@@ -368,16 +343,7 @@ def create_hybrid_system(system_name='hybrid steelmaking',
         bof = Device('bof', 'bof')
         hybrid_system.add_device(bof)
 
-    ironmaking_device_names = [fluidized_bed_1.name, fluidized_bed_2.name]
-    if prereduction_perc > 33.3333334:
-        # More reduction takes place in the fluidized beds, so need 
-        # additional devices. This is why the prereduction percent variable 
-        # must be set here.
-        h2_heater_2 = Device('h2 heater 2', 'gas heater')
-        hybrid_system.add_device(h2_heater_2)
-        fluidized_bed_3 = Device('fluidized bed 3', 'fluidized bed')
-        hybrid_system.add_device(fluidized_bed_3)
-        ironmaking_device_names += [fluidized_bed_3.name]
+    ironmaking_device_names = [fluidized_bed_1.name]
 
     # System variables defaults. Can be overwritten by user before mass and energy flows.
     hybrid_system.system_vars['annual fixed opex USD'] = 3.5e6
@@ -484,37 +450,14 @@ def create_hybrid_system(system_name='hybrid steelmaking',
 
     # fluidized bed 1
     hybrid_system.add_flow(ore_heater.name, fluidized_bed_1.name, create_dummy_mixture('ore'))
-    hybrid_system.add_flow(fluidized_bed_2.name, fluidized_bed_1.name, create_dummy_mixture('h2 rich gas'))
+    hybrid_system.add_flow(h2_heater_2.name, fluidized_bed_1.name, create_dummy_mixture('h2 rich gas'))
     hybrid_system.add_input(fluidized_bed_1.name, EnergyFlow('chemical'))
     hybrid_system.add_output(fluidized_bed_1.name, EnergyFlow('losses'))
 
-    # fluidized bed 2
-    hybrid_system.add_flow(fluidized_bed_1.name, fluidized_bed_2.name, create_dummy_mixture('dri'))
-    hybrid_system.add_flow(h2_heater_1.name, fluidized_bed_2.name, create_dummy_mixture('h2 rich gas'))
-    hybrid_system.add_input(fluidized_bed_2.name, EnergyFlow('chemical'))
-    hybrid_system.add_output(fluidized_bed_2.name, EnergyFlow('losses'))
-
-    # heater 1
-    hybrid_system.add_input(h2_heater_1.name, EnergyFlow('base electricity'))
-    hybrid_system.add_output(h2_heater_1.name, EnergyFlow('losses'))
-
-    if 'fluidized bed 3' in hybrid_system.devices:
-        # fluidized bed 3
-        hybrid_system.add_flow(fluidized_bed_2.name, fluidized_bed_3.name, create_dummy_mixture('dri'))
-        hybrid_system.add_flow(h2_heater_2.name, fluidized_bed_3.name, create_dummy_mixture('h2 rich gas'))
-        hybrid_system.add_input(fluidized_bed_3.name, EnergyFlow('chemical'))
-        hybrid_system.add_output(fluidized_bed_3.name, EnergyFlow('losses'))
-
-        # heater 2
-        hybrid_system.add_flow(h2_heat_exchanger_1.name, h2_heater_2.name, create_dummy_mixture('h2 rich gas'))
-        hybrid_system.add_input(h2_heater_2.name, EnergyFlow('base electricity'))
-        hybrid_system.add_output(h2_heater_2.name, EnergyFlow('losses'))
-
-        # heater 1
-        hybrid_system.add_flow(fluidized_bed_3.name, h2_heater_1.name, create_dummy_mixture('h2 rich gas'))
-    else:
-        # heater 1
-        hybrid_system.add_flow(h2_heat_exchanger_1.name, h2_heater_1.name, create_dummy_mixture('h2 rich gas'))
+    # heater 2
+    hybrid_system.add_flow(h2_heat_exchanger_1.name, h2_heater_2.name, create_dummy_mixture('h2 rich gas'))
+    hybrid_system.add_input(h2_heater_2.name, EnergyFlow('base electricity'))
+    hybrid_system.add_output(h2_heater_2.name, EnergyFlow('losses'))
 
     # briquetting
     hybrid_system.add_flow(ironmaking_device_names[-1], briquetting.name, create_dummy_mixture('dri'))

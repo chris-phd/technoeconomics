@@ -753,8 +753,6 @@ def iron_species_from_reduction_degree(reduction_degree: float, initial_ore_mass
 
 
 def add_fluidized_bed_flows(system: System):
-    # TODO: FIXING THIS TO PROPERLY USTILISE ALL THE IRONMAKING DEVICES
-    # IS THE MAIN PRIORITY AFTER THE FIRST ITERATION OF THE MODEL IS COMPLETE
     ironmaking_device_names = system.system_vars['ironmaking device names']
     excess_h2_ratio = system.system_vars['fluidized beds h2 excess ratio']
     reduction_degree = system.system_vars['fluidized beds reduction percent'] * 0.01
@@ -762,9 +760,9 @@ def add_fluidized_bed_flows(system: System):
     assert len(ironmaking_device_names) > 0, 'Must have at least one iron making device'
     assert excess_h2_ratio >= 1.0
 
-    in_gas_temp = celsius_to_kelvin(900)
-    reaction_temp = celsius_to_kelvin(775)
-    minimum_off_gas_temp = celsius_to_kelvin(650)
+    in_gas_temp = celsius_to_kelvin(680) # 953.15
+    reaction_temp = celsius_to_kelvin(650) # 923.15
+    minimum_off_gas_temp = celsius_to_kelvin(620) # 893.15
 
     ironmaking_device = system.devices[ironmaking_device_names[0]]
     ore = ironmaking_device.inputs['ore']
@@ -850,21 +848,6 @@ def add_fluidized_bed_flows(system: System):
 
     # add the calculated thermal losses
     ironmaking_device.outputs['losses'].set(EnergyFlow('losses', thermal_losses))
-
-    for device_name in ironmaking_device_names[1:]:
-        # Currently just a dummy reactors, since the calculation 
-        # above assunmes all the reduction happens in the first reactor.
-        # Eventually we want to split this up between the different reactors
-        # TODO! Account for these properly, likely has a difference on the
-        # heat balance. 
-        second_iron_making_device = system.devices[device_name]
-        second_iron_making_device.inputs['dri'].set(dri)
-        second_iron_making_device.outputs['dri'].set(dri)
-        second_iron_making_device.first_input_containing_name('h2 rich gas').set(hydrogen)
-        
-        second_iron_making_device.first_output_containing_name('h2 rich gas').set(hydrogen)
-        second_iron_making_device.outputs['losses'].energy = 0.0
-        second_iron_making_device.inputs['chemical'].energy = 0.0
 
 
 def add_briquetting_flows(system: System):
