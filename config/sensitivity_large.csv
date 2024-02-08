@@ -4,8 +4,8 @@ All,Base Electricity,Price,139.65,46.55,11,3
 Plasma,Plasma Smelter,Price,550,250,5,3
 Hybrid 33,Plasma Smelter,Price,550,250,5,3
 DRI-EAF,EAF,Price,280,120,11,3
-DRI-EAF,Fluidized Bed,Price,250,50,11,3
-Hybrid 33,Fluidized Bed,Price,250,50,11,3
+DRI-EAF,Fluidized Bed,Price,540,340,11,3
+Hybrid 33,Fluidized Bed,Price,540,340,11,3
 All,plasma temp K,SystemVar,3000,2500,11,3
 All,steel exit temp K,SystemVar,2000,1200,11,3
 All,feo soluble in slag percent,SystemVar,40.0,1.0,21,0.5

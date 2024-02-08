@@ -163,6 +163,11 @@ def add_steel_plant_capex(system: System, prices: Dict[str, PriceEntry]):
         if price.units == PriceUnits.PerTonneOfAnnualCapacity:
             device.capex = price.price_usd * system.annual_capacity
 
+        # Add a special case for the fluidized beds, where the cost depends on 
+        # the reduction degree.
+        if 'fluidized bed' in device_name:
+            reduction_perc = system.system_vars['fluidized beds reduction percent']
+            device.capex *= reduction_perc / 100.0
 
 def add_h2_storage_capex(system: System, prices: Dict[str, PriceEntry]):
     if 'h2 storage method' not in system.system_vars or \
