@@ -756,13 +756,17 @@ def add_fluidized_bed_flows(system: System):
     ironmaking_device_names = system.system_vars['ironmaking device names']
     excess_h2_ratio = system.system_vars['fluidized beds h2 excess ratio']
     reduction_degree = system.system_vars['fluidized beds reduction percent'] * 0.01
+    temp_range = system.system_vars['fluidized beds temp range']
 
     assert len(ironmaking_device_names) > 0, 'Must have at least one iron making device'
     assert excess_h2_ratio >= 1.0
 
-    in_gas_temp = celsius_to_kelvin(680) # 953.15
-    reaction_temp = celsius_to_kelvin(650) # 923.15
-    minimum_off_gas_temp = celsius_to_kelvin(620) # 893.15
+    # The difference between the lower minimum off gas temp and the in gas temp 
+    # is more efficient has a major impact on the cost of the process. A tighter range
+    # means more H2 is required to maintain the tight energy balance.
+    reaction_temp = celsius_to_kelvin(650)
+    in_gas_temp = reaction_temp + temp_range * 0.5
+    minimum_off_gas_temp = reaction_temp - temp_range * 0.5
 
     ironmaking_device = system.devices[ironmaking_device_names[0]]
     ore = ironmaking_device.inputs['ore']
