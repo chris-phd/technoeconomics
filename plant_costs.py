@@ -86,8 +86,6 @@ def breakeven_co2e_price(system) -> float:
 
 def operating_cost_per_tonne(inputs: Dict[str, float], prices: Dict[str, PriceEntry], 
                              spot_electricity_hours: float = 8.0, print_debug_messages:bool=True) -> Dict[str, float]:
-    # TODO! Update the electrcity prices based on the location of the plant
-
     inputs_lower = {k.lower(): v for k, v in inputs.items()}
     if len(inputs_lower) != len(inputs):
         raise Exception("Key clash detected after converting keys to lower case.")

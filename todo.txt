@@ -1,7 +1,6 @@
 # TODO
 ## Major
 - (feature) Improve sensitivity analysis (use Dakota?)
-- (bug) Energy to create thermal plasma is very inaccurate when H2 begins to dissassociate (especially above 3000K)
 - (bug) Fix the enthalpy of reaction calculations, doing something wrong. (Tests failing)
 - (bug) verify that injected o2 and feo% in slag is being correctly accounted for in eaf and plasma systems.
 - (feature) remove the ore heater, or make it optional. Don't think we can assume this exists in a real system. 
