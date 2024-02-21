@@ -765,8 +765,8 @@ def add_fluidized_bed_flows(system: System):
     # is more efficient has a major impact on the cost of the process. A tighter range
     # means more H2 is required to maintain the tight energy balance.
     reaction_temp = celsius_to_kelvin(650)
-    in_gas_temp = reaction_temp + temp_range * 0.5
-    minimum_off_gas_temp = reaction_temp - temp_range * 0.5
+    in_gas_temp = reaction_temp + temp_range * 0.25
+    minimum_off_gas_temp = reaction_temp - temp_range * 0.75
 
     ironmaking_device = system.devices[ironmaking_device_names[0]]
     ore = ironmaking_device.inputs['ore']
@@ -780,7 +780,7 @@ def add_fluidized_bed_flows(system: System):
                                 copy.deepcopy(ore.species('SiO2')),
                                 copy.deepcopy(ore.species('Al2O3')),
                                 copy.deepcopy(ore.species('TiO2'))])
-    dri.temp_kelvin = in_gas_temp - 50 # Assumption, TODO understand what the basis of this assumption is.
+    dri.temp_kelvin = reaction_temp
     ironmaking_device.outputs['dri'].set(dri)
 
     # TODO: Reduce repeition with the same logic in the plasma smelter. 
@@ -885,7 +885,8 @@ def steelsurface_radiation_losses(A, Ts, Tr, capacity_tonnes=180, tap_to_tap_sec
 def add_eaf_flows_final(system: System):
     # TODO: May be underestimating he energy requirement for the EAF. 
     # According to Sujay Kumar Dutta, it should be around 825 kWh / tonne steel. 
-    # and Vogl2018 recommends 667 kWh / tonne steel. 704 kWh / tonne recommended by hornby2021. 
+    # and Vogl2018 recommends 667 kWh / tonne steel. 
+    # 0.56 * 704 kWh / tonne recommended by hornby2021. 
     # We are only getting 455 kWh / tonne steel. Seems to be due to us keeping the hbi hot
     steelmaking_device_name = system.system_vars['steelmaking device name']
     steelmaking_device = system.devices[steelmaking_device_name]
@@ -962,18 +963,17 @@ def add_eaf_flows_final(system: System):
     co2 = species.create_co2_species()
     co2.moles = num_co2_reactions
     off_gas = species.Mixture('carbon gas', [co, co2])
-    off_gas.temp_kelvin = reaction_temp - 200.0
+    off_gas.temp_kelvin = celsius_to_kelvin(800) # kirschen2005
     steelmaking_device.outputs['carbon gas'].set(off_gas)
 
     # losses due to infiltrated air
-    infiltrated_air_mass = 200.0 # from pfeifer 2022 (TODO read the original paper)
+    infiltrated_air_mass = 162.0 # pfeifer2002
     infiltrated_air = species.create_air_mixture(infiltrated_air_mass)
     infiltrated_air.name = 'infiltrated air'
     infiltrated_air.temp_kelvin = celsius_to_kelvin(25)
     steelmaking_device.inputs['infiltrated air'].set(infiltrated_air)
 
-    # Guess exit temp. Could try to make it the 4% of total energy suggested by Sujay Kumar Dutta, pg 425
-    infiltrated_air.temp_kelvin = reaction_temp - 200.0
+    infiltrated_air.temp_kelvin = celsius_to_kelvin(800) # kirschen2005
     steelmaking_device.outputs['infiltrated air'].set(infiltrated_air)
 
     # TODO: reduce repetition with the plasma steelmaking
@@ -993,7 +993,8 @@ def add_eaf_flows_final(system: System):
     # Increase the electrical energy to balance the thermal losses 
     steelmaking_device.inputs['base electricity'].energy += radiation_losses
 
-    # print(f"Total energy = {steelmaking_device.inputs['base electricity'].energy*2.77778e-7:.2e} kWh")
+    # print(f"System: {system.name}")
+    # print(f"  Specific electrical energy = {steelmaking_device.inputs['base electricity'].energy*2.77778e-7:.2e} kWh")
 
 
 def add_plasma_flows_final(system: System):
