@@ -5,12 +5,14 @@ all,plasma temp K,2750,number
 all,on premises h2 production,False,boolean
 all,capacity factor,0.9,number
 all,ore name,Fe content,string
-all,ore fe content weight perc,59.0,number
+all,ore fe content weight perc,67.66,number
 all,ore loi content weight perc,0.0,number
 all,use mgo slag weight perc,True,boolean
 all,electrolysis lhv efficiency percent,70,number
 all,slag mgo weight perc,7.0,number
+all,annual fixed opex USD,3.5e6,number
 plasma,plasma h2 excess ratio,1.0,number
+plasma,plasma reduction percent,99.0,number
 plasma bof,plasma h2 excess ratio,1.0,number
 hybrid 33,plasma h2 excess ratio,1.0,number
 hybrid 55,plasma h2 excess ratio,1.0,number

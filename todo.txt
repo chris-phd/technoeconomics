@@ -1,6 +1,8 @@
 # TODO
 ## Major
 - (feature) Improve sensitivity analysis (use Dakota?)
+- (bug) electrical energy required to create the plasma is still using the shomate equations.
+  Need to replace with cantera NASA polynomials
 - (bug) Fix the enthalpy of reaction calculations, doing something wrong. (Tests failing)
 - (bug) verify that injected o2 and feo% in slag is being correctly accounted for in eaf and plasma systems.
 - (feature) remove the ore heater, or make it optional. Don't think we can assume this exists in a real system. 
