@@ -9,7 +9,8 @@ from typing import Dict, List, Callable, Optional
 
 from create_plants import create_plasma_system, create_dri_eaf_system, create_hybrid_system
 from plot_helpers import histogram_labels_from_datasets, add_stacked_histogram_data_to_axis, add_titles_to_axis
-import species as species 
+import species
+import thermo
 from system import System, EnergyFlow
 from utils import celsius_to_kelvin
 
@@ -1074,29 +1075,32 @@ def add_plasma_flows_final(system: System):
     h2_total = species.create_h2_species()
     h2_total.moles = h2_consumed_moles + h2_excess.moles
 
-    # convert to a mixture
+    # calculate argon in the plasma
     hydrogen_frac_in_plasma = 1.0 - 0.01 * argon_perc_in_plasma
-    argon = species.create_ar_species()
-    argon.moles = h2_total.moles / hydrogen_frac_in_plasma - h2_total.moles
-    h2_rich_gas = species.Mixture('h2 rich gas', [h2_total, argon])
+    argon_in_plasma = species.create_ar_species()
+    argon_in_plasma.moles = h2_total.moles / hydrogen_frac_in_plasma - h2_total.moles
+    
+    # create the plasma. 
+    # MAJOR HACK! Since Cantera solutions don't like being copied. Manually create multiple copies
+    h2_plasma_before_torch = species.create_h2_ar_plasma_species(0.01 * argon_perc_in_plasma)
+    h2_plasma_before_torch.mass = h2_total.mass + argon_in_plasma.mass
+    h2_plasma_after_torch = species.create_h2_ar_plasma_species(0.01 * argon_perc_in_plasma)
+    h2_plasma_after_torch.mass = h2_total.mass + argon_in_plasma.mass
 
     # the amount of h2 in the in gas
     # input H2 temp to the plasma torch may be adjusted later after we know 
     # the exact exit temp from the heat exchanger
-    h2_rich_gas.temp_kelvin = system.system_vars['max heat exchanger temp K'] - 300.0
+    h2_plasma_before_torch.temp_kelvin = system.system_vars['max heat exchanger temp K'] - 300.0
 
     # Flows for the plasma torch device.
-    plasma_torch.first_input_containing_name('h2 rich gas').set(h2_rich_gas)
-    h2_rich_gas.temp_kelvin = plasma_temp
-    plasma_torch.first_output_containing_name('h2 rich gas').set(h2_rich_gas)
+    plasma_torch.first_input_containing_name('h2 rich gas')._species = [h2_plasma_before_torch] # HACK, cantera Solutions don't like being copied
+    h2_plasma_after_torch.temp_kelvin = plasma_temp
+    plasma_torch.first_output_containing_name('h2 rich gas')._species = [h2_plasma_after_torch] # HACK, cantera Solutions don't like being copied
     
     plasma_torch_eff = system.system_vars['plasma torch electro-thermal eff pecent'] * 0.01
     electrical_energy = plasma_torch.energy_balance() / plasma_torch_eff
     plasma_torch.inputs['base electricity'].energy = electrical_energy
     plasma_torch.outputs['losses'].energy = electrical_energy * (1 - plasma_torch_eff)
-
-    # Flows for the plasma smelter
-    plasma_smelter.first_input_containing_name('h2 rich gas').set(h2_rich_gas)
 
     # Add the carbon required for the alloy
     c_alloy = copy.deepcopy(plasma_smelter.outputs['steel'].species('C'))
@@ -1176,7 +1180,7 @@ def add_plasma_flows_final(system: System):
     co.moles = 2 * num_co_reactions + c_reduction.moles
     co2 = species.create_co2_species()
     co2.moles = num_co2_reactions
-    off_gas = species.Mixture('off gas', [co, co2, h2o, h2_excess, argon])
+    off_gas = species.Mixture('off gas', [co, co2, h2o, h2_excess, argon_in_plasma])
 
     # Solve for the off gas temperature that balances the energy balance.
     # Solve iteratively. Use the maximum safe exit temp as the initial guess.
@@ -1232,14 +1236,32 @@ def find_consumed_h2_moles(system: System, hydrogen_consuming_device_names: List
         if isinstance(device.first_input_containing_name('h2 rich gas'), species.Species):
             input_h2_moles = device.first_input_containing_name('h2 rich gas').moles
         elif isinstance(device.first_input_containing_name('h2 rich gas'), species.Mixture):
-            input_h2_moles = device.first_input_containing_name('h2 rich gas').species('H2').moles
+            try:
+                input_h2_moles = device.first_input_containing_name('h2 rich gas').species('H2').moles
+            except:
+                # HACK. Super difficult to get moles from CanteraSolution. 
+                # Super fragile. Cannot deal with ionic plasma species
+                h2_plasma = device.first_input_containing_name('h2 rich gas').species('H2-Ar Plasma')
+                ct_solution_plasma = h2_plasma._thermo_data.heat_capacities[0]._quantity
+                h2_mass = ct_solution_plasma.Y[0] * h2_plasma.mass
+                h_mass = ct_solution_plasma.Y[3] * h2_plasma.mass
+                input_h2_moles = (h2_mass + h_mass) / (0.00201588)
         else:
             raise TypeError("Error: Unknown type for h2 rich gas input")
         
         if isinstance(device.first_output_containing_name('h2 rich gas'), species.Species):
             output_h2_moles = device.first_output_containing_name('h2 rich gas').moles
         elif isinstance(device.first_output_containing_name('h2 rich gas'), species.Mixture):
-            output_h2_moles = device.first_output_containing_name('h2 rich gas').species('H2').moles
+            try:
+                output_h2_moles = device.first_output_containing_name('h2 rich gas').species('H2').moles
+            except:
+                # HACK. Super difficult to get moles from CanteraSolution. 
+                # Super fragile. Cannot deal with ionic plasma species
+                h2_plasma = device.first_output_containing_name('h2 rich gas').species('H2-Ar Plasma')
+                ct_solution_plasma = h2_plasma._thermo_data.heat_capacities[0]._quantity
+                h2_mass = ct_solution_plasma.Y[0] * h2_plasma.mass
+                h_mass = ct_solution_plasma.Y[3] * h2_plasma.mass
+                output_h2_moles = (h2_mass + h_mass) / (0.00201588)
         else:
             raise TypeError("Error: Unknown type for h2 rich gas input")
         
@@ -1389,9 +1411,7 @@ def balance_join3_flows(system: System):
 
     h2_loop_2 = species.create_h2_species()
     h2_loop_2.temp_kelvin = join_3.first_input_containing_name('h2 rich gas').temp_kelvin
-    steelmaking_device = system.devices[steelmaking_device_name]
-    h2_loop_2.moles = steelmaking_device.first_input_containing_name('h2 rich gas').species('H2').moles \
-                     - steelmaking_device.first_output_containing_name('h2 rich gas').species('H2').moles
+    h2_loop_2.moles = find_consumed_h2_moles(system, [steelmaking_device_name])
 
     h2_loop_1 = species.create_h2_species()
     h2_loop_1.temp_kelvin = join_3.first_input_containing_name('h2 rich gas').temp_kelvin
