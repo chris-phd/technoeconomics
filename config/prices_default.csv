@@ -1,13 +1,13 @@
 device or commodity name,price in 2023 usd,cost unit enum,sensitivity +/- %,Description
 Scrap,250.00,PerTonne,5,
-Ore,100.00,PerTonne,5,
+Ore,85.70,PerTonne,5,
 CaO,0.08,PerKilogram,5,
 MgO,1.02,PerKilogram,5,
 H2,3.00,PerKilogram,5,
 O2,0.10,PerKilogram,5,
 H2O,0.00,PerKilogram,5,
 C,0.13,PerKilogram,5,Carbon. Injected for slag foaming and alloy.
-Labour,60.00,PerTonneOfProduct,5,
+Labour,40.00,PerTonneOfProduct,5,
 Base Electricity,93.1,PerMegaWattHour,5,Electricity spot price for all other times. For a constant electricity price remove the Spot Electricity entries and set one entry of Base Electricity
 Electrolyser,1075.42,PerKiloWattOfCapacity,5,
 Salt Caverns,107.56,PerKilogramOfCapacity,5,
