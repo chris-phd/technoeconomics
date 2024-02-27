@@ -86,7 +86,7 @@ def main():
     lcop_labels = histogram_labels_from_datasets(lcop_itemised_for_systems)
     _, lcop_ax = plt.subplots()
     add_stacked_histogram_data_to_axis(lcop_ax, system_names, lcop_labels, lcop_itemised_for_systems)
-    add_titles_to_axis(lcop_ax, 'Base Case Levelised Cost of Liquid Steel', '$USD / tonne liquid steel')
+    add_titles_to_axis(lcop_ax, 'Levelised Cost of Liquid Steel', 'LCOS [USD/tls]')
 
     plt.show()
 
