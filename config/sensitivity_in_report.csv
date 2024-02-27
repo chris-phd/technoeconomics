@@ -2,7 +2,7 @@ system name,parameter name,parameter type,X max, X min,num increments,elasticity
 All,H2,Price,5.0,1.0,11,3
 All,Base Electricity,Price,139.65,46.55,11,3
 All,plasma temp K,SystemVar,3000,2500,11,3
-All,plasma energy to melt eff percent,SystemVar,100.0,30.0,21,5
+All,plasma reactor thermal eff percet,SystemVar,100.0,30.0,21,5
 All,plasma torch electro-thermal eff pecent,SystemVar,100.0,30.0,21,5
 All,b2 basicity,SystemVar,3.5,0.5,11,5
 All,slag mgo weight perc,SystemVar,14,0.0,11,3

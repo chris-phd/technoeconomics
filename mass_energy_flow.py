@@ -1097,10 +1097,16 @@ def add_plasma_flows_final(system: System):
     h2_plasma_after_torch.temp_kelvin = plasma_temp
     plasma_torch.first_output_containing_name('h2 rich gas')._species = [h2_plasma_after_torch] # HACK, cantera Solutions don't like being copied
     
+    # Add the efficiency due to ohmic losses in the plasma torch
     plasma_torch_eff = system.system_vars['plasma torch electro-thermal eff pecent'] * 0.01
     electrical_energy = plasma_torch.energy_balance() / plasma_torch_eff
     plasma_torch.inputs['base electricity'].energy = electrical_energy
     plasma_torch.outputs['losses'].energy = electrical_energy * (1 - plasma_torch_eff)
+
+    # Add the efficiency due to heat loss to reactor walls (mainly by radiation)
+    reactor_thermal_eff = system.system_vars['plasma reactor thermal eff percet'] * 0.01
+    reactor_thermal_eff_losses = electrical_energy * plasma_torch_eff * (1 - reactor_thermal_eff)
+    plasma_smelter.outputs['losses'].energy = reactor_thermal_eff_losses
 
     # Add the carbon required for the alloy
     c_alloy = copy.deepcopy(plasma_smelter.outputs['steel'].species('C'))
@@ -1174,7 +1180,7 @@ def add_plasma_flows_final(system: System):
     bath_radiation_losses = steelsurface_radiation_losses(np.pi*(plasma_surface_radius)**2, 
                                                      steel_bath_temp_K, celsius_to_kelvin(25),
                                                      capacity_tonnes, bath_residence_secs)
-    plasma_smelter.outputs['losses'].energy = bath_radiation_losses
+    plasma_smelter.outputs['losses'].energy += bath_radiation_losses
     
     co = species.create_co_species()
     co.moles = 2 * num_co_reactions + c_reduction.moles
@@ -1188,16 +1194,12 @@ def add_plasma_flows_final(system: System):
     off_gas.temp_kelvin = system.system_vars['max heat exchanger temp K']
     plasma_smelter.first_output_containing_name('h2 rich gas').set(off_gas)
     off_gas = plasma_smelter.first_output_containing_name('h2 rich gas')
-
-    plasma_to_melt_efficiency = system.system_vars['plasma energy to melt eff percent'] * 0.01
-    plasma_to_melt_losses = (1 - plasma_to_melt_efficiency) * off_gas.delta_h(initial_working_gas_temp)
-    # plasma_to_melt_losses = 0.0
-
+    
     # TODO reduce repetition with the Mixture::merge function and with the heat exchanger calculation
     i = 0
     max_iter = 100
     while True:
-        reactor_energy_balance = plasma_smelter.energy_balance() + plasma_to_melt_losses
+        reactor_energy_balance = plasma_smelter.energy_balance()
         if abs(reactor_energy_balance) < 2e-5:
             break # could not seem to converge smaller than this.
 
@@ -1209,14 +1211,12 @@ def add_plasma_flows_final(system: System):
             raise IncreaseExcessHydrogenPlasma("Error: Plasma smelter off gas temp is too low.")
 
         off_gas.temp_kelvin += dT
-        plasma_to_melt_losses = (1 - plasma_to_melt_efficiency) * off_gas.delta_h(initial_working_gas_temp)
 
         # Update the losses
         i += 1
         if i > max_iter:
             raise Exception(f'Plasma smelter off gas exit temp calc did not converge after {max_iter} iterations')
 
-    plasma_smelter.outputs['losses'].energy += plasma_to_melt_losses
 
     if off_gas.temp_kelvin > system.system_vars['max heat exchanger temp K']:
         # A real system may be able to use the excess heat from the plasma off gas to heat scrap or 
