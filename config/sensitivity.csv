@@ -1,2 +1,2 @@
 system name,parameter name,parameter type,X max, X min,num increments,elasticity perc
-
+All,max heat exchanger temp K,SystemVar,2000,800,11,3
