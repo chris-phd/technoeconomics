@@ -122,12 +122,15 @@ class Species:
 
         return equivalent
 
-    def set(self, other_species):
+    def set(self, other_species, deepcopy_thermo_data=False):
         self._name = other_species._name
         self._moles = other_species._moles
         self._temp_kelvin = other_species._temp_kelvin
         self._mm = other_species._mm
-        self._thermo_data = copy.deepcopy(other_species._thermo_data)
+        if deepcopy_thermo_data:
+            self._thermo_data = copy.deepcopy(other_species._thermo_data)
+        else:
+            self._thermo_data = other_species._thermo_data
         self._delta_h_formation = other_species._delta_h_formation
 
 

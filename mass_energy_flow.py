@@ -676,9 +676,9 @@ def add_ore(system: System):
     cao_gangue.mass = slag_mixture.species('CaO').mass - flux_mixtures.species('CaO').mass
     mgo_gangue = species.create_mgo_species()
     mgo_gangue.mass = slag_mixture.species('MgO').mass - flux_mixtures.species('MgO').mass
-    sio2_gangue = copy.deepcopy(slag_mixture.species('SiO2'))
-    al2o3_gangue = copy.deepcopy(slag_mixture.species('Al2O3'))
-    tio2_gangue = copy.deepcopy(slag_mixture.species('TiO2'))
+    sio2_gangue = copy.copy(slag_mixture.species('SiO2'))
+    al2o3_gangue = copy.copy(slag_mixture.species('Al2O3'))
+    tio2_gangue = copy.copy(slag_mixture.species('TiO2'))
 
     try:
         # if some silicon ended up in the hot metal (BOF systems)
@@ -793,11 +793,11 @@ def add_fluidized_bed_flows(system: System):
                                                                                hematite_composition)
 
     dri = species.Mixture('dri fines', [fe_dri, feo_dri, fe3o4_dri, fe2o3_dri,
-                                        copy.deepcopy(ore.species('CaO')),
-                                        copy.deepcopy(ore.species('MgO')),
-                                        copy.deepcopy(ore.species('SiO2')),
-                                        copy.deepcopy(ore.species('Al2O3')),
-                                        copy.deepcopy(ore.species('TiO2'))])
+                                        copy.copy(ore.species('CaO')),
+                                        copy.copy(ore.species('MgO')),
+                                        copy.copy(ore.species('SiO2')),
+                                        copy.copy(ore.species('Al2O3')),
+                                        copy.copy(ore.species('TiO2'))])
     dri.temp_kelvin = reaction_temp
     ironmaking_device.outputs['dri'].set(dri)
 
@@ -826,7 +826,7 @@ def add_fluidized_bed_flows(system: System):
     except KeyError:
         pass  # no LOI species in the ore
 
-    h2_excess = copy.deepcopy(h2_consumed)
+    h2_excess = copy.copy(h2_consumed)
     h2_excess.moles = (excess_h2_ratio - 1) * h2_consumed.moles
 
     h2_total = species.create_h2_species()
@@ -880,7 +880,7 @@ def add_briquetting_flows(system: System):
     if 'briquetting' not in system.devices:
         return
     final_ironmaking_device_name = system.system_vars['ironmaking device names'][-1]
-    hbi = copy.deepcopy(system.devices[final_ironmaking_device_name].outputs['dri'])
+    hbi = copy.copy(system.devices[final_ironmaking_device_name].outputs['dri'])
     hbi.name = 'hbi'
     system.devices['briquetting'].outputs['hbi'].set(hbi)
 
@@ -918,7 +918,7 @@ def add_eaf_flows_final(system: System):
         raise Exception("add_eaf_mass_flow_final: HBI contains Fe3O4 or Fe2O3, which EAF cannot reduce.")
 
     # Add the carbon required for the alloy
-    c_alloy = copy.deepcopy(steelmaking_device.outputs['steel'].species('C'))
+    c_alloy = copy.copy(steelmaking_device.outputs['steel'].species('C'))
 
     # Add carbon / oxygen needed for reduction / oxidation of FeO / Fe
     feo_slag = steelmaking_device.outputs['slag'].species('FeO')
@@ -1130,7 +1130,7 @@ def add_plasma_flows_final(system: System):
     plasma_smelter.outputs['losses'].energy = reactor_thermal_eff_losses
 
     # Add the carbon required for the alloy
-    c_alloy = copy.deepcopy(plasma_smelter.outputs['steel'].species('C'))
+    c_alloy = copy.copy(plasma_smelter.outputs['steel'].species('C'))
 
     # Add carbon / oxygen needed for reduction / oxidation of FeO / Fe
     feo_slag = plasma_smelter.outputs['slag'].species('FeO')
@@ -1493,8 +1493,7 @@ def add_heat_exchanger_flows_final(system: System, heat_exchanger_device_name: s
     # temp from electrolysis / storage and condenser
     initial_cold_gas_temp = heat_exchanger.inputs['h2 rich gas'].temp_kelvin
 
-    # We should be able to simplify this??
-    # Since the system has shared objects now, we can just get the gas flows from the heat exchanger
+    # deepcopy is necessary here. Why here and not for the other species?
     hot_gas_in = copy.deepcopy(heat_exchanger.inputs['recycled h2 rich gas'])
     cold_gas_in = copy.deepcopy(heat_exchanger.inputs['h2 rich gas'])
     initial_hot_gas_temp = hot_gas_in.temp_kelvin
@@ -1562,13 +1561,13 @@ def add_condenser_and_scrubber_flows_final(system: System, condenser_device_name
     condenser_temp = celsius_to_kelvin(70)
 
     system.devices[condenser_device_name].outputs['recycled h2 rich gas'].temp_kelvin = condenser_temp
-    h2o_out = copy.deepcopy(condenser_in_gas.species('H2O'))
+    h2o_out = copy.copy(condenser_in_gas.species('H2O'))
     h2o_out.temp_kelvin = condenser_temp
     condenser.outputs['H2O'].set(h2o_out)
 
     try:
-        co_out = copy.deepcopy(condenser_in_gas.species('CO'))
-        co2_out = copy.deepcopy(condenser_in_gas.species('CO2'))
+        co_out = copy.copy(condenser_in_gas.species('CO'))
+        co2_out = copy.copy(condenser_in_gas.species('CO2'))
         carbon_mixture = species.Mixture('carbon gas', [co_out, co2_out])
         carbon_mixture.temp_kelvin = condenser_temp
         condenser.outputs['carbon gas'].set(carbon_mixture)
