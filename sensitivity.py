@@ -4,7 +4,7 @@ import copy
 import csv
 from enum import Enum
 import numpy as np 
-from typing import Type, Dict, List, Optional, Callable
+from typing import Dict, List, Optional, Callable
 
 from mass_energy_flow import solve_mass_energy_flow
 from plant_costs import PriceEntry, add_steel_plant_lcop
@@ -130,14 +130,14 @@ def report_sensitvity_analysis_for_system(output_dir: str, system: System, sensi
                     i += 1
 
 
-def calculate_min_max_si(parameter_vals: np.ndarray, result_vals: np.ndarray) -> float:
+def calculate_min_max_si(parameter_vals: np.ndarray[float], result_vals: np.ndarray[float]) -> float:
     if len(parameter_vals) != 2 or len(result_vals) != 2:
         raise ValueError("MinMax sensitivity indicator requires two parameter values and two result values.")
 
     return (result_vals[1] - result_vals[0]) / result_vals[0]
 
 
-def calculate_elasticity_si(parameter_vals: np.ndarray, result_vals: np.ndarray) -> float:
+def calculate_elasticity_si(parameter_vals: np.ndarray[float], result_vals: np.ndarray[float]) -> float:
     if len(parameter_vals) != 2 or len(result_vals) != 2:
         raise ValueError("Elasticity sensitivity indicator requires two parameter values and two result values.")
 
@@ -147,7 +147,7 @@ def calculate_elasticity_si(parameter_vals: np.ndarray, result_vals: np.ndarray)
     return (result_vals[1] - result_vals[0]) / (parameter_vals[1] - parameter_vals[0]) * (X / Y)
 
 
-def calculate_spider_plot_si(parameter_vals: np.ndarray, result_vals: np.ndarray) -> np.ndarray:
+def calculate_spider_plot_si(parameter_vals: np.ndarray[float], result_vals: np.ndarray[float]) -> np.ndarray[float]:
     if len(parameter_vals) != len(result_vals):
         raise ValueError("SpiderPlot sensitivity indicator requires the same number of parameter values and result values.")
     return result_vals
@@ -204,7 +204,7 @@ class SensitivityCase:
     def elasticity_perc_change(self, value: float):
         self._elasticity_perc_change = value
 
-    def create_sensitivity_indicators(self, system: System, prices: Dict[str, float]) -> List[SensitivityIndicator]:
+    def create_sensitivity_indicators(self, system: System, prices: Dict[str, PriceEntry]) -> List[SensitivityIndicator]:
         if system.name != self.system_name and self.system_name.upper() != "ALL":
             return []
 
@@ -261,7 +261,7 @@ class SensitivityCase:
 
 
 class SensitivityAnalysisRunner:
-    def __init__(self, sensitivity_cases: List[Type[SensitivityCase]]):
+    def __init__(self, sensitivity_cases: List[SensitivityCase]):
         self._cases = sensitivity_cases
         self._systems = None
 
@@ -278,7 +278,7 @@ class SensitivityAnalysisRunner:
         self._systems = value
     
     def run(self, prices: Dict[str, PriceEntry]):
-        sensitivity_indicators_for_each_system: List[SensitivityIndicator] = []
+        sensitivity_indicators_for_each_system: List[List[SensitivityIndicator]] = []
 
         # This is going to be so slow.... so many nested loops
         for system in self.systems:
@@ -313,7 +313,7 @@ class SensitivityAnalysisRunner:
         return sensitivity_indicators_for_each_system
 
 
-def sensitivity_analysis_runner_from_csv(filename: str) -> Optional[Type[SensitivityAnalysisRunner]]:
+def sensitivity_analysis_runner_from_csv(filename: str) -> Optional[SensitivityAnalysisRunner]:
     sensitivity_cases = []
     with open(filename, 'r') as file:
         try:

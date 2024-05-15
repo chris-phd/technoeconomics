@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
 import graphviz
-from typing import Optional, Union, Dict, Callable, Any
+from typing import Optional, Union, Dict, Callable, Any, List
 
 from species import Species, Mixture
 from utils import celsius_to_kelvin
+
 
 class EnergyFlow:
     """
@@ -123,7 +124,7 @@ class Device:
         if len(flow_names) == 0:
             raise ValueError(f"No output flows containing {name} found")
         elif len(flow_names) > 1:
-            raise ValueError(f"Multiple output flows containing {name} found") # tmp to find where this is happening
+            raise ValueError(f"Multiple output flows containing {name} found")
         return self._outputs[flow_names[0]]
 
     def inputs_containing_name(self, name: str):
@@ -219,8 +220,7 @@ class System:
     def __repr__(self):
         s = f"System({self.name}"
         for device in self._devices.values():
-            if device.name.endswith(self._input_node_suffix) or \
-                device.name.endswith(self._output_node_suffix):
+            if device.name.endswith(self._input_node_suffix) or device.name.endswith(self._output_node_suffix):
                 continue
             s += f"\n  {device} )"
         return s
@@ -290,7 +290,8 @@ class System:
         self._graph_dot.remove_node(device_name + self._input_node_suffix)
         self._graph_dot.remove_node(device_name + self._output_node_suffix)
 
-    def add_flow(self, from_device_name: Optional[str], to_device_name: Optional[str], flow: Union[Species, Mixture, EnergyFlow]):
+    def add_flow(self, from_device_name: Optional[str], to_device_name: Optional[str],
+                 flow: Union[Species, Mixture, EnergyFlow]):
         if from_device_name is None and to_device_name is None:
             raise ValueError("Cannot add flow without a source or destination")
 
@@ -330,10 +331,10 @@ class System:
             self._devices[to_device_name].add_input(flow)
             self._devices[from_device_name].add_output(flow)
         
-    def add_input(self, device: Device, flow: Union[Species, Mixture, EnergyFlow]):
+    def add_input(self, device: Optional[Device], flow: Union[Species, Mixture, EnergyFlow]):
         self.add_flow(None, device, flow)
 
-    def add_output(self, device: Device, flow: Union[Species, Mixture, EnergyFlow]):
+    def add_output(self, device: Optional[Device], flow: Union[Species, Mixture, EnergyFlow]):
         self.add_flow(device, None, flow)
 
     def get_flow(self, from_device_name: str, to_device_name: str, flow_name: str):
@@ -368,11 +369,17 @@ class System:
 
         return device_names
     
-    def system_inputs(self, ignore_flows_named=[], separate_mixtures_named=[], mass_flow_only=False) -> Dict[str, float]:
+    def system_inputs(self, ignore_flows_named: Optional[List[str]] = None,
+                      separate_mixtures_named: Optional[List[str]] = None,
+                      mass_flow_only=False) -> Dict[str, float]:
         """
         Returns the mass of each input (kg) or energy (J) rather than the 
         species or mixture or energyflow object.
         """
+        if not ignore_flows_named:
+            ignore_flows_named = []
+        if not separate_mixtures_named:
+            separate_mixtures_named = []
         inputs = {}
         for device_name in self._devices.keys():
             if self._input_node_suffix not in device_name:
@@ -404,7 +411,9 @@ class System:
 
         return inputs
                     
-    def system_outputs(self, ignore_flows_named=[], separate_mixtures_named=[], mass_flow_only=False) -> Dict[str, float]:
+    def system_outputs(self, ignore_flows_named: Optional[List[str]] = None,
+                      separate_mixtures_named: Optional[List[str]] = None,
+                      mass_flow_only=False) -> Dict[str, float]:
         """
         Returns the mass of each output (kg) or energy (J) rather than the 
         species or mixture or energyflow object.
@@ -440,13 +449,13 @@ class System:
 
         return outputs
     
-    def capex(self, report_capex_breakdown: bool=False) -> float:
+    def capex(self, report_capex_breakdown: bool = False) -> float:
         breakdown = {}
 
         total = 0.0
         for device in self._devices.values():
             if device.capex is None:
-                continue # raise an exception / warning?
+                continue  # raise an exception / warning?
             total += device.capex
             breakdown[device.name] = device.capex
 
@@ -457,19 +466,17 @@ class System:
             
         return total
     
-    def validate_energy_balance(self, tol:float=1e-7):        
+    def validate_energy_balance(self, tol: float = 1e-7):
         for device in self._devices.values():
-            if device.name.endswith(self._input_node_suffix) or \
-                device.name.endswith(self._output_node_suffix):
+            if device.name.endswith(self._input_node_suffix) or device.name.endswith(self._output_node_suffix):
                 continue
 
             if abs(device.mass_balance()) > tol:
                 raise Exception(f"Mass balance not satisfied for '{device.name}' in '{self.name}'")
 
-    def validate_mass_balance(self, tol:float=1e-7):
+    def validate_mass_balance(self, tol: float = 1e-7):
         for device in self._devices.values():
-            if device.name.endswith(self._input_node_suffix) or \
-                device.name.endswith(self._output_node_suffix):
+            if device.name.endswith(self._input_node_suffix) or device.name.endswith(self._output_node_suffix):
                 continue
 
             if abs(device.energy_balance()) > tol:
