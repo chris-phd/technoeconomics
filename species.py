@@ -695,12 +695,12 @@ def create_h_species():
                       218e3)
     return species
 
+nasa_species = {s.name: s for s in ct.Species.list_from_file('nasa_gas.yaml')}
 def create_h2_ar_plasma_species(argon_molar_frac_in_h2_plasma:float = 0.0):
     if not 0.0 <= argon_molar_frac_in_h2_plasma <= 1.0:
         raise ValueError(f'Argon molar fraction must be between 0 and 1, not {argon_molar_frac_in_h2_plasma}')
     h2 = create_h2_species()
     ar = create_ar_species()
-    nasa_species = {s.name: s for s in ct.Species.list_from_file('nasa_gas.yaml')}
 
     h2_plasma = ct.Solution(thermo='ideal-gas', species=[nasa_species['H2'],
                                                          nasa_species['H2+'],
