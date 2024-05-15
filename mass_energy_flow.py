@@ -119,7 +119,7 @@ def main():
 # Mass and Energy Flows - System Level
 def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable, print_debug_messages: bool = True):
     system_solved = copy.deepcopy(system)
-    system_vars_solved = copy.deepcopy(system.system_vars)
+    system_vars_solved = copy.copy(system.system_vars)  # shallow copy is okay since only floats / ints change
 
     max_iter = 1000
     iteration = 0
@@ -132,7 +132,7 @@ def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable, print
 
         if not first:
             system_solved = copy.deepcopy(system)
-            system_solved.system_vars = copy.deepcopy(system_vars_solved)
+            system_solved.system_vars = copy.copy(system_vars_solved)  # shallow copy is okay since only floats / ints change
         first = False
 
         try:
@@ -170,7 +170,7 @@ def solve_mass_energy_flow(system: System, mass_and_energy_func: Callable, print
     # copy the result to the master copy of the system
     # TODO: THIS IS SERIOUSLY INEFFICIENT should just be able to copy over the result,
     # but quick hack to avoid a mistake, just resolve
-    system.system_vars = copy.deepcopy(system_solved.system_vars)
+    system.system_vars = copy.copy(system_solved.system_vars)  # shallow copy is okay since only floats / ints change
     mass_and_energy_func(system, print_debug_messages)
 
     tolerance = 1e-4
@@ -322,7 +322,7 @@ def fe_content_to_hematite(fe_and_loi_weight_perc: Dict[str, float], template_or
     gangue_in_ore = 100.0 - fe_and_loi_weight_perc['Fe'] / iron_to_hematite_ratio - fe_and_loi_weight_perc['LOI']
     gangue_in_template = sum(template_ore_composition.values()) - template_ore_composition['Fe'] \
         - template_ore_composition.get('LOI', 0.0) - template_ore_composition.get('gangue', 0.0)
-    ore_composition = copy.deepcopy(fe_and_loi_weight_perc)
+    ore_composition = copy.copy(fe_and_loi_weight_perc)
     for k, v in template_ore_composition.items():
         if k not in ore_composition:
             ore_composition[k] = v * gangue_in_ore / gangue_in_template
@@ -512,7 +512,7 @@ def add_ore_composition(system: System, print_debug_messages: bool = True):
 
 
 def remove_loi_from_ore_composition(composition: Dict[str, float]) -> Dict[str, float]:
-    composition_tmp = copy.deepcopy(composition)
+    composition_tmp = copy.copy(composition)
     if 'LOI' not in composition_tmp:
         return composition_tmp
     composition_tmp.pop('Fe')
