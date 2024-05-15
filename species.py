@@ -194,7 +194,7 @@ class Mixture:
         for species in self._species:
             if species.name == species_name:
                 return species
-        raise Exception(f"Mixture::species: species {species_name} not found in Mixture")
+        raise KeyError(f"Mixture::species: species {species_name} not found in Mixture")
 
     def remove_species(self, species_name):
         for species in self._species:

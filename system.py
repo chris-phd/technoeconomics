@@ -418,6 +418,10 @@ class System:
         Returns the mass of each output (kg) or energy (J) rather than the 
         species or mixture or energyflow object.
         """
+        if not ignore_flows_named:
+            ignore_flows_named = []
+        if not separate_mixtures_named:
+            separate_mixtures_named = []
         outputs = {}
         for device_name in self._devices.keys():
             if self._output_node_suffix not in device_name:
