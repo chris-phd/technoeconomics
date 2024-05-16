@@ -8,6 +8,7 @@ from species import create_dummy_species, create_dummy_mixture
 from system import System, Device, EnergyFlow
 from utils import celsius_to_kelvin
 
+
 def main():
     plasma_system = create_plasma_system("Plasma new")
     plasma_system_2 = create_plasma_system("plasma no h2 production", on_premises_h2_production=False)
@@ -27,11 +28,11 @@ def main():
 
 
 # System Creators
-def create_plasma_system(system_name: str ='plasma steelmaking',
+def create_plasma_system(system_name: str = 'plasma steelmaking',
                          on_premises_h2_production: bool = True,
                          h2_storage_method: Optional[str] = 'salt caverns',
-                         annual_capacity_tls: float=1.5e6, 
-                         plant_lifetime_years: float=20.0,
+                         annual_capacity_tls: float = 1.5e6,
+                         plant_lifetime_years: float = 20.0,
                          bof_steelmaking: bool = False) -> System:
     plasma_system = System(system_name, annual_capacity_tls, plant_lifetime_years)
 
@@ -69,13 +70,13 @@ def create_plasma_system(system_name: str ='plasma steelmaking',
     plasma_system.system_vars['plasma reduction percent'] = 95.0
     plasma_system.system_vars['plasma h2 excess ratio'] = 1.5
     plasma_system.system_vars['o2 injection kg'] = 0.0
-    plasma_system.system_vars['plasma torch electro-thermal eff pecent'] = 80.0 # MacRae1992
-    plasma_system.system_vars['plasma reactor thermal eff percent'] = 65.0 # badr2007, fig 21, 
+    plasma_system.system_vars['plasma torch electro-thermal eff percent'] = 80.0  # MacRae1992
+    plasma_system.system_vars['plasma reactor thermal eff percent'] = 65.0  # badr2007, fig 21,
     plasma_system.system_vars['steel exit temp K'] = celsius_to_kelvin(1600)
     plasma_system.system_vars['steelmaking bath temp K'] = plasma_system.system_vars['steel exit temp K']
     plasma_system.system_vars['b2 basicity'] = 2.0
-    plasma_system.system_vars['b4 basicity'] = 1.8 # 2.1
-    plasma_system.system_vars['slag mgo weight perc'] = 7.0 # Check what we expect in an EAF
+    plasma_system.system_vars['b4 basicity'] = 1.8  # 2.1
+    plasma_system.system_vars['slag mgo weight perc'] = 7.0  # Check what we expect in an EAF
     plasma_system.system_vars['ore heater device name'] = ore_heater.name
     plasma_system.system_vars['ore heater temp K'] = celsius_to_kelvin(1450)
     plasma_system.system_vars['ironmaking device names'] = [plasma_smelter.name]
@@ -166,8 +167,8 @@ def create_plasma_system(system_name: str ='plasma steelmaking',
 def create_dri_eaf_system(system_name='dri eaf steelmaking', 
                           on_premises_h2_production: bool = True,
                           h2_storage_method: Optional[str] = 'salt caverns',
-                          annual_capacity_tls: float=1.5e6, 
-                          plant_lifetime_years: float=20.0) -> System:
+                          annual_capacity_tls: float = 1.5e6,
+                          plant_lifetime_years: float = 20.0) -> System:
     dri_eaf_system = System(system_name, annual_capacity_tls, plant_lifetime_years)
 
     if on_premises_h2_production:
@@ -357,15 +358,15 @@ def create_hybrid_system(system_name='hybrid steelmaking',
     hybrid_system.system_vars['feo soluble in slag percent'] = 27.0
     hybrid_system.system_vars['plasma temp K'] = 2750 
     hybrid_system.system_vars['plasma reduction percent'] = 95.0
-    hybrid_system.system_vars['plasma torch electro-thermal eff pecent'] = 80.0 # MacRae1992
-    hybrid_system.system_vars['plasma reactor thermal eff percent'] = 65.0 # badr2007, fig 21, 
+    hybrid_system.system_vars['plasma torch electro-thermal eff percent'] = 80.0  # MacRae1992
+    hybrid_system.system_vars['plasma reactor thermal eff percent'] = 65.0  # badr2007, fig 21,
     hybrid_system.system_vars['steel exit temp K'] = celsius_to_kelvin(1600)
     hybrid_system.system_vars['o2 injection kg'] = 0.0
     hybrid_system.system_vars['plasma h2 excess ratio'] = 1.5
     hybrid_system.system_vars['steelmaking bath temp K'] = hybrid_system.system_vars['steel exit temp K']
     hybrid_system.system_vars['b2 basicity'] = 2.0
-    hybrid_system.system_vars['b4 basicity'] = 1.8 # 2.1
-    hybrid_system.system_vars['slag mgo weight perc'] = 7.0 # Check what we expect in an EAF
+    hybrid_system.system_vars['b4 basicity'] = 1.8  # 2.1
+    hybrid_system.system_vars['slag mgo weight perc'] = 7.0  # Check what we expect in an EAF
     hybrid_system.system_vars['ore heater device name'] = ore_heater.name
     hybrid_system.system_vars['ore heater temp K'] = celsius_to_kelvin(500)
     hybrid_system.system_vars['ironmaking device names'] = ironmaking_device_names
@@ -492,15 +493,15 @@ def add_bof_system_vars(system_vars: Dict[str, Any], ironmaking_device_name: str
     system_vars['feo soluble in slag percent'] = 1.0
     system_vars['b2 basicity'] = 1.0
     system_vars['b4 basicity'] = 1.1
-    system_vars['slag mgo weight perc'] = 7.0 # Check what we expect in a melter / blast furnace
+    system_vars['slag mgo weight perc'] = 7.0  # Check what we expect in a melter / blast furnace
     system_vars['steelmaking device name'] = bof_name
     system_vars['ironmaking device name'] = ironmaking_device_name
     system_vars['bof b2 basicity'] = 2.5
     system_vars['bof b4 basicity'] = 2.5
     system_vars['bof slag mgo weight perc'] = 7.0
-    system_vars['bof feo in slag perc'] = 12.5 # turkdogan1996 8.2.1a
-    system_vars['bof hot metal Si perc'] = 0.4 # turkdogan1996 8.2
-    system_vars['bof hot metal C perc'] = 2.0 # perc C from the ironmaking step TODO could redue this to min for heat balance
+    system_vars['bof feo in slag perc'] = 12.5  # turkdogan1996 8.2.1a
+    system_vars['bof hot metal Si perc'] = 0.4  # turkdogan1996 8.2
+    system_vars['bof hot metal C perc'] = 2.0  # perc C from the ironmaking step TODO could reduce this to min for heat balance
 
 
 def add_bof_flows(system: System, plasma_smelter_name: str, bof_name: str):

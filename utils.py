@@ -6,10 +6,12 @@ def celsius_to_kelvin(temp):
         raise ValueError("Temperature in Kelvin cannot be less than 0")
     return kelvin
 
+
 def kelvin_to_celsius(temp):
     if temp < 0:
         raise ValueError("Temperature in Kelvin cannot be less than 0")
     return temp - 273.15
+
 
 def differentiate_second_order_central(f, x, h):
     """

@@ -9,7 +9,7 @@ Hybrid 33,Fluidized Bed,Price,540,340,11,3
 All,plasma temp K,SystemVar,3000,2500,11,3
 All,steel exit temp K,SystemVar,2000,1200,11,3
 All,feo soluble in slag percent,SystemVar,40.0,1.0,21,0.5
-All,plasma torch electro-thermal eff pecent,SystemVar,100.0,30.0,21,5
+All,plasma torch electro-thermal eff percent,SystemVar,100.0,30.0,21,5
 All,plasma reactor thermal eff percent,SystemVar,100.0,30.0,21,5
 All,max heat exchanger eff perc,SystemVar,100.0,50.0,21,5
 All,max heat exchanger temp K,SystemVar,2000,800,11,3

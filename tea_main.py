@@ -12,9 +12,9 @@ import shutil
 from create_plants import create_dri_eaf_system, create_hybrid_system, create_plasma_system
 from mass_energy_flow import solve_mass_energy_flow, add_dri_eaf_mass_and_energy, add_hybrid_mass_and_energy,\
                              add_plasma_mass_and_energy, electricity_demand_per_major_device, report_slag_composition
-from plant_costs import load_prices_from_csv, add_steel_plant_lcop, breakeven_co2e_price, co2e_per_tonne_steel
+from plant_costs import load_prices_from_csv, add_steel_plant_lcop, break_even_co2e_price, co2e_per_tonne_steel
 from plot_helpers import histogram_labels_from_datasets, add_stacked_histogram_data_to_axis, add_titles_to_axis
-from sensitivity import sensitivity_analysis_runner_from_csv, report_sensitvity_analysis_for_system
+from sensitivity import sensitivity_analysis_runner_from_csv, report_sensitivity_analysis_for_system
 from system import System
 
 def main():
@@ -57,7 +57,7 @@ def main():
         print("Running sensitivity analysis...")
         sensitivity_indicators = sensitivity_runner.run(prices)
         for s, si in zip(sensitivity_runner.systems, sensitivity_indicators):
-            report_sensitvity_analysis_for_system(output_dir, s, si)
+            report_sensitivity_analysis_for_system(output_dir, s, si)
         print(f"Done. Results saved to {output_dir}")
         
 
@@ -213,7 +213,7 @@ def generate_lcop_report(systems: List[System], output_dir: Optional[str]=None,
             for k, v in s.lcop_breakdown.items():
                 print(f"    {k} = {v:.2f}")
             print(f"    CO2e emissions [kg/tls] = {co2e_per_tonne_steel(s)}")
-            print(f"    CO2e BF-BOF breakeven price [USD/t CO2e] = {breakeven_co2e_price(s)}")
+            print(f"    CO2e BF-BOF breakeven price [USD/t CO2e] = {break_even_co2e_price(s)}")
     else:
         file_path = os.path.join(output_dir, "lcop.csv")
         with open(file_path, mode='w', newline='') as file:

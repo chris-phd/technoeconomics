@@ -1119,7 +1119,7 @@ def add_plasma_flows_final(system: System):
         h2_plasma_after_torch]  # HACK, cantera Solutions don't like being copied
 
     # Add the efficiency due to ohmic losses in the plasma torch
-    plasma_torch_eff = system.system_vars['plasma torch electro-thermal eff pecent'] * 0.01
+    plasma_torch_eff = system.system_vars['plasma torch electro-thermal eff percent'] * 0.01
     electrical_energy = plasma_torch.energy_balance() / plasma_torch_eff
     plasma_torch.inputs['base electricity'].energy = electrical_energy
     plasma_torch.outputs['losses'].energy = electrical_energy * (1 - plasma_torch_eff)

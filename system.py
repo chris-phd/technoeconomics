@@ -12,10 +12,11 @@ class EnergyFlow:
     A flow of energy, typically electricity.
     energy is stored in joules
     """
+
     def __init__(self, name: str, energy: float = 0.0):
         self._name = name
         self._energy = energy
-        
+
     def __repr__(self):
         return f"EnergyFlow({self._name}, {self._energy} J)"
 
@@ -74,19 +75,19 @@ class Device:
     @property
     def name(self):
         return self._name
-    
+
     @property
     def inputs(self):
         return self._inputs
-    
+
     @property
     def outputs(self):
         return self._outputs
-    
+
     @property
     def capex_label(self):
         return self._capex_label
-    
+
     @capex_label.setter
     def capex_label(self, value):
         self._capex_label = value
@@ -94,7 +95,7 @@ class Device:
     @property
     def capex(self):
         return self._capex
-    
+
     @capex.setter
     def capex(self, value):
         self._capex = value
@@ -107,7 +108,7 @@ class Device:
         if flow.name in self._inputs:
             raise ValueError(f"Input flow with name {flow.name} already exists")
         self._inputs[flow.name] = flow
-    
+
     def add_output(self, flow: Union[Species, Mixture, EnergyFlow]):
         if flow.name in self._outputs:
             raise ValueError(f"Output flow with name {flow.name} already exists")
@@ -118,7 +119,7 @@ class Device:
         Returns a list of the output flow names the given string.
         """
         return [key for key in self._outputs.keys() if name in key]
-    
+
     def first_output_containing_name(self, name: str):
         flow_names = self.outputs_containing_name(name)
         if len(flow_names) == 0:
@@ -148,7 +149,7 @@ class Device:
         for flow in self.outputs.values():
             if not (isinstance(flow, Species) or isinstance(flow, Mixture)):
                 continue
-            # negative becuase delta_h will calc energy required to cool
+            # negative because delta_h will calc energy required to cool
             # to the ref temp
             final_thermal_energy -= flow.delta_h(ref_temp)
 
@@ -157,7 +158,7 @@ class Device:
             if not (isinstance(flow, Species) or isinstance(flow, Mixture)):
                 continue
             initial_thermal_energy -= flow.delta_h(ref_temp)
-        
+
         return final_thermal_energy - initial_thermal_energy
 
     def energy_balance(self):
@@ -187,7 +188,7 @@ class Device:
                 continue
             mass_in += flow.mass
         return mass_out - mass_in
-    
+
     def electrical_energy_in(self):
         electricity_in = 0.0
         for flow in self._inputs.values():
@@ -195,13 +196,13 @@ class Device:
                 continue
             if 'electric' in flow.name:
                 electricity_in += flow.energy
-        return electricity_in    
+        return electricity_in
 
 
 class System:
     """
     A system is a collection of devices. It comprises everything 
-    within the system boundary of the technoeconomic analysis.
+    within the system boundary of the techno-economic analysis.
     """
     _input_node_suffix = " __dummyinput__"
     _output_node_suffix = " __dummyoutput__"
@@ -228,7 +229,7 @@ class System:
     @property
     def name(self):
         return self._name
-    
+
     @name.setter
     def name(self, value):
         self._name = value
@@ -236,11 +237,11 @@ class System:
     @property
     def devices(self):
         return self._devices
-    
+
     @property
     def system_vars(self):
         return self._system_vars
-    
+
     @system_vars.setter
     def system_vars(self, value):
         self._system_vars = value
@@ -248,7 +249,7 @@ class System:
     @property
     def annual_capacity(self):
         return self._annual_capacity
-    
+
     @property
     def lifetime_years(self):
         return self._lifetime_years
@@ -256,7 +257,7 @@ class System:
     @property
     def add_mass_energy_flow_func(self) -> Optional[Callable]:
         return self._add_mass_energy_flow_func
-    
+
     @add_mass_energy_flow_func.setter
     def add_mass_energy_flow_func(self, value: Optional[Callable]):
         self._add_mass_energy_flow_func = value
@@ -264,7 +265,7 @@ class System:
     @property
     def lcop_breakdown(self) -> Dict[str, float]:
         return self._lcop_breakdown
-    
+
     @lcop_breakdown.setter
     def lcop_breakdown(self, value: Dict[str, float]):
         self._lcop_breakdown = value
@@ -330,12 +331,12 @@ class System:
             self._flows[(from_device_name, to_device_name, flow.name)] = flow
             self._devices[to_device_name].add_input(flow)
             self._devices[from_device_name].add_output(flow)
-        
-    def add_input(self, device: Optional[Device], flow: Union[Species, Mixture, EnergyFlow]):
-        self.add_flow(None, device, flow)
 
-    def add_output(self, device: Optional[Device], flow: Union[Species, Mixture, EnergyFlow]):
-        self.add_flow(device, None, flow)
+    def add_input(self, device_name: str, flow: Union[Species, Mixture, EnergyFlow]):
+        self.add_flow(None, device_name, flow)
+
+    def add_output(self, device_name: str, flow: Union[Species, Mixture, EnergyFlow]):
+        self.add_flow(device_name, None, flow)
 
     def get_flow(self, from_device_name: str, to_device_name: str, flow_name: str):
         flow_key = (from_device_name, to_device_name, flow_name)
@@ -346,7 +347,7 @@ class System:
     def get_input(self, to_device_name: str, flow_name: str):
         from_device_name = to_device_name + self._input_node_suffix
         return self.get_flow(from_device_name, to_device_name, flow_name)
-    
+
     def get_output(self, from_device_name: str, flow_name: str):
         to_device_name = from_device_name + self._output_node_suffix
         return self.get_flow(from_device_name, to_device_name, flow_name)
@@ -368,7 +369,7 @@ class System:
             device_names.append(key)
 
         return device_names
-    
+
     def system_inputs(self, ignore_flows_named: Optional[List[str]] = None,
                       separate_mixtures_named: Optional[List[str]] = None,
                       mass_flow_only=False) -> Dict[str, float]:
@@ -400,7 +401,7 @@ class System:
                     if flow.name not in inputs:
                         inputs[flow.name] = 0.0
                     inputs[flow.name] += flow.mass
-                
+
                 if not mass_flow_only and isinstance(flow, EnergyFlow):
                     if flow.name in ignore_flows_named:
                         continue
@@ -410,10 +411,10 @@ class System:
                     inputs[flow.name] += flow.energy
 
         return inputs
-                    
+
     def system_outputs(self, ignore_flows_named: Optional[List[str]] = None,
-                      separate_mixtures_named: Optional[List[str]] = None,
-                      mass_flow_only=False) -> Dict[str, float]:
+                       separate_mixtures_named: Optional[List[str]] = None,
+                       mass_flow_only=False) -> Dict[str, float]:
         """
         Returns the mass of each output (kg) or energy (J) rather than the 
         species or mixture or energyflow object.
@@ -452,7 +453,7 @@ class System:
                     outputs[flow.name] += flow.energy
 
         return outputs
-    
+
     def capex(self, report_capex_breakdown: bool = False) -> float:
         breakdown = {}
 
@@ -466,10 +467,10 @@ class System:
         if report_capex_breakdown:
             print(f"Capex breakdown for {self.name}")
             for key, value in breakdown.items():
-                print(f"   {key:<20}: {value/total * 100:.1f} %")
-            
+                print(f"   {key:<20}: {value / total * 100:.1f} %")
+
         return total
-    
+
     def validate_energy_balance(self, tol: float = 1e-7):
         for device in self._devices.values():
             if device.name.endswith(self._input_node_suffix) or device.name.endswith(self._output_node_suffix):

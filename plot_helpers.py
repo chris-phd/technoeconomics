@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from typing import Dict, List
 
+
 def histogram_labels_from_datasets(dataset_dicts: List[Dict[str, float]]) -> List[str]:
     labels = []
     for dataset_dict in dataset_dicts:
@@ -24,6 +25,6 @@ def add_stacked_histogram_data_to_axis(ax: plt.Axes, histogram_column_names: Lis
 def add_titles_to_axis(ax: plt.Axes, title: str, y_label: str):
     ax.set_title(title)
     ax.set_ylabel(y_label)
-    ax.legend(bbox_to_anchor = (1.0, 1.0), loc='upper left')
+    ax.legend(bbox_to_anchor=(1.0, 1.0), loc='upper left')
     plt.subplots_adjust(right=0.8)
     ax.grid(axis='y', linestyle='--')

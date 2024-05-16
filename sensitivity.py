@@ -97,12 +97,14 @@ class SensitivityIndicator:
         self._error_msg = value
 
 
-def report_sensitvity_analysis_for_system(output_dir: str, system: System, sensitivity_indicators: List[SensitivityIndicator]):
+def report_sensitivity_analysis_for_system(output_dir: str, system: System,
+                                           sensitivity_indicators: List[SensitivityIndicator]):
     system_name_sanitised = system.name.replace(' ', '_')
     output_filename = output_dir + system_name_sanitised + ".csv"
     with open(output_filename, 'w') as file:
         file.write(system.name + "\n\n")
-        file.write("parameter_name,indicator_name,sensitivity index param 1,sensitivity index param 2,sensitivity index param 3\n")
+        file.write("parameter_name,indicator_name,sensitivity index param 1,sensitivity index param 2,\
+                    sensitivity index param 3\n")
 
         for si in sensitivity_indicators:
             if system.name != si.system_name: 
@@ -119,14 +121,17 @@ def report_sensitvity_analysis_for_system(output_dir: str, system: System, sensi
             elif isinstance(si_val, np.ndarray):
                 # Spider Plot
                 if len(si_val) != len(si.parameter_vals):
-                    raise Exception("For multi-param sensitivity indicators, expected the num of param_vals to be equal to the result_vals but failed")
+                    raise Exception("For multi-param sensitivity indicators, expected the num of param_vals to be \
+                                    equal to the result_vals but failed")
                 i = 0
                 for param, result in zip(si.parameter_vals, si_val):
                     try:
                         perc_change_from_base = (param - si.base_parameter_val) / si.base_parameter_val * 100
-                    except:
-                        perc_change_from_base = param # expect this path to run when the params are non numerics. E.g. bools or strings
-                    file.write(f"{si.parameter_name},{si.indicator_name}_{i},{param:.2f},{perc_change_from_base:.2f},{result:.2f}\n")
+                    except TypeError:
+                        # expect this path to run when the params are non numerics. E.g. bools or strings
+                        perc_change_from_base = param
+                    file.write(f"{si.parameter_name},{si.indicator_name}_{i},{param:.2f},{perc_change_from_base:.2f},\
+                                {result:.2f}\n")
                     i += 1
 
 
@@ -141,15 +146,16 @@ def calculate_elasticity_si(parameter_vals: np.ndarray[float], result_vals: np.n
     if len(parameter_vals) != 2 or len(result_vals) != 2:
         raise ValueError("Elasticity sensitivity indicator requires two parameter values and two result values.")
 
-    X = (parameter_vals[0] + parameter_vals[1]) * 0.5
-    Y = (result_vals[0] + result_vals[1]) * 0.5
+    x = (parameter_vals[0] + parameter_vals[1]) * 0.5
+    y = (result_vals[0] + result_vals[1]) * 0.5
 
-    return (result_vals[1] - result_vals[0]) / (parameter_vals[1] - parameter_vals[0]) * (X / Y)
+    return (result_vals[1] - result_vals[0]) / (parameter_vals[1] - parameter_vals[0]) * (x / y)
 
 
 def calculate_spider_plot_si(parameter_vals: np.ndarray[float], result_vals: np.ndarray[float]) -> np.ndarray[float]:
     if len(parameter_vals) != len(result_vals):
-        raise ValueError("SpiderPlot sensitivity indicator requires the same number of parameter values and result values.")
+        raise ValueError("SpiderPlot sensitivity indicator requires the same number of parameter values \
+                         and result values.")
     return result_vals
     
 
@@ -158,27 +164,27 @@ class SensitivityCase:
         self.system_name = system_name
         self.parameter_name = parameter_name
         self.parameter_type = parameter_type
-        self._X_max = 0.0
-        self._X_min = 0.0
+        self._x_max = 0.0
+        self._x_min = 0.0
         self._max_perc_change = 30.0
         self._num_perc_increments = 11
         self._elasticity_perc_change = 3.0
     
     @property
-    def X_max(self) -> float:
-        return self._X_max
+    def x_max(self) -> float:
+        return self._x_max
 
-    @X_max.setter
-    def X_max(self, value: float):
-        self._X_max = value
+    @x_max.setter
+    def x_max(self, value: float):
+        self._x_max = value
 
     @property
-    def X_min(self) -> float:
-        return self._X_min
+    def x_min(self) -> float:
+        return self._x_min
 
-    @X_min.setter
-    def X_min(self, value: float):
-        self._X_min = value
+    @x_min.setter
+    def x_min(self, value: float):
+        self._x_min = value
 
     @property
     def max_perc_change(self) -> float:
@@ -212,13 +218,15 @@ class SensitivityCase:
             if self.parameter_name not in system.system_vars:
                 return []
             base_case_val = system.system_vars[self.parameter_name]
-            boolean_min_max = SensitivityIndicator("BooleanMinMax", system.name, self.parameter_name, self.parameter_type)
+            boolean_min_max = SensitivityIndicator("BooleanMinMax", system.name, self.parameter_name,
+                                                   self.parameter_type)
             boolean_min_max.parameter_vals = np.array([False, True])
             boolean_min_max.calculate = calculate_min_max_si
             boolean_min_max.base_parameter_val = base_case_val
             boolean_min_max.base_result_val = system.lcop()
 
-            boolean_spider_plot = SensitivityIndicator("BooleanMinMax", system.name, self.parameter_name, self.parameter_type)
+            boolean_spider_plot = SensitivityIndicator("BooleanMinMax", system.name, self.parameter_name,
+                                                       self.parameter_type)
             boolean_spider_plot.parameter_vals = np.array([False, True])
             boolean_spider_plot.calculate = calculate_spider_plot_si
             boolean_spider_plot.base_parameter_val = base_case_val
@@ -239,20 +247,22 @@ class SensitivityCase:
             raise ValueError(f"The parameter type needs to be a numeric float or int, not {type(base_case_val)}")
 
         min_max = SensitivityIndicator("MinMax", system.name, self.parameter_name, self.parameter_type)
-        min_max.parameter_vals = np.array([self.X_min, self.X_max])
+        min_max.parameter_vals = np.array([self.x_min, self.x_max])
         min_max.calculate = calculate_min_max_si
         min_max.base_parameter_val = base_case_val
         min_max.base_result_val = system.lcop()
 
-        elasticity = SensitivityIndicator("Elasticity", system.name, self.parameter_name, self.parameter_type)
+        elasticity = SensitivityIndicator("Elasticity", system.name, self.parameter_name,
+                                          self.parameter_type)
         elasticity.parameter_vals = np.array([base_case_val * (100 - 0.5 * self.elasticity_perc_change) * 0.01, 
                                               base_case_val * (100 + 0.5 * self.elasticity_perc_change) * 0.01])
         elasticity.calculate = calculate_elasticity_si
         elasticity.base_parameter_val = base_case_val
         elasticity.base_result_val = system.lcop()
 
-        spider_plot = SensitivityIndicator("SpiderPlot", system.name, self.parameter_name, self.parameter_type)
-        spider_plot.parameter_vals = np.linspace(self.X_min, self.X_max, self.num_perc_increments)
+        spider_plot = SensitivityIndicator("SpiderPlot", system.name, self.parameter_name,
+                                           self.parameter_type)
+        spider_plot.parameter_vals = np.linspace(self.x_min, self.x_max, self.num_perc_increments)
         spider_plot.calculate = calculate_spider_plot_si
         spider_plot.base_parameter_val = base_case_val
         spider_plot.base_result_val = system.lcop()
@@ -318,9 +328,10 @@ def sensitivity_analysis_runner_from_csv(filename: str) -> Optional[SensitivityA
     with open(filename, 'r') as file:
         try:
             csv_reader = csv.reader(file)
-        except:
+        except csv.Error as e:
+            print(f"Error reading CSV file at line {csv_reader.line_num}: {e}")
             return None
-        next(csv_reader) # Skip the header row
+        next(csv_reader)  # Skip the header row
 
         for row in csv_reader:
             system_name = row[0]
@@ -330,9 +341,9 @@ def sensitivity_analysis_runner_from_csv(filename: str) -> Optional[SensitivityA
             if parameter_type == parameter_type.BoolSystemVar:
                 sensitivity_cases.append(sensitivity_case)
                 continue
-            sensitivity_case.X_max = float(row[3])
-            sensitivity_case.X_min = float(row[4])
-            if sensitivity_case.X_max < sensitivity_case.X_min:
+            sensitivity_case.x_max = float(row[3])
+            sensitivity_case.x_min = float(row[4])
+            if sensitivity_case.x_max < sensitivity_case.x_min:
                 raise ValueError("The X_max value must be greater than the X_min value.")
             sensitivity_case.num_perc_increments = int(row[5])
             sensitivity_case.elasticity_perc_change = float(row[6])
