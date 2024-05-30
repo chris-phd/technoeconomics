@@ -7,9 +7,11 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase, main
 import os
 
-from tea_main import load_config_from_csv
+import mass_energy_flow
+import plant_costs
 import species
 import system
+import tea_main
 import thermo
 import utils
 
@@ -530,10 +532,118 @@ class HydrogenPlasmaTest(TestCase):
 
 class TestFileIO(TestCase):
     def test_load_config_from_csv(self):
-        config_filename = "config/config_default.csv"
-        config = load_config_from_csv(config_filename)
-        self.assertTrue(len(config) > 0)
-        self.assertTrue(len(config["all"]) > 0)
+        config_filename = "config/config_unittest.csv"
+        config = tea_main.load_config_from_csv(config_filename)
+        self.assertEqual(len(config), 5)
+        self.assertEqual(len(config["all"]), 12)
+
+    def test_load_prices_from_csv(self):
+        prices_filename = "config/prices_unittest.csv"
+        prices = plant_costs.load_prices_from_csv(prices_filename)
+        self.assertEqual(len(prices), 22)
+        self.assertAlmostEqual(prices["H2"].price_usd, 3.0)
+        self.assertTrue(prices["H2"].units is plant_costs.PriceUnits.PerKilogram)
+        self.assertAlmostEqual(prices["Electrolyser"].price_usd, 1075.42)
+        self.assertTrue(prices["Electrolyser"].units is plant_costs.PriceUnits.PerKiloWattOfCapacity)
+        self.assertAlmostEqual(prices["Plasma Smelter"].price_usd, 379.22)
+        self.assertTrue(prices["Plasma Smelter"].units is plant_costs.PriceUnits.PerTonneOfAnnualCapacity)
+
+
+class TestCreateSystems(TestCase):
+    def test_create_systems(self):
+        config_filename = "config/config_unittest.csv"
+        self.config = tea_main.load_config_from_csv(config_filename)
+        systems = tea_main.create_systems(self.config)
+        self.assertEqual(len(systems), 4)
+        self.assertEqual(systems[0].name, "DRI-EAF")
+        self.assertEqual(len(systems[0].devices), 19)
+        self.assertEqual(len(systems[1].devices), 15)
+        self.assertEqual(len(systems[2].devices), 18)
+        self.assertEqual(len(systems[3].devices), 28)
+        self.assertEqual(len(systems[0].system_vars), 34)
+        self.assertEqual(len(systems[1].system_vars), 40)
+        self.assertEqual(len(systems[2].system_vars), 47)
+        self.assertEqual(len(systems[3].system_vars), 42)
+        
+        # 0.0 since we have not run the mass and energy flow yet
+        self.assertAlmostEqual(systems[3].lcop(), 0.0)
+
+
+class TestSteelPlantMassEnergyModel(TestCase):
+    def setUp(self):
+        config_filename = "config/config_unittest.csv"
+        self.config = tea_main.load_config_from_csv(config_filename)
+        prices_filename = "config/prices_unittest.csv"
+        self.prices = plant_costs.load_prices_from_csv(prices_filename)
+        self.systems = tea_main.create_systems(self.config)
+
+    def test_dri_eaf_system(self):
+        s = self.systems[0]
+        self.assertEqual(s.name, "DRI-EAF")
+        mass_energy_flow.solve_mass_energy_flow(s, s.add_mass_energy_flow_func, print_debug_messages=False)
+        plant_costs.add_steel_plant_lcop(s, self.prices, print_debug_messages=False)
+        self.assertAlmostEqual(s.lcop_breakdown['capex'], 72.87, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['labour'], 40.0, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['h2'], 171.97, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['ore'], 163.63, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['base electricity'], 154.37, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['c'], 1.30, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['cao'], 26.82, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['mgo'], 58.01, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['o2'], 1.00, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['scrap'], 0.00, places=1)
+        self.assertAlmostEqual(s.lcop(), 689.97, places=1)
+
+    def test_plasma_system(self):
+        s = self.systems[1]
+        self.assertEqual(s.name, "Plasma")
+        mass_energy_flow.solve_mass_energy_flow(s, s.add_mass_energy_flow_func, print_debug_messages=False)
+        plant_costs.add_steel_plant_lcop(s, self.prices, print_debug_messages=False)
+        self.assertAlmostEqual(s.lcop_breakdown['capex'], 41.40, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['labour'], 40.00, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['h2'], 165.16, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['ore'], 155.50, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['base electricity'], 171.35, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['c'], 1.30, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['cao'], 25.49, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['mgo'], 50.27, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['o2'], 0.00, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['scrap'], 0.00, places=1)
+        self.assertAlmostEqual(s.lcop(), 650.46, places=1)
+
+    def test_plasma_bof_system(self):
+        s = self.systems[2]
+        self.assertEqual(s.name, "Plasma BOF")
+        mass_energy_flow.solve_mass_energy_flow(s, s.add_mass_energy_flow_func, print_debug_messages=False)
+        plant_costs.add_steel_plant_lcop(s, self.prices, print_debug_messages=False)
+        self.assertAlmostEqual(s.lcop_breakdown['capex'], 57.10, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['labour'], 40.00, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['h2'], 155.56, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['ore'], 144.82, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['base electricity'], 183.42, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['c'], 4.60, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['cao'], 12.74, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['mgo'], 29.55, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['o2'], 1.89, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['scrap'], 0.00, places=1)
+        self.assertAlmostEqual(s.lcop(), 629.68, places=1)
+
+    def test_hybrid_system(self):
+        s = self.systems[3]
+        self.assertEqual(s.name, "Hybrid 33")
+        mass_energy_flow.solve_mass_energy_flow(s, s.add_mass_energy_flow_func, print_debug_messages=False)
+        plant_costs.add_steel_plant_lcop(s, self.prices, print_debug_messages=False)
+        self.assertAlmostEqual(s.lcop_breakdown['capex'], 56.43, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['labour'], 40.00, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['h2'], 165.16, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['ore'], 155.50, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['base electricity'], 205.82, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['c'], 1.30, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['cao'], 25.49, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['mgo'], 50.27, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['o2'], 0.00, places=1)
+        self.assertAlmostEqual(s.lcop_breakdown['scrap'], 0.00, places=1)
+        self.assertAlmostEqual(s.lcop(), 699.96, places=1)
 
 
 if __name__ == '__main__':
