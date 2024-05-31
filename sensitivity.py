@@ -195,11 +195,11 @@ class SensitivityCase:
         self._max_perc_change = value
 
     @property
-    def num_perc_increments(self) -> int:
+    def num_increments(self) -> int:
         return self._num_perc_increments
 
-    @num_perc_increments.setter
-    def num_perc_increments(self, value: int):
+    @num_increments.setter
+    def num_increments(self, value: int):
         self._num_perc_increments = value
 
     @property
@@ -225,14 +225,7 @@ class SensitivityCase:
             boolean_min_max.base_parameter_val = base_case_val
             boolean_min_max.base_result_val = system.lcop()
 
-            boolean_spider_plot = SensitivityIndicator("BooleanMinMax", system.name, self.parameter_name,
-                                                       self.parameter_type)
-            boolean_spider_plot.parameter_vals = np.array([False, True])
-            boolean_spider_plot.calculate = calculate_spider_plot_si
-            boolean_spider_plot.base_parameter_val = base_case_val
-            boolean_spider_plot.base_result_val = system.lcop()
-
-            return [boolean_min_max, boolean_spider_plot]
+            return [boolean_min_max]
         elif self.parameter_type == ParameterType.Price:
             base_case_val = prices[self.parameter_name].price_usd
         elif self.parameter_type == ParameterType.SystemVar:
@@ -246,28 +239,14 @@ class SensitivityCase:
         if not isinstance(base_case_val, float) and not isinstance(base_case_val, int):
             raise ValueError(f"The parameter type needs to be a numeric float or int, not {type(base_case_val)}")
 
-        min_max = SensitivityIndicator("MinMax", system.name, self.parameter_name, self.parameter_type)
-        min_max.parameter_vals = np.array([self.x_min, self.x_max])
-        min_max.calculate = calculate_min_max_si
-        min_max.base_parameter_val = base_case_val
-        min_max.base_result_val = system.lcop()
-
-        elasticity = SensitivityIndicator("Elasticity", system.name, self.parameter_name,
-                                          self.parameter_type)
-        elasticity.parameter_vals = np.array([base_case_val * (100 - 0.5 * self.elasticity_perc_change) * 0.01, 
-                                              base_case_val * (100 + 0.5 * self.elasticity_perc_change) * 0.01])
-        elasticity.calculate = calculate_elasticity_si
-        elasticity.base_parameter_val = base_case_val
-        elasticity.base_result_val = system.lcop()
-
         spider_plot = SensitivityIndicator("SpiderPlot", system.name, self.parameter_name,
                                            self.parameter_type)
-        spider_plot.parameter_vals = np.linspace(self.x_min, self.x_max, self.num_perc_increments)
+        spider_plot.parameter_vals = np.linspace(self.x_min, self.x_max, self.num_increments)
         spider_plot.calculate = calculate_spider_plot_si
         spider_plot.base_parameter_val = base_case_val
         spider_plot.base_result_val = system.lcop()
 
-        return [min_max, elasticity, spider_plot]
+        return [spider_plot]
 
 
 class SensitivityAnalysisRunner:
@@ -341,11 +320,11 @@ def sensitivity_analysis_runner_from_csv(filename: str) -> Optional[SensitivityA
             if parameter_type == parameter_type.BoolSystemVar:
                 sensitivity_cases.append(sensitivity_case)
                 continue
-            sensitivity_case.x_max = float(row[3])
-            sensitivity_case.x_min = float(row[4])
-            if sensitivity_case.x_max < sensitivity_case.x_min:
-                raise ValueError("The X_max value must be greater than the X_min value.")
-            sensitivity_case.num_perc_increments = int(row[5])
+            x1 = float(row[3])
+            x2 = float(row[4])
+            sensitivity_case.x_max = max(x1, x2)
+            sensitivity_case.x_min = min(x1, x2)
+            sensitivity_case.num_increments = int(row[5])
             sensitivity_case.elasticity_perc_change = float(row[6])
             sensitivity_cases.append(sensitivity_case)
 

@@ -9,6 +9,7 @@ import os
 
 import mass_energy_flow
 import plant_costs
+import sensitivity
 import species
 import system
 import tea_main
@@ -532,13 +533,13 @@ class HydrogenPlasmaTest(TestCase):
 
 class TestFileIO(TestCase):
     def test_load_config_from_csv(self):
-        config_filename = "config/config_unittest.csv"
+        config_filename = "config/unittest_config.csv"
         config = tea_main.load_config_from_csv(config_filename)
         self.assertEqual(len(config), 5)
         self.assertEqual(len(config["all"]), 12)
 
     def test_load_prices_from_csv(self):
-        prices_filename = "config/prices_unittest.csv"
+        prices_filename = "config/unittest_prices.csv"
         prices = plant_costs.load_prices_from_csv(prices_filename)
         self.assertEqual(len(prices), 22)
         self.assertAlmostEqual(prices["H2"].price_usd, 3.0)
@@ -551,7 +552,7 @@ class TestFileIO(TestCase):
 
 class TestCreateSystems(TestCase):
     def test_create_systems(self):
-        config_filename = "config/config_unittest.csv"
+        config_filename = "config/unittest_config.csv"
         self.config = tea_main.load_config_from_csv(config_filename)
         systems = tea_main.create_systems(self.config)
         self.assertEqual(len(systems), 4)
@@ -564,16 +565,14 @@ class TestCreateSystems(TestCase):
         self.assertEqual(len(systems[1].system_vars), 40)
         self.assertEqual(len(systems[2].system_vars), 47)
         self.assertEqual(len(systems[3].system_vars), 42)
-        
-        # 0.0 since we have not run the mass and energy flow yet
-        self.assertAlmostEqual(systems[3].lcop(), 0.0)
+        self.assertAlmostEqual(systems[3].lcop(), 0.0)  # since we have not run the mass and energy flow yet
 
 
 class TestSteelPlantMassEnergyModel(TestCase):
     def setUp(self):
-        config_filename = "config/config_unittest.csv"
+        config_filename = "config/unittest_config.csv"
         self.config = tea_main.load_config_from_csv(config_filename)
-        prices_filename = "config/prices_unittest.csv"
+        prices_filename = "config/unittest_prices.csv"
         self.prices = plant_costs.load_prices_from_csv(prices_filename)
         self.systems = tea_main.create_systems(self.config)
 
@@ -644,6 +643,46 @@ class TestSteelPlantMassEnergyModel(TestCase):
         self.assertAlmostEqual(s.lcop_breakdown['o2'], 0.00, places=1)
         self.assertAlmostEqual(s.lcop_breakdown['scrap'], 0.00, places=1)
         self.assertAlmostEqual(s.lcop(), 699.96, places=1)
+
+
+class TestSensitivityAnalysis(TestCase):
+    def setUp(self):
+        config_filename = "config/unittest_config.csv"
+        prices_filename = "config/unittest_prices.csv"
+        self.config = tea_main.load_config_from_csv(config_filename)
+        self.systems = tea_main.create_systems(self.config)
+        self.prices = plant_costs.load_prices_from_csv(prices_filename)
+
+    def test_load_sensitivity_analysis_from_csv(self):
+        sensitivity_filename = "config/unittest_sensitivity.csv"
+        sensitivity_runner = sensitivity.sensitivity_analysis_runner_from_csv(sensitivity_filename)
+        self.assertEqual(len(sensitivity_runner.cases), 5)
+        self.assertEqual(sensitivity_runner.cases[0].system_name, "All")
+        self.assertEqual(sensitivity_runner.cases[0].parameter_name, "H2")
+        self.assertEqual(sensitivity_runner.cases[1].system_name, "Plasma")
+        self.assertEqual(sensitivity_runner.cases[2].num_increments, 3)
+        self.assertAlmostEqual(sensitivity_runner.cases[3].x_min, 0.5)
+        self.assertAlmostEqual(sensitivity_runner.cases[4].x_max, 65.0)
+
+    def test_sensitivity_analysis(self):
+        sensitivity_filename = "config/unittest_sensitivity.csv"
+        sensitivity_runner = sensitivity.sensitivity_analysis_runner_from_csv(sensitivity_filename)
+        sensitivity_runner.systems = copy.deepcopy(self.systems[0:2])
+        sensitivity_indicators = sensitivity_runner.run(self.prices)
+        num_systems_in_sensitivity_analysis = len(self.systems[0:2])
+        self.assertEqual(len(sensitivity_indicators), num_systems_in_sensitivity_analysis)
+        dri_eaf_sis = sensitivity_indicators[0]
+        plasma_sis = sensitivity_indicators[1]
+        self.assertEqual(len(dri_eaf_sis), 3)
+        self.assertEqual(len(plasma_sis), 4)
+        for si in sensitivity_indicators:
+            for case in si:
+                self.assertTrue(case.success)
+        # change in LCOS due to change in hydrogen price
+        self.assertAlmostEqual(dri_eaf_sis[0].result_vals[0], 575.32, places=1)
+        self.assertAlmostEqual(dri_eaf_sis[0].result_vals[-1], 804.62, places=1)
+        self.assertAlmostEqual(plasma_sis[0].result_vals[0], 540.36, places=1)
+        self.assertAlmostEqual(plasma_sis[0].result_vals[-1], 760.57, places=1)
 
 
 if __name__ == '__main__':

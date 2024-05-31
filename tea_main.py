@@ -28,7 +28,10 @@ def main():
     run_sensitivity_analysis = bool(args.sensitivity_file)
     if run_sensitivity_analysis:
         sensitivity_runner = sensitivity_analysis_runner_from_csv(args.sensitivity_file)
-        sensitivity_runner.systems = copy.deepcopy(systems)
+        if sensitivity_runner:
+            sensitivity_runner.systems = copy.deepcopy(systems)
+        else:
+            run_sensitivity_analysis = False
 
     if args.render_dir:
         render_systems(systems, args.render_dir)
@@ -146,6 +149,7 @@ def create_systems(config: Dict[str, Dict[str, Any]]) -> List[System]:
 def render_systems(systems: List[System], render_dir: str):
     for s in systems:
         s.render(render_dir, view=True)
+
 
 def load_config_from_csv(filename: str) -> Dict[str, Dict[str, Any]]:
     config = {}

@@ -1,0 +1,6 @@
+system name,parameter name,parameter type,X max, X min,num increments,elasticity perc
+All,H2,Price,5.0,1.0,3,3
+Plasma,plasma temp K,SystemVar,3000,2500,2,3
+Hybrid 33,plasma reactor thermal eff percent,SystemVar,100.0,40.0,3,5
+All,b2 basicity,SystemVar,3.5,0.5,2,5
+All,ore fe content weight perc,SystemVar,55.0,65.0,2,5
