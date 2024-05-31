@@ -8,3 +8,4 @@
 - (feature) Add concept of fixed operating costs. 
 - (understand) How efficient is the condensing system? If it is inefficient, the hydrogen utilisation is important.
 - (feature) use pathlib instead of os.path.join. Avoid explicit use of /tmp directory. Want to make this cross platform.
+- (report) Add capacity factor to the sensitivity analysis.
