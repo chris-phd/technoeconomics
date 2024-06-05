@@ -265,16 +265,39 @@ class SpeciesAndMixtureTest(TestCase):
     def test_fe3o4_species_data(self):
         # Data from NIST Webbook
         fe3o4 = species.create_fe3o4_species()
+        # fe3o4 = species.create_ct_fe3o4_species()  # This was less accurate
         fe3o4.moles = 1.0
-        fe3o4.temp_kelvin = 850
-        delta_h = fe3o4.standard_enthalpy()
-        delta_h_factsage = 116950.0
-        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.025 * abs(delta_h_factsage))
+        factsage_enthalpy_of_formation = -1.11740E+06
 
-        fe3o4.temp_kelvin = 1550
+        fe3o4.temp_kelvin = 500
         delta_h = fe3o4.standard_enthalpy()
-        delta_h_factsage = 258974.0
-        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.02 * abs(delta_h_factsage))
+        delta_h_factsage = -1.08250E+06 - factsage_enthalpy_of_formation
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.015 * abs(delta_h_factsage)) ## failing
+
+        fe3o4.temp_kelvin = 800
+        delta_h = fe3o4.standard_enthalpy()
+        delta_h_factsage = -1.01571E+06 - factsage_enthalpy_of_formation
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.01 * abs(delta_h_factsage))
+
+        fe3o4.temp_kelvin = 900
+        delta_h = fe3o4.standard_enthalpy()
+        delta_h_factsage = -9.90478E+05 - factsage_enthalpy_of_formation
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.01 * abs(delta_h_factsage))
+
+        fe3o4.temp_kelvin = 1000
+        delta_h = fe3o4.standard_enthalpy()
+        delta_h_factsage = -9.70412E+05 - factsage_enthalpy_of_formation
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.01 * abs(delta_h_factsage))
+
+        fe3o4.temp_kelvin = 1200
+        delta_h = fe3o4.standard_enthalpy()
+        delta_h_factsage = -9.29931E+05 - factsage_enthalpy_of_formation
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.01 * abs(delta_h_factsage))
+
+        fe3o4.temp_kelvin = 1600
+        delta_h = fe3o4.standard_enthalpy()
+        delta_h_factsage = -8.48167E+05 - factsage_enthalpy_of_formation
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.01 * abs(delta_h_factsage))
 
     def test_feo_species_data(self):
         # Data from NIST Webbook
@@ -289,6 +312,61 @@ class SpeciesAndMixtureTest(TestCase):
         delta_h = feo.delta_h(1700)
         delta_h_factsage = 193525.0
         self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.025 * abs(delta_h_factsage))
+
+    def test_co2_species_data(self):
+        co2 = species.create_co2_species()
+        co2.moles = 1.0
+        factsage_enthalpy_of_formation = -3.9352E+05
+        
+        co2.temp_kelvin = 500
+        delta_h = co2.standard_enthalpy()
+        delta_h_factsage = -3.85219E+05 - factsage_enthalpy_of_formation
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.001 * abs(delta_h_factsage))
+
+        co2.temp_kelvin = 800
+        delta_h = co2.standard_enthalpy()
+        delta_h_factsage = -3.70711E+05 - factsage_enthalpy_of_formation
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.001 * abs(delta_h_factsage))
+
+        co2.temp_kelvin = 1000
+        delta_h = co2.standard_enthalpy()
+        delta_h_factsage = -3.60123E+05 - factsage_enthalpy_of_formation
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.001 * abs(delta_h_factsage))
+
+        co2.temp_kelvin = 1200
+        delta_h = co2.standard_enthalpy()
+        delta_h_factsage = -3.49049E+05 - factsage_enthalpy_of_formation
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.001 * abs(delta_h_factsage))
+
+        co2.temp_kelvin = 1600
+        delta_h = co2.standard_enthalpy()
+        delta_h_factsage = -3.25695E+05 - factsage_enthalpy_of_formation
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.01 * abs(delta_h_factsage))
+
+    def test_h2_species_data(self):
+        h2 = species.create_h2_species()
+        h2.moles = 1.0
+        factsage_enthalpy_of_formation = 0.0
+
+        h2.temp_kelvin = 500
+        delta_h = h2.standard_enthalpy()
+        delta_h_factsage = 5.88210E+03 - factsage_enthalpy_of_formation
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.001 * abs(delta_h_factsage))
+
+        h2.temp_kelvin = 800
+        delta_h = h2.standard_enthalpy()
+        delta_h_factsage = 1.47016E+04 - factsage_enthalpy_of_formation
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.001 * abs(delta_h_factsage))
+
+        h2.temp_kelvin = 1000
+        delta_h = h2.standard_enthalpy()
+        delta_h_factsage = 2.06806E+04 - factsage_enthalpy_of_formation
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.001 * abs(delta_h_factsage))
+
+        h2.temp_kelvin = 1200
+        delta_h = h2.standard_enthalpy()
+        delta_h_factsage = 2.67969E+04 - factsage_enthalpy_of_formation
+        self.assertAlmostEqual(delta_h, delta_h_factsage, delta=0.001 * abs(delta_h_factsage))
 
     def test_h2o_species_data(self):
         h2o = species.create_h2o_species()
@@ -363,10 +441,10 @@ class ReactionsTest(TestCase):
         factsage_delta_h = -43274.1
         self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.2 * abs(factsage_delta_h))
 
-        # ~50% difference from what factsage predicts
+        # ~45% difference from what factsage predicts
         delta_h = species.delta_h_fe3o4_h2_3feo_h2o(temp_kelvin)
         factsage_delta_h = 34075.8
-        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.5 * abs(factsage_delta_h))
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.45 * abs(factsage_delta_h))
 
         # ~35% difference from what factsage predicts
         delta_h = species.delta_h_feo_h2_fe_h2o(temp_kelvin)
@@ -424,11 +502,11 @@ class ReactionsTest(TestCase):
         self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.05 * abs(factsage_delta_h))
 
     def test_enthalpy_of_oxidation_reaction(self):
-        # ~10% difference from what factsage predicts
+        # ~1.5% difference from what factsage predicts
         temp_kelvin = 1000.0
         factsage_delta_h = -394620.7
         delta_h = species.delta_h_c_o2_co2(temp_kelvin)
-        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.11 * abs(factsage_delta_h))
+        self.assertAlmostEqual(delta_h, factsage_delta_h, delta=0.015 * abs(factsage_delta_h))
 
         temp_kelvin = 1000.0
         factsage_delta_h = -223971.8
@@ -469,18 +547,18 @@ class ReactionsTest(TestCase):
 
 class HydrogenPlasmaTest(TestCase):
     def setUp(self):
-        self.nasa_species = {s.name: s for s in ct.Species.list_from_file('nasa_gas.yaml')}
+        self.nasa_gas_species = {s.name: s for s in ct.Species.list_from_file('nasa_gas.yaml')}
 
     def test_cantera_equilibrium(self):
-        h2_plasma = ct.Solution(thermo='ideal-gas', species=[self.nasa_species['H2'],
-                                                             self.nasa_species['H2+'],
-                                                             self.nasa_species['H2-'],
-                                                             self.nasa_species['H'],
-                                                             self.nasa_species['H+'],
-                                                             self.nasa_species['H-'],
-                                                             self.nasa_species['Ar'],
-                                                             self.nasa_species['Ar+'],
-                                                             self.nasa_species['Electron']])
+        h2_plasma = ct.Solution(thermo='ideal-gas', species=[self.nasa_gas_species['H2'],
+                                                             self.nasa_gas_species['H2+'],
+                                                             self.nasa_gas_species['H2-'],
+                                                             self.nasa_gas_species['H'],
+                                                             self.nasa_gas_species['H+'],
+                                                             self.nasa_gas_species['H-'],
+                                                             self.nasa_gas_species['Ar'],
+                                                             self.nasa_gas_species['Ar+'],
+                                                             self.nasa_gas_species['Electron']])
         h2_plasma.TPX = 300.0, ct.one_atm, 'H2:1.0, Ar:0.1'
         h2_plasma.equilibrate('TP')
         monatomic_h_fraction = h2_plasma.X[3]
@@ -492,15 +570,15 @@ class HydrogenPlasmaTest(TestCase):
         self.assertGreater(monatomic_h_fraction, 0.1)
 
     def test_cantera_thermo_data_low_to_mid_temps(self):
-        h2_plasma = ct.Solution(thermo='ideal-gas', species=[self.nasa_species['H2'],
-                                                             self.nasa_species['H2+'],
-                                                             self.nasa_species['H2-'],
-                                                             self.nasa_species['H'],
-                                                             self.nasa_species['H+'],
-                                                             self.nasa_species['H-'],
-                                                             self.nasa_species['Ar'],
-                                                             self.nasa_species['Ar+'],
-                                                             self.nasa_species['Electron']])
+        h2_plasma = ct.Solution(thermo='ideal-gas', species=[self.nasa_gas_species['H2'],
+                                                             self.nasa_gas_species['H2+'],
+                                                             self.nasa_gas_species['H2-'],
+                                                             self.nasa_gas_species['H'],
+                                                             self.nasa_gas_species['H+'],
+                                                             self.nasa_gas_species['H-'],
+                                                             self.nasa_gas_species['Ar'],
+                                                             self.nasa_gas_species['Ar+'],
+                                                             self.nasa_gas_species['Electron']])
         h2_plasma.TPX = 300.0, ct.one_atm, 'H2:1.0'
         thermo_data = thermo.CanteraSolution(h2_plasma)
         cp_calculated = thermo_data.cp(1000)
