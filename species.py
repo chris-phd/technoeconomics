@@ -43,6 +43,7 @@ class Species:
         """
         Enthalpy change relative to standard conditions (298.15K, 1 atm) [J]
         Includes any latent heat of phase changes that may occur.
+        Does not include the enthalpy of formation.
         """
         return -self.delta_h(298.15)
 
@@ -570,9 +571,9 @@ def create_co2_species():
     o2 = create_o2_species()
 
     heat_capacities = [ShomateEquation(273.15, 1200.0,
-                                       (24.99735, 55.18696, 55.18696,
-                                        -33.69137, 7.948387, -0.136638,
-                                        -403.6075, 228.2431)),
+                                       (24.99735, 55.18696, -33.69137,
+                                        7.948387, -0.136638, -403.6075,
+                                        228.2431, -393.5224)),
                        ShomateEquation(1200.0, 6000.0,
                                        (58.16639, 2.720074, -0.492289,
                                         0.038844, -6.447293, -425.9186,
