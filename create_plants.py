@@ -516,18 +516,18 @@ def add_bof_flows(system: System, plasma_smelter_name: str, bof_name: str):
     system.add_output(bof_name, create_dummy_mixture('carbon gas'))
 
 
-nasa_species = {s.name: s for s in ct.Species.list_from_file('nasa_gas.yaml')}
+nasa_gas_species = {s.name: s for s in ct.Species.list_from_file('nasa_gas.yaml')}
 def add_h2_plasma_composition(system: System):
     if 'plasma temp K' not in system.system_vars:
         raise Exception("Could not add plasma composition. No 'plasma temp K' system variable.")
     
-    h2_plasma = ct.Solution(thermo='IdealGas', species=[nasa_species['H2'],
-                                                        nasa_species['H2+'],
-                                                        nasa_species['H2-'],
-                                                        nasa_species['H'],
-                                                        nasa_species['H+'],
-                                                        nasa_species['H-'],
-                                                        nasa_species['Electron']])
+    h2_plasma = ct.Solution(thermo='ideal-gas', species=[nasa_gas_species['H2'],
+                                                        nasa_gas_species['H2+'],
+                                                        nasa_gas_species['H2-'],
+                                                        nasa_gas_species['H'],
+                                                        nasa_gas_species['H+'],
+                                                        nasa_gas_species['H-'],
+                                                        nasa_gas_species['Electron']])
     h2_plasma.TPX = system.system_vars['plasma temp K'], ct.one_atm, 'H2:1.0'
     h2_plasma.equilibrate('TP')
     h2_fraction = h2_plasma.X[0]

@@ -340,9 +340,13 @@ class Mixture:
 
 
 # Species - Master copies
-# Shomate Equation data from the NIST Chemistry Webbook
+# Unless otherwise stated, Shomate Equation data from the NIST Chemistry Webbook
 # Latent Heat Data is from the CRC Handbook of Chemistry and Physics, Enthalpy of Fusion, 6-146
 # Enthalpy of Formation data is from the CRC Handbook of Chemistry and Physics, Enthalpy of Formation, 5-1
+# Nasa polynomial data obtained from Cantera
+nasa_gas_species = {s.name: s for s in ct.Species.list_from_file('nasa_gas.yaml')}
+
+
 def create_dummy_species(name):
     heat_capacities = [SimpleHeatCapacity(273.15, 6000.0, 1.0)]
     thermo_data = ThermoData(heat_capacities)
@@ -726,24 +730,21 @@ def create_h_species():
     return species
 
 
-nasa_species = {s.name: s for s in ct.Species.list_from_file('nasa_gas.yaml')}
-
-
 def create_h2_ar_plasma_species(argon_molar_frac_in_h2_plasma: float = 0.0):
     if not 0.0 <= argon_molar_frac_in_h2_plasma <= 1.0:
         raise ValueError(f'Argon molar fraction must be between 0 and 1, not {argon_molar_frac_in_h2_plasma}')
     h2 = create_h2_species()
     ar = create_ar_species()
 
-    h2_plasma = ct.Solution(thermo='ideal-gas', species=[nasa_species['H2'],
-                                                         nasa_species['H2+'],
-                                                         nasa_species['H2-'],
-                                                         nasa_species['H'],
-                                                         nasa_species['H+'],
-                                                         nasa_species['H-'],
-                                                         nasa_species['Ar'],
-                                                         nasa_species['Ar+'],
-                                                         nasa_species['Electron']])
+    h2_plasma = ct.Solution(thermo='ideal-gas', species=[nasa_gas_species['H2'],
+                                                         nasa_gas_species['H2+'],
+                                                         nasa_gas_species['H2-'],
+                                                         nasa_gas_species['H'],
+                                                         nasa_gas_species['H+'],
+                                                         nasa_gas_species['H-'],
+                                                         nasa_gas_species['Ar'],
+                                                         nasa_gas_species['Ar+'],
+                                                         nasa_gas_species['Electron']])
     molar_composition = {
         'H2': 1.0 - argon_molar_frac_in_h2_plasma,
         'Ar': argon_molar_frac_in_h2_plasma
